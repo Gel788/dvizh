@@ -558,6 +558,7 @@ export async function getLeaderboard(city: string, district?: string) {
 }
 
 export async function getStats() {
+  try {
   const [users, postsToday, challenges, events] = await Promise.all([
     db.user.count(),
     db.post.count({
@@ -569,4 +570,7 @@ export async function getStats() {
     }),
   ]);
   return { users, postsToday, challenges, events };
+  } catch {
+    return { users: 0, postsToday: 0, challenges: 0, events: 0 };
+  }
 }

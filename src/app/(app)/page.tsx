@@ -31,7 +31,7 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
     radiusKm: Number(params.radius ?? 10),
     userLat: session?.lat ?? coords.lat,
     userLng: session?.lng ?? coords.lng,
-  });
+  }).catch(() => []);
 
   return (
     <div className="dvizh-grid min-h-full">
