@@ -1,0 +1,328 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum PostType {
+  ACTIVITY
+  CHALLENGE
+  ANNOUNCEMENT
+}
+
+enum AnnouncementCategory {
+  SPORT
+  EVENT
+  HELP
+  EXCHANGE
+  MEETUP
+  OTHER
+}
+
+enum NotificationType {
+  FOLLOW
+  LIKE
+  COMMENT
+  CHALLENGE_NEARBY
+  CHALLENGE_REMINDER
+  FRIEND_COMPLETED
+  CLUB_INVITE
+  EVENT_REMINDER
+  BADGE_EARNED
+}
+
+enum ClubRole {
+  MEMBER
+  MODERATOR
+  ADMIN
+}
+
+model User {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  password    String
+  name        String
+  username    String   @unique
+  avatar      String?
+  bio         String?
+  city        String   @default("Москва")
+  district    String?
+  lat         Float?
+  lng         Float?
+  verified    Boolean  @default(false)
+  reputation  Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  posts              Post[]
+  comments           Comment[]
+  likes              Like[]
+  reposts            Repost[]
+  going              Going[]
+  followers          Follow[]             @relation("following")
+  following          Follow[]             @relation("follower")
+  districtFollows    DistrictFollow[]
+  tagFollows         TagFollow[]
+  challengeParts     ChallengeParticipant[]
+  challengeReports   ChallengeReport[]
+  clubsCreated       Club[]               @relation("ClubCreator")
+  clubMemberships    ClubMember[]
+  eventsOrganized    Event[]
+  eventAttendees     EventAttendee[]
+  badges             UserBadge[]
+  notifications      Notification[]
+}
+
+model Follow {
+  id          String   @id @default(cuid())
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+
+  follower  User @relation("follower", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId])
+}
+
+model DistrictFollow {
+  id       String @id @default(cuid())
+  userId   String
+  district String
+  city     String @default("Москва")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, district, city])
+}
+
+model TagFollow {
+  id     String @id @default(cuid())
+  userId String
+  tag    String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tag])
+}
+
+model Post {
+  id          String                @id @default(cuid())
+  type        PostType
+  authorId    String
+  title       String?
+  content     String
+  city        String
+  district    String?
+  lat         Float?
+  lng         Float?
+  radiusKm    Float                 @default(5)
+  tags        String                @default("")
+  images      String                @default("")
+  category    AnnouncementCategory?
+  contactInfo String?
+  expiresAt   DateTime?
+  createdAt   DateTime              @default(now())
+
+  author       User                   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  challenge    Challenge?
+  likes        Like[]
+  comments     Comment[]
+  reposts      Repost[]
+  going        Going[]
+
+  @@index([city, type])
+  @@index([createdAt])
+}
+
+model Challenge {
+  id           String    @id @default(cuid())
+  postId       String    @unique
+  goalCount    Int       @default(1)
+  deadline     DateTime?
+  rules        String?
+  isBusiness   Boolean   @default(false)
+  businessName String?
+  reward       String?
+  isSeasonal   Boolean   @default(false)
+  seasonName   String?
+
+  post         Post                   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  participants ChallengeParticipant[]
+  reports      ChallengeReport[]
+}
+
+model ChallengeParticipant {
+  id          String   @id @default(cuid())
+  challengeId String
+  userId      String
+  progress    Int      @default(0)
+  streak      Int      @default(0)
+  joinedAt    DateTime @default(now())
+
+  challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([challengeId, userId])
+}
+
+model ChallengeReport {
+  id          String   @id @default(cuid())
+  challengeId String
+  userId      String
+  content     String
+  image       String?
+  lat         Float?
+  lng         Float?
+  createdAt   DateTime @default(now())
+
+  challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Like {
+  id        String   @id @default(cuid())
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  postId    String
+  userId    String
+  content   String
+  createdAt DateTime @default(now())
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Repost {
+  id        String   @id @default(cuid())
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+}
+
+model Going {
+  id        String   @id @default(cuid())
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+}
+
+model Club {
+  id          String   @id @default(cuid())
+  name        String
+  description String
+  city        String
+  district    String?
+  isPrivate   Boolean  @default(false)
+  coverImage  String?
+  creatorId   String
+  createdAt   DateTime @default(now())
+
+  creator User         @relation("ClubCreator", fields: [creatorId], references: [id])
+  members ClubMember[]
+  events  Event[]
+}
+
+model ClubMember {
+  id       String   @id @default(cuid())
+  clubId   String
+  userId   String
+  role     ClubRole @default(MEMBER)
+  joinedAt DateTime @default(now())
+
+  club Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([clubId, userId])
+}
+
+model Event {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  organizerId String
+  clubId      String?
+  city        String
+  district    String?
+  lat         Float?
+  lng         Float?
+  startAt     DateTime
+  endAt       DateTime?
+  isSeasonal  Boolean  @default(false)
+  coverImage  String?
+  createdAt   DateTime @default(now())
+
+  organizer User            @relation(fields: [organizerId], references: [id])
+  club      Club?           @relation(fields: [clubId], references: [id])
+  attendees EventAttendee[]
+}
+
+model EventAttendee {
+  id       String   @id @default(cuid())
+  eventId  String
+  userId   String
+  joinedAt DateTime @default(now())
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+}
+
+model Badge {
+  id          String @id @default(cuid())
+  name        String @unique
+  description String
+  icon        String
+  color       String @default("#D94F2B")
+
+  users UserBadge[]
+}
+
+model UserBadge {
+  id       String   @id @default(cuid())
+  userId   String
+  badgeId  String
+  earnedAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge Badge @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, badgeId])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String
+  link      String?
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+}
