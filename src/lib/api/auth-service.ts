@@ -3,6 +3,8 @@ import {
   hashPassword,
   signAccessToken,
   verifyPassword,
+  findUserByEmail,
+  normalizeEmail,
   type SessionUser,
 } from "@/lib/auth";
 
@@ -30,12 +32,12 @@ export async function loginWithCredentials(
   email: string,
   password: string
 ): Promise<AuthPayload | { error: string; code: string }> {
-  const normalizedEmail = email.trim();
+  const normalizedEmail = normalizeEmail(email);
   if (!normalizedEmail || !password) {
     return { error: "Email и пароль обязательны", code: "EMPTY" };
   }
 
-  const user = await db.user.findUnique({ where: { email: normalizedEmail } });
+  const user = await findUserByEmail(normalizedEmail);
   if (!user || !(await verifyPassword(password, user.password))) {
     return { error: "Неверный email или пароль", code: "INVALID_CREDENTIALS" };
   }
@@ -52,7 +54,7 @@ export async function registerUser(input: {
   username: string;
   city?: string;
 }): Promise<AuthPayload | { error: string; code: string }> {
-  const email = input.email.trim();
+  const email = normalizeEmail(input.email);
   const name = input.name.trim();
   const username = input.username.trim().toLowerCase();
   const city = (input.city ?? "Москва").trim() || "Москва";
@@ -62,7 +64,12 @@ export async function registerUser(input: {
   }
 
   const exists = await db.user.findFirst({
-    where: { OR: [{ email }, { username }] },
+    where: {
+      OR: [
+        { email: { equals: email, mode: "insensitive" } },
+        { username },
+      ],
+    },
   });
   if (exists) {
     return { error: "Email или username уже заняты", code: "EXISTS" };

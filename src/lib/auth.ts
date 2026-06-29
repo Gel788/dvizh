@@ -41,6 +41,17 @@ export async function verifyPassword(password: string, hash: string) {
   return bcrypt.compare(password, hash);
 }
 
+export function normalizeEmail(email: string) {
+  return email.trim().toLowerCase();
+}
+
+export async function findUserByEmail(email: string) {
+  const normalized = normalizeEmail(email);
+  return db.user.findFirst({
+    where: { email: { equals: normalized, mode: "insensitive" } },
+  });
+}
+
 const SESSION_USER_SELECT = {
   id: true,
   email: true,

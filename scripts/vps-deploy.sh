@@ -40,7 +40,12 @@ export NODE_OPTIONS="--max-old-space-size=2048"
 npm ci
 npx prisma generate
 npx prisma db push
-npm run db:seed 2>&1 | tail -8 || true
+if [ "${SEED_DB:-}" = "1" ]; then
+  echo "=== Seed (SEED_DB=1) ==="
+  npm run db:seed 2>&1 | tail -8 || true
+else
+  echo "=== Seed skipped (users preserved). Set SEED_DB=1 to reset demo data ==="
+fi
 
 echo "=== Build ==="
 npm run build

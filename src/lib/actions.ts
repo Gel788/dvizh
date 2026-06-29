@@ -9,6 +9,8 @@ import {
   getSession,
   hashPassword,
   verifyPassword,
+  findUserByEmail,
+  normalizeEmail,
   type SessionUser,
 } from "@/lib/auth";
 import { haversineKm, parseTags } from "@/lib/geo";
@@ -19,7 +21,7 @@ import type {
 } from "@prisma/client";
 
 export async function registerAction(formData: FormData) {
-  const email = String(formData.get("email") ?? "").trim();
+  const email = normalizeEmail(String(formData.get("email") ?? ""));
   const password = String(formData.get("password") ?? "");
   const name = String(formData.get("name") ?? "").trim();
   const username = String(formData.get("username") ?? "").trim().toLowerCase();
@@ -30,7 +32,12 @@ export async function registerAction(formData: FormData) {
   }
 
   const exists = await db.user.findFirst({
-    where: { OR: [{ email }, { username }] },
+    where: {
+      OR: [
+        { email: { equals: email, mode: "insensitive" } },
+        { username },
+      ],
+    },
   });
   if (exists) redirect("/register?error=exists");
 
@@ -49,10 +56,10 @@ export async function registerAction(formData: FormData) {
 }
 
 export async function loginAction(formData: FormData) {
-  const email = String(formData.get("email") ?? "").trim();
+  const email = normalizeEmail(String(formData.get("email") ?? ""));
   const password = String(formData.get("password") ?? "");
 
-  const user = await db.user.findUnique({ where: { email } });
+  const user = await findUserByEmail(email);
   if (!user || !(await verifyPassword(password, user.password))) {
     redirect("/login?error=invalid");
   }
