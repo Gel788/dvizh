@@ -1,38 +1,50 @@
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import { ru } from "date-fns/locale";
-import { Activity, Users } from "lucide-react";
+import {
+  Activity,
+  Heart,
+  MessageCircle,
+  Trophy,
+  UserPlus,
+  Users,
+} from "lucide-react";
 import { StatCard } from "@/components/admin/stat-card";
-import { AdminTable, AdminTd, AdminTh } from "@/components/admin/admin-table";
+import { AdminPage, AdminPageHeader } from "@/components/admin/admin-page-header";
+import { AdminSection, AdminTable, AdminTd, AdminTh, AdminTr } from "@/components/admin/admin-table";
 import { getAdminStats } from "@/lib/admin/stats";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 
 export default async function AdminDashboardPage() {
   const stats = await getAdminStats();
+  const maxCity = Math.max(...stats.usersByCity.map((r) => r._count._all), 1);
+  const maxType = Math.max(...stats.postsByType.map((r) => r._count._all), 1);
 
   return (
-    <div className="px-4 py-6 lg:px-8 lg:py-8 max-w-[1400px]">
-      <div className="mb-8">
-        <h1 className="font-heading text-4xl text-neon-lime leading-none">Обзор</h1>
-        <p className="mt-2 text-sm text-white/45">Метрики платформы и последняя активность</p>
+    <AdminPage>
+      <AdminPageHeader
+        eyebrow="Панель управления"
+        title="Обзор"
+        description="Метрики платформы, рост за сутки и последняя активность в реальном времени."
+      />
+
+      <div className="mb-8 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+        <StatCard label="Пользователи" value={stats.usersTotal} hint={`+${stats.usersToday} за 24ч`} icon={Users} />
+        <StatCard label="Посты" value={stats.postsTotal} hint={`+${stats.postsToday} за 24ч`} accent="ice" icon={Activity} />
+        <StatCard label="Челленджи" value={stats.challengesTotal} accent="heat" icon={Trophy} />
+        <StatCard label="События" value={stats.eventsTotal} accent="muted" icon={Activity} />
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-8">
-        <StatCard label="Пользователи" value={stats.usersTotal} hint={`+${stats.usersToday} за 24ч`} />
-        <StatCard label="Посты" value={stats.postsTotal} hint={`+${stats.postsToday} за 24ч`} accent="ice" />
-        <StatCard label="Челленджи" value={stats.challengesTotal} accent="heat" />
-        <StatCard label="События" value={stats.eventsTotal} accent="ice" />
-        <StatCard label="Клубы" value={stats.clubsTotal} />
+      <div className="mb-8 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+        <StatCard label="Клубы" value={stats.clubsTotal} accent="muted" />
         <StatCard label="Дружбы" value={stats.friendshipsTotal} accent="ice" />
-        <StatCard label="Лайки" value={stats.likesTotal} />
-        <StatCard label="Комментарии" value={stats.commentsTotal} accent="heat" />
+        <StatCard label="Лайки" value={stats.likesTotal} accent="lime" icon={Heart} />
+        <StatCard label="Комментарии" value={stats.commentsTotal} accent="heat" icon={MessageCircle} />
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-6 mb-8">
-        <section>
-          <div className="flex items-center gap-2 mb-3">
-            <Users className="h-4 w-4 text-lime" />
-            <h2 className="font-heading text-xl">Новые пользователи</h2>
-          </div>
+      <div className="mb-8 grid gap-6 lg:grid-cols-2">
+        <AdminSection title="Новые пользователи" icon={<UserPlus className="h-4 w-4 text-lime" />}>
           <AdminTable>
             <thead>
               <tr>
@@ -43,30 +55,26 @@ export default async function AdminDashboardPage() {
             </thead>
             <tbody>
               {stats.recentUsers.map((u) => (
-                <tr key={u.id}>
+                <AdminTr key={u.id}>
                   <AdminTd>
-                    <Link href={`/profile/${u.username}`} className="hover:text-lime">
+                    <Link href={`/profile/${u.username}`} className="font-semibold hover:text-lime">
                       {u.name}
                     </Link>
-                    <p className="text-xs text-white/35">@{u.username}</p>
+                    <p className="text-xs text-muted-foreground">@{u.username}</p>
                   </AdminTd>
                   <AdminTd>
-                    <span className={u.role === "ADMIN" ? "text-heat" : ""}>{u.role}</span>
+                    <span className={u.role === "ADMIN" ? "text-heat font-semibold" : ""}>{u.role}</span>
                   </AdminTd>
-                  <AdminTd className="text-white/40 text-xs">
+                  <AdminTd className="text-xs text-muted-foreground">
                     {formatDistanceToNow(u.createdAt, { addSuffix: true, locale: ru })}
                   </AdminTd>
-                </tr>
+                </AdminTr>
               ))}
             </tbody>
           </AdminTable>
-        </section>
+        </AdminSection>
 
-        <section>
-          <div className="flex items-center gap-2 mb-3">
-            <Activity className="h-4 w-4 text-ice" />
-            <h2 className="font-heading text-xl">Последние посты</h2>
-          </div>
+        <AdminSection title="Последние посты" icon={<Activity className="h-4 w-4 text-ice" />}>
           <AdminTable>
             <thead>
               <tr>
@@ -77,46 +85,59 @@ export default async function AdminDashboardPage() {
             </thead>
             <tbody>
               {stats.recentPosts.map((p) => (
-                <tr key={p.id}>
+                <AdminTr key={p.id}>
                   <AdminTd>
-                    <p className="line-clamp-2">{p.title ?? p.content}</p>
-                    <p className="text-xs text-white/35">@{p.author.username} · {p.city}</p>
+                    <p className="line-clamp-2 font-medium">{p.title ?? p.content}</p>
+                    <p className="text-xs text-muted-foreground">@{p.author.username} · {p.city}</p>
                   </AdminTd>
-                  <AdminTd>{p.type}</AdminTd>
-                  <AdminTd className="text-xs text-white/40">
+                  <AdminTd>
+                    <span className="chip text-[10px] py-0.5">{p.type}</span>
+                  </AdminTd>
+                  <AdminTd className="text-xs text-muted-foreground">
                     ♥ {p._count.likes} · 💬 {p._count.comments}
                   </AdminTd>
-                </tr>
+                </AdminTr>
               ))}
             </tbody>
           </AdminTable>
-        </section>
+        </AdminSection>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-6">
-        <section className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-5">
-          <h3 className="font-heading text-lg mb-4">Пользователи по городам</h3>
-          <ul className="space-y-2">
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card className="border-white/[0.07] bg-card/50 ring-1 ring-white/[0.03]">
+          <CardHeader className="border-b border-white/[0.05]">
+            <CardTitle className="font-heading text-lg">Пользователи по городам</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 pt-4">
             {stats.usersByCity.map((row) => (
-              <li key={row.city} className="flex justify-between text-sm">
-                <span>{row.city}</span>
-                <span className="text-lime font-semibold">{row._count._all}</span>
-              </li>
+              <div key={row.city}>
+                <div className="mb-1.5 flex justify-between text-sm">
+                  <span>{row.city}</span>
+                  <span className="font-semibold tabular-nums text-lime">{row._count._all}</span>
+                </div>
+                <Progress value={(row._count._all / maxCity) * 100} className="h-1.5 progress-lime" />
+              </div>
             ))}
-          </ul>
-        </section>
-        <section className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-5">
-          <h3 className="font-heading text-lg mb-4">Посты по типам</h3>
-          <ul className="space-y-2">
+          </CardContent>
+        </Card>
+
+        <Card className="border-white/[0.07] bg-card/50 ring-1 ring-white/[0.03]">
+          <CardHeader className="border-b border-white/[0.05]">
+            <CardTitle className="font-heading text-lg">Посты по типам</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 pt-4">
             {stats.postsByType.map((row) => (
-              <li key={row.type} className="flex justify-between text-sm">
-                <span>{row.type}</span>
-                <span className="text-ice font-semibold">{row._count._all}</span>
-              </li>
+              <div key={row.type}>
+                <div className="mb-1.5 flex justify-between text-sm">
+                  <span>{row.type}</span>
+                  <span className="font-semibold tabular-nums text-ice">{row._count._all}</span>
+                </div>
+                <Progress value={(row._count._all / maxType) * 100} className="h-1.5 [&>div]:bg-ice" />
+              </div>
             ))}
-          </ul>
-        </section>
+          </CardContent>
+        </Card>
       </div>
-    </div>
+    </AdminPage>
   );
 }

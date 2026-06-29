@@ -2,7 +2,8 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Sparkles } from "lucide-react";
-import { AdminTable, AdminTd, AdminTh } from "@/components/admin/admin-table";
+import { AdminPage, AdminPageHeader } from "@/components/admin/admin-page-header";
+import { AdminSection, AdminTable, AdminTd, AdminTh, AdminTr } from "@/components/admin/admin-table";
 import {
   togglePostFeaturedAction,
   updatePostFeaturedBoostAction,
@@ -36,42 +37,39 @@ export default async function AdminFeedPage() {
   ]);
 
   return (
-    <div className="px-4 py-6 lg:px-8 lg:py-8 max-w-[1400px]">
-      <div className="mb-8">
-        <div className="flex items-center gap-2 mb-2">
-          <Sparkles className="h-5 w-5 text-lime" />
-          <h1 className="font-heading text-4xl text-neon-lime leading-none">Курация ленты</h1>
-        </div>
-        <p className="text-sm text-white/45">
-          Закрепи посты в «Для тебя». Boost 0–100 — чем выше, тем раньше в ленте. Кэш ленты ~60 сек.
-        </p>
-      </div>
+    <AdminPage>
+      <AdminPageHeader
+        eyebrow="Контент"
+        title="Курация ленты"
+        description="Закрепи посты в «Для тебя». Boost 0–100 — чем выше, тем раньше в ленте. Кэш ~60 сек."
+      />
 
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-8">
-        <StatCard label="В ленте сейчас" value={featured.length} accent="lime" />
+      <div className="mb-8 grid grid-cols-2 gap-3 lg:grid-cols-3">
+        <StatCard label="В ленте сейчас" value={featured.length} accent="lime" icon={Sparkles} />
         <StatCard label="Кандидаты" value={candidates.length} accent="ice" />
         <StatCard
           label="Средний boost"
           value={featured.length ? Math.round(featured.reduce((s, p) => s + p.featuredBoost, 0) / featured.length) : 0}
+          accent="muted"
         />
       </div>
 
-      <section className="mb-10">
-        <h2 className="font-heading text-xl mb-3 text-lime">Закреплённые</h2>
+      <AdminSection title="Закреплённые" icon={<Sparkles className="h-4 w-4 text-lime" />}>
         {featured.length === 0 ? (
-          <p className="text-sm text-white/40 py-8 text-center rounded-2xl border border-dashed border-white/10">
+          <p className="rounded-2xl border border-dashed border-white/10 py-10 text-center text-sm text-muted-foreground">
             Пока ничего не закреплено — выбери из кандидатов ниже
           </p>
         ) : (
           <FeedTable posts={featured} featured />
         )}
-      </section>
+      </AdminSection>
 
-      <section>
-        <h2 className="font-heading text-xl mb-3">Недавние кандидаты</h2>
-        <FeedTable posts={candidates} />
-      </section>
-    </div>
+      <div className="mt-10">
+        <AdminSection title="Недавние кандидаты">
+          <FeedTable posts={candidates} />
+        </AdminSection>
+      </div>
+    </AdminPage>
   );
 }
 
@@ -89,7 +87,7 @@ function FeedTable({ posts, featured = false }: { posts: FeedPost[]; featured?: 
       </thead>
       <tbody>
         {posts.map((p) => (
-          <tr key={p.id}>
+          <AdminTr key={p.id}>
             <AdminTd className="max-w-[280px]">
               <Link href={`/post/${p.id}`} className="line-clamp-2 hover:text-lime">
                 {p.title ?? p.content}
@@ -118,7 +116,7 @@ function FeedTable({ posts, featured = false }: { posts: FeedPost[]; featured?: 
                 </Button>
               </form>
             </AdminTd>
-          </tr>
+          </AdminTr>
         ))}
       </tbody>
     </AdminTable>

@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import { AdminTable, AdminTd, AdminTh } from "@/components/admin/admin-table";
+import { AdminPage, AdminPageHeader } from "@/components/admin/admin-page-header";
+import { AdminTable, AdminTd, AdminTh, AdminTr } from "@/components/admin/admin-table";
 import {
   deletePostAction,
   togglePostFeaturedAction,
@@ -28,21 +29,20 @@ export default async function AdminPostsPage() {
   const hidden = posts.filter((p) => p.hiddenFromFeed);
 
   return (
-    <div className="px-4 py-6 lg:px-8 lg:py-8 max-w-[1400px]">
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="font-heading text-4xl text-neon-lime leading-none">Посты</h1>
-          <p className="mt-2 text-sm text-white/45">
-            Модерация · в ленте {featured.length} · скрыто {hidden.length}
-          </p>
-        </div>
-        <Link
-          href="/admin/feed"
-          className="rounded-xl border border-lime/30 bg-lime/10 px-4 py-2 text-xs font-bold uppercase tracking-wider text-lime hover:bg-lime/15"
-        >
-          Курация ленты →
-        </Link>
-      </div>
+    <AdminPage>
+      <AdminPageHeader
+        eyebrow="Модерация"
+        title="Посты"
+        description={`В ленте ${featured.length} · скрыто ${hidden.length}`}
+        actions={
+          <Link
+            href="/admin/feed"
+            className="inline-flex h-9 items-center rounded-xl border border-lime/25 bg-lime/10 px-4 text-xs font-bold uppercase tracking-wider text-lime hover:bg-lime/15"
+          >
+            Курация ленты →
+          </Link>
+        }
+      />
 
       <AdminTable>
         <thead>
@@ -57,7 +57,7 @@ export default async function AdminPostsPage() {
         </thead>
         <tbody>
           {posts.map((p) => (
-            <tr key={p.id} className={cn(p.hiddenFromFeed && "opacity-50")}>
+            <AdminTr key={p.id} className={cn(p.hiddenFromFeed && "opacity-50")}>
               <AdminTd className="max-w-[260px]">
                 <Link href={`/post/${p.id}`} className="line-clamp-2 hover:text-lime font-medium">
                   {p.title ?? p.content}
@@ -109,10 +109,10 @@ export default async function AdminPostsPage() {
                   </form>
                 </div>
               </AdminTd>
-            </tr>
+            </AdminTr>
           ))}
         </tbody>
       </AdminTable>
-    </div>
+    </AdminPage>
   );
 }

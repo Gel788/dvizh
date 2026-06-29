@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import { AdminTable, AdminTd, AdminTh } from "@/components/admin/admin-table";
+import { AdminPage, AdminPageHeader } from "@/components/admin/admin-page-header";
+import { AdminTable, AdminTd, AdminTh, AdminTr } from "@/components/admin/admin-table";
 import { DeleteButton } from "@/components/admin/delete-button";
 import {
   deleteUserAction,
@@ -53,15 +54,14 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: S
   });
 
   return (
-    <div className="px-4 py-6 lg:px-8 lg:py-8 max-w-[1400px]">
-      <div className="mb-8">
-        <h1 className="font-heading text-4xl text-neon-lime leading-none">Пользователи</h1>
-        <p className="mt-2 text-sm text-white/45">
-          {term ? `Найдено: ${users.length} по «${term}»` : `${users.length} аккаунтов`}
-        </p>
-      </div>
+    <AdminPage>
+      <AdminPageHeader
+        eyebrow="Модерация"
+        title="Пользователи"
+        description={term ? `Найдено ${users.length} по запросу «${term}»` : `${users.length} аккаунтов в базе`}
+      />
 
-      <form method="get" className="mb-6 flex gap-2 max-w-md">
+      <form method="get" className="mb-6 flex max-w-lg gap-2">
         <Input
           name="q"
           defaultValue={term}
@@ -90,7 +90,7 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: S
         </thead>
         <tbody>
           {users.map((u) => (
-            <tr key={u.id}>
+            <AdminTr key={u.id}>
               <AdminTd>
                 <Link href={`/profile/${u.username}`} className="font-semibold hover:text-lime">
                   {u.name}
@@ -148,10 +148,10 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: S
                   )}
                 </div>
               </AdminTd>
-            </tr>
+            </AdminTr>
           ))}
         </tbody>
       </AdminTable>
-    </div>
+    </AdminPage>
   );
 }

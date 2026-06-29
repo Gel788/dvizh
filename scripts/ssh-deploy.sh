@@ -1,31 +1,38 @@
 #!/bin/bash
-# Запускай с Mac, где SSH работает:
+# Деплой на VPS с Mac:
 #   bash scripts/ssh-deploy.sh
-# Или с паролем:
-#   SSHPASS='твой-пароль' bash scripts/ssh-deploy.sh
+# С явным ключом:
+#   DEPLOY_SSH_KEY=~/.ssh/id_rsa_server bash scripts/ssh-deploy.sh
+# С паролем (fallback):
+#   SSHPASS='...' bash scripts/ssh-deploy.sh
 set -euo pipefail
 
 HOST="${DEPLOY_HOST:-83.222.27.82}"
 USER="${DEPLOY_USER:-root}"
 PORT="${DEPLOY_PORT:-22}"
+SSH_KEY="${DEPLOY_SSH_KEY:-${SSH_KEY:-$HOME/.ssh/id_rsa_server}}"
 
-if [ -z "${SSHPASS:-}" ] && [ -z "${SSH_AUTH_SOCK:-}" ]; then
-  echo "Введи пароль root (не отображается):"
-  read -rs SSHPASS
-  export SSHPASS
-  USE_SSHPASS=1
+SSH_BASE=(ssh -o StrictHostKeyChecking=accept-new -p "$PORT" -o ConnectTimeout=20)
+if [ -f "$SSH_KEY" ]; then
+  SSH_BASE+=(-i "$SSH_KEY" -o IdentitiesOnly=yes)
 fi
 
 run_remote() {
   local cmd="$1"
-  if [ -n "${USE_SSHPASS:-}" ] || [ -n "${SSHPASS:-}" ]; then
-    sshpass -e ssh -o StrictHostKeyChecking=accept-new -p "$PORT" "${USER}@${HOST}" "$cmd"
+  if [ -n "${SSHPASS:-}" ] && command -v sshpass >/dev/null 2>&1; then
+    sshpass -e ssh -o StrictHostKeyChecking=accept-new -p "$PORT" \
+      ${SSH_KEY:+-i "$SSH_KEY" -o IdentitiesOnly=yes} \
+      "${USER}@${HOST}" "$cmd"
   else
-    ssh -o StrictHostKeyChecking=accept-new -p "$PORT" "${USER}@${HOST}" "$cmd"
+    "${SSH_BASE[@]}" "${USER}@${HOST}" "$cmd"
   fi
 }
 
 echo "=== SSH $USER@$HOST:$PORT ==="
+if [ -f "$SSH_KEY" ]; then
+  echo "Ключ: $SSH_KEY"
+fi
+
 run_remote "hostname && cd /opt/dvizh && git fetch origin main && git reset --hard origin/main && bash scripts/vps-deploy.sh"
 
 echo ""
