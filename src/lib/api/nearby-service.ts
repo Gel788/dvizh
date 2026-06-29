@@ -4,7 +4,7 @@ import {
   parseCoord,
   resolveOrigin,
 } from "@/lib/geo";
-import { applyNearbyRadius, buildNearbyItems } from "@/lib/nearby-data";
+import { buildNearbyItems } from "@/lib/nearby-data";
 import type { SessionUser } from "@/lib/auth";
 
 export type NearbyOptions = {
@@ -107,7 +107,7 @@ export async function getNearbyPayload(
     origin: { lat: origin.lat, lng: origin.lng },
     radiusKm,
     hasGps: origin.hasGps,
-    local: applyNearbyRadius(local, radiusKm),
+    local,
     global,
   };
 }

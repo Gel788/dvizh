@@ -10,7 +10,7 @@ import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 import { joinChallengeAction, joinEventAction, syncUserLocationAction } from "@/lib/actions";
 import type { NearbyItem } from "@/lib/nearby-data";
-import { filterNearbyItem } from "@/lib/nearby-data";
+import { filterNearbyItem, applyNearbyRadius } from "@/lib/nearby-data";
 import type { PostType } from "@prisma/client";
 import { MotionEnter } from "@/components/ui/motion-surface";
 
@@ -41,7 +41,7 @@ export function NearbyView({
   const scope = params.get("scope") === "global" ? "global" : "local";
   const mapFilter = params.get("map") ?? "Все";
 
-  const list = scope === "global" ? globalItems : localItems;
+  const list = scope === "global" ? globalItems : applyNearbyRadius(localItems, radiusKm);
   const filteredList = list.filter((item) => filterNearbyItem(item, mapFilter));
 
   const mapMarkers = useMemo(() => {
