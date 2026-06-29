@@ -12,10 +12,14 @@ type CreateTaskBody = {
   period?: string;
   visibility?: string;
   hashtag?: string;
+  hashtagColor?: string;
   trackStreak?: boolean;
   isRecurring?: boolean;
   recurrence?: string;
   multiLine?: boolean;
+  dueDate?: string;
+  reminderAt?: string;
+  checklist?: string[] | string;
 };
 
 export async function POST(request: Request) {
@@ -24,16 +28,27 @@ export async function POST(request: Request) {
     const body = await readJson<CreateTaskBody>(request);
     if (!body?.text?.trim()) return jsonError("Текст задачи обязателен", 400, "EMPTY");
 
+    let checklist: string[] | undefined;
+    if (Array.isArray(body.checklist)) {
+      checklist = body.checklist.map((s) => String(s).trim()).filter(Boolean);
+    } else if (typeof body.checklist === "string" && body.checklist.trim()) {
+      checklist = body.checklist.split("\n").map((s) => s.trim()).filter(Boolean);
+    }
+
     const created = await createDiaryTaskForUser(session.id, {
       text: body.text,
       note: body.note,
       period: body.period ?? "today",
       visibility: body.visibility ?? "private",
       hashtag: body.hashtag,
+      hashtagColor: body.hashtagColor,
       trackStreak: body.trackStreak,
       isRecurring: body.isRecurring,
       recurrence: body.recurrence,
       multiLine: body.multiLine,
+      dueDate: body.dueDate,
+      reminderAt: body.reminderAt,
+      checklist,
     });
 
     return jsonOk({ tasks: created }, 201);
