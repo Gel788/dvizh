@@ -31,12 +31,6 @@ const TYPE_META: Record<string, { label: string; act: string; icon: typeof Zap; 
   DUEL_MARKED: { label: "Спор", act: "отметился в споре", icon: Target, className: "text-heat bg-heat/10" },
 };
 
-function pseudoCount(seed: string, max: number) {
-  let h = 0;
-  for (let i = 0; i < seed.length; i++) h = (h + seed.charCodeAt(i) * (i + 1)) % max;
-  return h + 4;
-}
-
 function parseTag(body: string | null) {
   if (!body?.startsWith("#")) return null;
   return body.slice(1).split(/\s/)[0];
@@ -105,7 +99,7 @@ export function ActivityCard({ activity, index = 0, onCopyTask }: { activity: Ac
               + Добавить себе
             </button>
           )}
-          <FeedReactions likes={pseudoCount(activity.id, 40)} comments={pseudoCount(activity.id + "c", 8)} />
+          <FeedReactions likes={0} comments={0} />
         </div>
       </div>
     </motion.article>

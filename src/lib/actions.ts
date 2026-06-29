@@ -460,6 +460,7 @@ export async function getFeedPosts(
   const where: Record<string, unknown> = {};
 
   if (filters.city) where.city = filters.city;
+  where.hiddenFromFeed = false;
   if (filters.type && filters.type !== "ALL") where.type = filters.type;
   if (filters.district) where.district = filters.district;
   if (filters.tag) where.tags = { contains: filters.tag };
@@ -572,11 +573,38 @@ export async function getLeaderboard(city: string, district?: string) {
   return users;
 }
 
-export async function getChallengeLeaderboard(city?: string, scope: "local" | "global" = "local") {
+export async function getChallengeLeaderboard(
+  city?: string,
+  scope: "local" | "global" | "friends" = "local",
+  userId?: string,
+) {
+  let authorIds: string[] | undefined;
+  if (scope === "friends" && userId) {
+    const follows = await db.follow.findMany({
+      where: { followerId: userId },
+      select: { followingId: true },
+    });
+    const friendRows = await db.friendship.findMany({
+      where: {
+        status: "ACCEPTED",
+        OR: [{ requesterId: userId }, { addresseeId: userId }],
+      },
+    });
+    authorIds = [
+      ...new Set([
+        ...follows.map((f) => f.followingId),
+        ...friendRows.map((f) => (f.requesterId === userId ? f.addresseeId : f.requesterId)),
+      ]),
+    ];
+    if (!authorIds.length) return [];
+  }
+
   const challenges = await db.challenge.findMany({
-    where: scope === "local" && city
-      ? { post: { city } }
-      : {},
+    where: {
+      ...(scope === "local" && city ? { post: { city, hiddenFromFeed: false } } : {}),
+      ...(scope === "global" ? { isGlobal: true, post: { hiddenFromFeed: false } } : {}),
+      ...(scope === "friends" && authorIds ? { post: { authorId: { in: authorIds }, hiddenFromFeed: false } } : {}),
+    },
     include: {
       post: {
         select: {
@@ -601,6 +629,54 @@ export async function getChallengeLeaderboard(city?: string, scope: "local" | "g
     take: 20,
   });
   return challenges;
+}
+
+export async function searchPlatform(q: string, city?: string) {
+  const term = q.trim();
+  if (term.length < 2) return { users: [], posts: [] };
+
+  const [users, posts] = await Promise.all([
+    db.user.findMany({
+      where: {
+        OR: [
+          { name: { contains: term, mode: "insensitive" } },
+          { username: { contains: term, mode: "insensitive" } },
+        ],
+      },
+      orderBy: { reputation: "desc" },
+      take: 12,
+      select: {
+        id: true,
+        name: true,
+        username: true,
+        avatar: true,
+        city: true,
+        district: true,
+        verified: true,
+        reputation: true,
+        _count: { select: { followers: true, posts: true } },
+      },
+    }),
+    db.post.findMany({
+      where: {
+        hiddenFromFeed: false,
+        ...(city ? { city } : {}),
+        OR: [
+          { title: { contains: term, mode: "insensitive" } },
+          { content: { contains: term, mode: "insensitive" } },
+          { tags: { contains: term, mode: "insensitive" } },
+        ],
+      },
+      orderBy: { createdAt: "desc" },
+      take: 20,
+      include: {
+        author: { select: { id: true, name: true, username: true, avatar: true, verified: true, city: true, district: true } },
+        _count: { select: { likes: true, comments: true, going: true, reposts: true } },
+      },
+    }),
+  ]);
+
+  return { users, posts, query: term };
 }
 
 export async function getStats() {

@@ -1,35 +1,52 @@
 import { db } from "@/lib/db";
-import { getDiaryBundle } from "@/lib/diary-actions";
+import { ensureProfile } from "@/lib/diary-actions";
 import { requireSessionFromRequest } from "@/lib/auth";
 import { jsonError, jsonOk, readJson } from "@/lib/api/http";
 
 export async function GET(request: Request) {
   try {
     const session = await requireSessionFromRequest(request);
-    const [user, diary, profileRow] = await Promise.all([
-    db.user.findUnique({
-      where: { id: session.id },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        username: true,
-        avatar: true,
-        bio: true,
-        city: true,
-        district: true,
-        verified: true,
-        reputation: true,
-        _count: { select: { posts: true, followers: true, following: true } },
-      },
-    }),
-    getDiaryBundle(session.id),
-    db.userProfile.findUnique({ where: { userId: session.id }, select: { mascotStage: true } }),
-  ]);
+    const { searchParams } = new URL(request.url);
+    const full = searchParams.get("full") === "1";
 
-  const mascot = (["panda", "sloth", "rabbit"] as const)[profileRow?.mascotStage ?? 0] ?? "panda";
+    const [user, profileRow, profile] = await Promise.all([
+      db.user.findUnique({
+        where: { id: session.id },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          username: true,
+          avatar: true,
+          bio: true,
+          city: true,
+          district: true,
+          verified: true,
+          reputation: true,
+          _count: { select: { posts: true, followers: true, following: true } },
+        },
+      }),
+      db.userProfile.findUnique({ where: { userId: session.id }, select: { mascotStage: true, xp: true, level: true } }),
+      ensureProfile(session.id),
+    ]);
 
-  return jsonOk({ user, diary, mascot });
+    const mascot = (["panda", "sloth", "rabbit"] as const)[profileRow?.mascotStage ?? 0] ?? "panda";
+
+    if (!full) {
+      return jsonOk({
+        user,
+        mascot,
+        diary: {
+          xp: profile.xp,
+          level: profile.level,
+        },
+        light: true,
+      });
+    }
+
+    const { getDiaryBundle } = await import("@/lib/diary-actions");
+    const diary = await getDiaryBundle(session.id);
+    return jsonOk({ user, diary, mascot, light: false });
   } catch {
     return jsonError("Требуется авторизация", 401, "UNAUTHORIZED");
   }

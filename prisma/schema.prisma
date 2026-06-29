@@ -199,8 +199,11 @@ model Post {
   images      String                @default("")
   category    AnnouncementCategory?
   contactInfo String?
-  expiresAt   DateTime?
-  createdAt   DateTime              @default(now())
+  expiresAt      DateTime?
+  featuredInFeed Boolean               @default(false)
+  featuredBoost  Int                   @default(0)
+  hiddenFromFeed Boolean               @default(false)
+  createdAt      DateTime              @default(now())
 
   author       User                   @relation(fields: [authorId], references: [id], onDelete: Cascade)
   challenge    Challenge?

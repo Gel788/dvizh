@@ -58,7 +58,7 @@ function toClientVis(v: Visibility): "private" | "friends" | "all" {
   return "private";
 }
 
-async function ensureProfile(userId: string) {
+export async function ensureProfile(userId: string) {
   return db.userProfile.upsert({
     where: { userId },
     create: { userId },
@@ -185,17 +185,26 @@ export async function getDiaryBundle(userId: string): Promise<DiaryBundle> {
     };
   });
 
+  const now = new Date();
+  const [duels, sharedGoals, wishlists, media, privacy] = await Promise.all([
+    getDuelsForUser(userId),
+    getSharedGoalsForUser(userId),
+    getWishlistsForUser(userId),
+    getMediaForUser(userId),
+    getPrivacyForUser(userId),
+  ]);
+
   return {
     xp: profile.xp,
     level,
     tasks: grouped,
     achievements,
-    duels: await getDuelsForUser(userId),
-    sharedGoals: await getSharedGoalsForUser(userId),
-    wishlists: await getWishlistsForUser(userId),
-    media: await getMediaForUser(userId),
-    privacy: await getPrivacyForUser(userId),
-    calendar: await getCalendarData(userId),
+    duels,
+    sharedGoals,
+    wishlists,
+    media,
+    privacy,
+    calendar: { year: now.getFullYear(), month: now.getMonth(), days: {} },
     health: {
       connected: profile.healthConnected,
       steps: profile.healthSteps,
@@ -750,9 +759,21 @@ export async function getFriendsFeed(
 export async function getCuratedFeed(city: string, userId?: string) {
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-  const [hotChallenges, recentAchievements, localEvents, businessChallenges, followingChallenges] = await Promise.all([
+  const [featuredPosts, hotChallenges, recentAchievements, localEvents, businessChallenges, followingChallenges] = await Promise.all([
+    db.post.findMany({
+      where: { city, featuredInFeed: true, hiddenFromFeed: false },
+      include: {
+        author: { select: { id: true, name: true, username: true, avatar: true, verified: true, city: true, district: true } },
+        challenge: { include: { _count: { select: { participants: true } } } },
+        _count: { select: { likes: true, comments: true, going: true, reposts: true } },
+        likes: userId ? { where: { userId }, select: { id: true } } : false,
+        going: userId ? { where: { userId }, select: { id: true } } : false,
+      },
+      orderBy: [{ featuredBoost: "desc" }, { createdAt: "desc" }],
+      take: 6,
+    }),
     db.challenge.findMany({
-      where: { post: { city }, participants: { some: {} } },
+      where: { post: { city, hiddenFromFeed: false }, participants: { some: {} } },
       include: {
         post: {
           select: {
@@ -772,7 +793,7 @@ export async function getCuratedFeed(city: string, userId?: string) {
       take: 5,
     }),
     db.post.findMany({
-      where: { city, type: "ANNOUNCEMENT", createdAt: { gte: weekAgo } },
+      where: { city, type: "ANNOUNCEMENT", hiddenFromFeed: false, createdAt: { gte: weekAgo } },
       include: {
         author: { select: { id: true, name: true, username: true, avatar: true, verified: true, city: true, district: true } },
         _count: { select: { likes: true, comments: true, going: true, reposts: true } },
@@ -799,6 +820,7 @@ export async function getCuratedFeed(city: string, userId?: string) {
       ? db.post.findMany({
           where: {
             type: "CHALLENGE",
+            hiddenFromFeed: false,
             authorId: { in: (await db.follow.findMany({ where: { followerId: userId }, select: { followingId: true } })).map((f) => f.followingId) },
             createdAt: { gte: weekAgo },
           },
@@ -822,6 +844,9 @@ export async function getCuratedFeed(city: string, userId?: string) {
 
   const items: CuratedItem[] = [];
 
+  for (const fp of featuredPosts) {
+    items.push({ kind: "post", post: fp, score: 200 + fp.featuredBoost });
+  }
   for (const ch of hotChallenges) {
     if (!ch.post) continue;
     const post = {

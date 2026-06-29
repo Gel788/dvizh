@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import type { UserRole } from "@prisma/client";
 import { db } from "@/lib/db";
 import { createSession, getSession, isAdmin, verifyPassword } from "@/lib/auth";
+import { invalidateFeedCache } from "@/lib/api/feed-cache";
 
 async function guard() {
   const session = await getSession();
@@ -22,6 +23,8 @@ function revalidateAdmin() {
   revalidatePath("/admin/clubs");
   revalidatePath("/admin/achievements");
   revalidatePath("/admin/system");
+  revalidatePath("/admin/feed");
+  revalidatePath("/");
 }
 
 export async function adminLoginAction(formData: FormData) {
@@ -85,7 +88,49 @@ export async function deleteUserAction(userId: string) {
 
 export async function deletePostAction(postId: string) {
   await guard();
+  const post = await db.post.findUnique({ where: { id: postId }, select: { city: true } });
   await db.post.delete({ where: { id: postId } });
+  if (post?.city) invalidateFeedCache(post.city);
+  revalidateAdmin();
+  revalidatePath("/");
+}
+
+export async function togglePostFeaturedAction(postId: string) {
+  await guard();
+  const post = await db.post.findUnique({ where: { id: postId } });
+  if (!post) return;
+  await db.post.update({
+    where: { id: postId },
+    data: { featuredInFeed: !post.featuredInFeed, featuredBoost: post.featuredInFeed ? 0 : 50 },
+  });
+  invalidateFeedCache(post.city);
+  revalidateAdmin();
+  revalidatePath("/");
+}
+
+export async function togglePostHiddenAction(postId: string) {
+  await guard();
+  const post = await db.post.findUnique({ where: { id: postId } });
+  if (!post) return;
+  await db.post.update({
+    where: { id: postId },
+    data: { hiddenFromFeed: !post.hiddenFromFeed, featuredInFeed: false },
+  });
+  invalidateFeedCache(post.city);
+  revalidateAdmin();
+  revalidatePath("/");
+}
+
+export async function updatePostFeaturedBoostAction(formData: FormData) {
+  await guard();
+  const postId = String(formData.get("postId") ?? "");
+  const boost = Number(formData.get("boost") ?? 0);
+  if (!postId || Number.isNaN(boost)) return;
+  const post = await db.post.update({
+    where: { id: postId },
+    data: { featuredBoost: Math.max(0, Math.min(100, Math.round(boost))), featuredInFeed: true },
+  });
+  invalidateFeedCache(post.city);
   revalidateAdmin();
   revalidatePath("/");
 }

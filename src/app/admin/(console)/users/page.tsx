@@ -15,10 +15,26 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 
-export default async function AdminUsersPage() {
+type SearchParams = Promise<{ q?: string }>;
+
+export default async function AdminUsersPage({ searchParams }: { searchParams: SearchParams }) {
+  const { q } = await searchParams;
+  const term = q?.trim() ?? "";
   const session = await getSession();
+
   const users = await db.user.findMany({
+    where: term
+      ? {
+          OR: [
+            { name: { contains: term, mode: "insensitive" } },
+            { username: { contains: term, mode: "insensitive" } },
+            { email: { contains: term, mode: "insensitive" } },
+            { city: { contains: term, mode: "insensitive" } },
+          ],
+        }
+      : undefined,
     orderBy: { createdAt: "desc" },
+    take: 80,
     select: {
       id: true,
       email: true,
@@ -40,8 +56,25 @@ export default async function AdminUsersPage() {
     <div className="px-4 py-6 lg:px-8 lg:py-8 max-w-[1400px]">
       <div className="mb-8">
         <h1 className="font-heading text-4xl text-neon-lime leading-none">Пользователи</h1>
-        <p className="mt-2 text-sm text-white/45">{users.length} аккаунтов</p>
+        <p className="mt-2 text-sm text-white/45">
+          {term ? `Найдено: ${users.length} по «${term}»` : `${users.length} аккаунтов`}
+        </p>
       </div>
+
+      <form method="get" className="mb-6 flex gap-2 max-w-md">
+        <Input
+          name="q"
+          defaultValue={term}
+          placeholder="Имя, @username, email, город..."
+          className="h-10 rounded-xl border-white/[0.08] bg-white/[0.03]"
+        />
+        <Button type="submit" className="cursor-pointer shrink-0">Найти</Button>
+        {term && (
+          <Link href="/admin/users" className="flex items-center text-xs text-white/40 hover:text-white px-2">
+            Сброс
+          </Link>
+        )}
+      </form>
 
       <AdminTable>
         <thead>

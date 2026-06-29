@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Search, Bell, Plus, Zap, MapPin } from "lucide-react";
+import { Bell, Plus, Zap, MapPin } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
@@ -11,6 +11,7 @@ import {
 import { Input } from "@/components/ui/input";
 import type { SessionUser } from "@/lib/auth";
 import { logoutAction } from "@/lib/actions";
+import { SearchBar } from "./search-bar";
 
 export function TopBar({ user, unreadCount = 0 }: { user: SessionUser | null; unreadCount?: number }) {
   const router = useRouter();
@@ -25,13 +26,7 @@ export function TopBar({ user, unreadCount = 0 }: { user: SessionUser | null; un
           <span className="font-heading text-lg text-neon-lime -skew-x-3">ДВИЖ</span>
         </Link>
 
-        <div className="relative flex-1 max-w-md lg:max-w-lg xl:max-w-xl">
-          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/50" />
-          <Input
-            placeholder="Поиск людей, челленджей, событий..."
-            className="pl-9 h-9 bg-white/[0.04] border-white/[0.07] rounded-xl text-sm focus-visible:border-lime/40 focus-visible:bg-white/[0.06] placeholder:text-muted-foreground/40"
-          />
-        </div>
+        <SearchBar />
 
         {user?.city && (
           <Link
