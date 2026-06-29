@@ -4,11 +4,11 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { UserRole } from "@prisma/client";
 import { db } from "@/lib/db";
-import { getSession, isAdmin } from "@/lib/auth";
+import { createSession, getSession, isAdmin, verifyPassword } from "@/lib/auth";
 
 async function guard() {
   const session = await getSession();
-  if (!session) redirect("/login?next=/admin");
+  if (!session) redirect("/admin/login");
   if (!isAdmin(session)) redirect("/");
   return session;
 }
@@ -22,6 +22,22 @@ function revalidateAdmin() {
   revalidatePath("/admin/clubs");
   revalidatePath("/admin/achievements");
   revalidatePath("/admin/system");
+}
+
+export async function adminLoginAction(formData: FormData) {
+  const email = String(formData.get("email") ?? "").trim();
+  const password = String(formData.get("password") ?? "");
+
+  const user = await db.user.findUnique({ where: { email } });
+  if (!user || !(await verifyPassword(password, user.password))) {
+    redirect("/admin/login?error=invalid");
+  }
+  if (user.role !== "ADMIN") {
+    redirect("/admin/login?error=not_admin");
+  }
+
+  await createSession(user.id);
+  redirect("/admin");
 }
 
 export async function toggleUserVerifiedAction(userId: string) {
