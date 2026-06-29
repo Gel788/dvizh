@@ -6,7 +6,7 @@ import { jsonError, jsonOk, readJson } from "@/lib/api/http";
 export async function GET(request: Request) {
   try {
     const session = await requireSessionFromRequest(request);
-    const [user, diary] = await Promise.all([
+    const [user, diary, profileRow] = await Promise.all([
     db.user.findUnique({
       where: { id: session.id },
       select: {
@@ -24,9 +24,12 @@ export async function GET(request: Request) {
       },
     }),
     getDiaryBundle(session.id),
+    db.userProfile.findUnique({ where: { userId: session.id }, select: { mascotStage: true } }),
   ]);
 
-  return jsonOk({ user, diary });
+  const mascot = (["panda", "sloth", "rabbit"] as const)[profileRow?.mascotStage ?? 0] ?? "panda";
+
+  return jsonOk({ user, diary, mascot });
   } catch {
     return jsonError("Требуется авторизация", 401, "UNAUTHORIZED");
   }
@@ -81,7 +84,13 @@ export async function PATCH(request: Request) {
       }
     }
 
-    return jsonOk({ user });
+    const profileRow = await db.userProfile.findUnique({
+      where: { userId: session.id },
+      select: { mascotStage: true },
+    });
+    const mascot = (["panda", "sloth", "rabbit"] as const)[profileRow?.mascotStage ?? 0] ?? "panda";
+
+    return jsonOk({ user, mascot });
   } catch {
     return jsonError("Требуется авторизация", 401, "UNAUTHORIZED");
   }
