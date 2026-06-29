@@ -76,3 +76,30 @@ export function parseTags(tags: string): string[] {
 export function formatTags(tags: string[]): string {
   return tags.join(",");
 }
+
+/** Смещение ~300–700 м для режима «только район» */
+export function fuzzCoordinates(
+  lat: number,
+  lng: number,
+  seed = "",
+): { lat: number; lng: number } {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) hash = (hash * 31 + seed.charCodeAt(i)) | 0;
+  const angle = (Math.abs(hash) % 360) * (Math.PI / 180);
+  const distKm = 0.3 + (Math.abs(hash >> 8) % 400) / 1000;
+  const dLat = (distKm / 111) * Math.cos(angle);
+  const dLng =
+    (distKm / (111 * Math.cos((lat * Math.PI) / 180))) * Math.sin(angle);
+  return { lat: lat + dLat, lng: lng + dLng };
+}
+
+export function publicCoordinates(
+  lat: number | null,
+  lng: number | null,
+  precision: string | null | undefined,
+  seed: string,
+): { lat: number | null; lng: number | null } {
+  if (lat == null || lng == null) return { lat, lng };
+  if (precision === "exact") return { lat, lng };
+  return fuzzCoordinates(lat, lng, seed);
+}

@@ -30,6 +30,7 @@ export type DiaryTaskDto = {
   dueDate?: string;
   isRecurring?: boolean;
   checklist?: string;
+  checklistItems?: ChecklistItem[];
   reminderAt?: string;
   hashtagColor?: string;
 };
@@ -43,7 +44,8 @@ export type DiaryBundle = {
   sharedGoals: Awaited<ReturnType<typeof getSharedGoalsForUser>>;
   wishlists: Awaited<ReturnType<typeof getWishlistsForUser>>;
   media: Awaited<ReturnType<typeof getMediaForUser>>;
-  privacy: Awaited<ReturnType<typeof getPrivacyForUser>>;
+  privacy: ReturnType<typeof privacyToClient>;
+  districtFollows: { district: string; city: string }[];
   calendar: Awaited<ReturnType<typeof getCalendarData>>;
   health: { connected: boolean; steps: number; distanceKm: number };
 };
@@ -56,6 +58,44 @@ function toClientVis(v: Visibility): "private" | "friends" | "all" {
   if (v === "PUBLIC") return "all";
   if (v === "FRIENDS") return "friends";
   return "private";
+}
+
+type ChecklistItem = { text: string; done: boolean };
+
+function parseChecklistJson(raw: string): ChecklistItem[] {
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map((item) => {
+        if (typeof item === "string") return { text: item, done: false };
+        if (item && typeof item === "object") {
+          const o = item as Record<string, unknown>;
+          return {
+            text: String(o.text ?? o.t ?? ""),
+            done: Boolean(o.done ?? o.d),
+          };
+        }
+        return { text: "", done: false };
+      })
+      .filter((i) => i.text);
+  } catch {
+    return [];
+  }
+}
+
+function privacyToClient(p: Awaited<ReturnType<typeof getPrivacyForUser>>) {
+  return {
+    defaultDiary: toClientVis(p.defaultDiary),
+    defaultWishlist: toClientVis(p.defaultWishlist),
+    defaultMedia: toClientVis(p.defaultMedia),
+    defaultEvents: toClientVis(p.defaultEvents),
+    locationPrecision: p.locationPrecision,
+    profileInSearch: p.profileInSearch,
+    diaryScope: p.diaryScope,
+    friendRequests: p.friendRequests,
+    subscriptions: p.subscriptions,
+  };
 }
 
 export async function ensureProfile(userId: string) {
@@ -163,6 +203,7 @@ export async function getDiaryBundle(userId: string): Promise<DiaryBundle> {
       dueDate: t.dueDate?.toISOString(),
       isRecurring: t.isRecurring,
       checklist: t.checklistJson !== "[]" ? t.checklistJson : undefined,
+      checklistItems: parseChecklistJson(t.checklistJson),
       reminderAt: t.reminderAt?.toISOString(),
       hashtagColor: t.hashtagColor ?? undefined,
     });
@@ -186,13 +227,15 @@ export async function getDiaryBundle(userId: string): Promise<DiaryBundle> {
   });
 
   const now = new Date();
-  const [duels, sharedGoals, wishlists, media, privacy] = await Promise.all([
+  const [duels, sharedGoals, wishlists, media, privacyRow, districtFollows] = await Promise.all([
     getDuelsForUser(userId),
     getSharedGoalsForUser(userId),
     getWishlistsForUser(userId),
     getMediaForUser(userId),
     getPrivacyForUser(userId),
+    db.districtFollow.findMany({ where: { userId }, select: { district: true, city: true } }),
   ]);
+  const privacy = privacyToClient(privacyRow);
 
   return {
     xp: profile.xp,
@@ -204,6 +247,7 @@ export async function getDiaryBundle(userId: string): Promise<DiaryBundle> {
     wishlists,
     media,
     privacy,
+    districtFollows,
     calendar: { year: now.getFullYear(), month: now.getMonth(), days: {} },
     health: {
       connected: profile.healthConnected,
@@ -337,7 +381,9 @@ export async function createDiaryTaskForUser(
         recurrence: input.isRecurring ? recurrenceMap[input.recurrence ?? "daily"] : null,
         trackStreak: input.trackStreak ?? false,
         reminderAt: input.reminderAt ? new Date(input.reminderAt) : null,
-        checklistJson: JSON.stringify(input.checklist ?? []),
+        checklistJson: JSON.stringify(
+          (input.checklist ?? []).map((text) => ({ text, done: false })),
+        ),
       },
     });
     created.push({
@@ -678,6 +724,88 @@ export async function updatePrivacyAction(data: {
   });
 
   revalidatePath(`/profile/${session.username}`);
+}
+
+export async function toggleChecklistItemForUser(
+  userId: string,
+  taskId: string,
+  index: number,
+) {
+  const task = await db.diaryTask.findFirst({ where: { id: taskId, userId } });
+  if (!task) return null;
+  const items = parseChecklistJson(task.checklistJson);
+  if (index < 0 || index >= items.length) return items;
+  items[index] = { ...items[index], done: !items[index].done };
+  await db.diaryTask.update({
+    where: { id: taskId },
+    data: { checklistJson: JSON.stringify(items) },
+  });
+  return items;
+}
+
+export async function updatePrivacyForUser(
+  userId: string,
+  data: {
+    defaultDiary?: string;
+    defaultWishlist?: string;
+    defaultMedia?: string;
+    defaultEvents?: string;
+    locationPrecision?: string;
+    profileInSearch?: boolean;
+    diaryScope?: string;
+    friendRequests?: string;
+    subscriptions?: string;
+  },
+) {
+  const row = await db.privacySettings.upsert({
+    where: { userId },
+    create: {
+      userId,
+      ...(data.defaultDiary ? { defaultDiary: (VIS_MAP[data.defaultDiary] ?? "PRIVATE") as Visibility } : {}),
+      ...(data.defaultWishlist ? { defaultWishlist: (VIS_MAP[data.defaultWishlist] ?? "FRIENDS") as Visibility } : {}),
+      ...(data.defaultMedia ? { defaultMedia: (VIS_MAP[data.defaultMedia] ?? "PUBLIC") as Visibility } : {}),
+      ...(data.defaultEvents ? { defaultEvents: (VIS_MAP[data.defaultEvents] ?? "FRIENDS") as Visibility } : {}),
+      ...(data.locationPrecision ? { locationPrecision: data.locationPrecision } : {}),
+      ...(data.profileInSearch != null ? { profileInSearch: data.profileInSearch } : {}),
+      ...(data.diaryScope ? { diaryScope: data.diaryScope } : {}),
+      ...(data.friendRequests ? { friendRequests: data.friendRequests } : {}),
+      ...(data.subscriptions ? { subscriptions: data.subscriptions } : {}),
+    },
+    update: {
+      ...(data.defaultDiary ? { defaultDiary: (VIS_MAP[data.defaultDiary] ?? "PRIVATE") as Visibility } : {}),
+      ...(data.defaultWishlist ? { defaultWishlist: (VIS_MAP[data.defaultWishlist] ?? "FRIENDS") as Visibility } : {}),
+      ...(data.defaultMedia ? { defaultMedia: (VIS_MAP[data.defaultMedia] ?? "PUBLIC") as Visibility } : {}),
+      ...(data.defaultEvents ? { defaultEvents: (VIS_MAP[data.defaultEvents] ?? "FRIENDS") as Visibility } : {}),
+      ...(data.locationPrecision ? { locationPrecision: data.locationPrecision } : {}),
+      ...(data.profileInSearch != null ? { profileInSearch: data.profileInSearch } : {}),
+      ...(data.diaryScope ? { diaryScope: data.diaryScope } : {}),
+      ...(data.friendRequests ? { friendRequests: data.friendRequests } : {}),
+      ...(data.subscriptions ? { subscriptions: data.subscriptions } : {}),
+    },
+  });
+  return privacyToClient(row);
+}
+
+export async function followDistrictForUser(
+  userId: string,
+  district: string,
+  city: string,
+) {
+  await db.districtFollow.upsert({
+    where: { userId_district_city: { userId, district, city } },
+    create: { userId, district, city },
+    update: {},
+  });
+  return { district, city };
+}
+
+export async function unfollowDistrictForUser(
+  userId: string,
+  district: string,
+  city: string,
+) {
+  await db.districtFollow.deleteMany({ where: { userId, district, city } });
+  return { ok: true };
 }
 
 export async function getFriendsFeed(

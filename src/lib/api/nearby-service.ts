@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import {
   DEFAULT_NEARBY_RADIUS_KM,
   parseCoord,
+  publicCoordinates,
   resolveOrigin,
 } from "@/lib/geo";
 import { buildNearbyItems } from "@/lib/nearby-data";
@@ -42,7 +43,13 @@ export async function getNearbyPayload(
         lat: true,
         lng: true,
         district: true,
-        author: { select: { name: true } },
+        author: {
+          select: {
+            id: true,
+            name: true,
+            privacySettings: { select: { locationPrecision: true } },
+          },
+        },
       },
       take: 60,
     }),
@@ -101,13 +108,33 @@ export async function getNearbyPayload(
     })),
   });
 
+  const precisionByPost = new Map(
+    posts.map((p) => [
+      p.id,
+      {
+        lat: p.lat,
+        lng: p.lng,
+        precision: p.author?.privacySettings?.locationPrecision,
+        seed: p.author?.id ?? p.id,
+      },
+    ]),
+  );
+
+  const localPublic = local.map((item) => {
+    if (item.kind !== "person" || !item.postId) return item;
+    const src = precisionByPost.get(item.postId);
+    if (!src?.lat || !src.lng) return item;
+    const pub = publicCoordinates(src.lat, src.lng, src.precision, src.seed);
+    return { ...item, lat: pub.lat, lng: pub.lng };
+  });
+
   return {
     city: resolvedCity,
     district: district ?? null,
     origin: { lat: origin.lat, lng: origin.lng },
     radiusKm,
     hasGps: origin.hasGps,
-    local,
+    local: localPublic,
     global,
   };
 }
