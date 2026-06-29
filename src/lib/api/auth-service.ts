@@ -18,6 +18,7 @@ const USER_PUBLIC_SELECT = {
   lng: true,
   verified: true,
   reputation: true,
+  role: true,
 } as const;
 
 export type AuthPayload = {

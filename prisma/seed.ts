@@ -44,8 +44,24 @@ async function main() {
   await prisma.user.deleteMany();
 
   const password = await bcrypt.hash("demo1234", 10);
+  const adminPassword = await bcrypt.hash("admin1234", 10);
 
   const users = await Promise.all([
+    prisma.user.create({
+      data: {
+        email: "admin@dvizh.app",
+        password: adminPassword,
+        name: "Администратор",
+        username: "admin",
+        bio: "Центр управления ДВИЖ",
+        city: "Москва",
+        district: "Тверской",
+        verified: true,
+        reputation: 9999,
+        role: "ADMIN",
+        avatar: "https://api.dicebear.com/9.x/notionists/svg?seed=admin",
+      },
+    }),
     prisma.user.create({
       data: {
         email: "anna@dvizh.app",
@@ -120,12 +136,13 @@ async function main() {
         lat: 55.73,
         lng: 37.57,
         reputation: 150,
+        role: "ADMIN",
         avatar: "https://api.dicebear.com/9.x/notionists/svg?seed=demo",
       },
     }),
   ]);
 
-  const [anna, max, daria, ivan, demo] = users;
+  const [admin, anna, max, daria, ivan, demo] = users;
 
   await prisma.follow.createMany({
     data: [
@@ -469,10 +486,10 @@ async function main() {
   await prisma.userProfile.createMany({
     data: users.map((u, i) => ({
       userId: u.id,
-      xp: [3520, 2100, 890, 450, 1200][i] ?? 500,
-      level: [14, 11, 8, 5, 10][i] ?? 5,
-      tasksCompleted: [42, 28, 15, 8, 12][i] ?? 5,
-      tasksCreated: [20, 12, 8, 4, 10][i] ?? 3,
+      xp: [9999, 3520, 2100, 890, 450, 1200][i] ?? 500,
+      level: [20, 14, 11, 8, 5, 10][i] ?? 5,
+      tasksCompleted: [100, 42, 28, 15, 8, 12][i] ?? 5,
+      tasksCreated: [50, 20, 12, 8, 4, 10][i] ?? 3,
       mascotVariant: i % 3,
       mascotStage: Math.min(3, Math.floor(i / 2)),
     })),
@@ -627,7 +644,7 @@ async function main() {
     data: { isGlobal: true, isBusiness: true, reward: "+500 XP" },
   });
 
-  console.log(`Seed complete. ${generateAchievementCatalog().length} achievements. Demo: demo@dvizh.app / demo1234`);
+  console.log(`Seed complete. ${generateAchievementCatalog().length} achievements. Demo: demo@dvizh.app / demo1234. Admin: admin@dvizh.app / admin1234`);
   void goal;
   void wishlist;
 }

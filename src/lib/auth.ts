@@ -30,6 +30,7 @@ export type SessionUser = {
   lng: number | null;
   verified: boolean;
   reputation: number;
+  role: "USER" | "ADMIN";
 };
 
 export async function hashPassword(password: string) {
@@ -52,6 +53,7 @@ const SESSION_USER_SELECT = {
   lng: true,
   verified: true,
   reputation: true,
+  role: true,
 } as const;
 
 export async function signAccessToken(userId: string) {
@@ -133,5 +135,15 @@ export async function getSessionFromRequest(
 export async function requireSessionFromRequest(request: Request): Promise<SessionUser> {
   const session = await getSessionFromRequest(request);
   if (!session) throw new Error("UNAUTHORIZED");
+  return session;
+}
+
+export function isAdmin(user: SessionUser | null | undefined) {
+  return user?.role === "ADMIN";
+}
+
+export async function requireAdmin() {
+  const session = await requireSession();
+  if (!isAdmin(session)) throw new Error("FORBIDDEN");
   return session;
 }

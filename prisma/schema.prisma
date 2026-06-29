@@ -96,6 +96,11 @@ enum FriendshipStatus {
   ACCEPTED
 }
 
+enum UserRole {
+  USER
+  ADMIN
+}
+
 model User {
   id          String   @id @default(cuid())
   email       String   @unique
@@ -110,6 +115,7 @@ model User {
   lng         Float?
   verified    Boolean  @default(false)
   reputation  Int      @default(0)
+  role        UserRole @default(USER)
   createdAt   DateTime @default(now())
 
   posts              Post[]

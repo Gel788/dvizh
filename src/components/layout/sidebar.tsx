@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "motion/react";
-import { Bell, Home, MapPin, Medal, Plus, Users, Zap } from "lucide-react";
+import { Bell, Home, MapPin, Medal, Plus, Shield, Users, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { SessionUser } from "@/lib/auth";
 import type { ElementType } from "react";
@@ -98,6 +98,20 @@ export function Sidebar({ user, unreadCount = 0 }: { user: SessionUser | null; u
                 </span>
               )}
             </Link>
+            {user.role === "ADMIN" && (
+              <Link
+                href="/admin"
+                className={cn(
+                  "flex items-center gap-3 px-3.5 py-2.5 text-[13px] font-semibold rounded-xl transition-colors cursor-pointer",
+                  pathname.startsWith("/admin")
+                    ? "text-heat bg-heat/10"
+                    : "text-sidebar-foreground/50 hover:text-heat hover:bg-heat/10",
+                )}
+              >
+                <Shield className="h-[16px] w-[16px]" />
+                Админ
+              </Link>
+            )}
           </>
         ) : (
           <Link href="/login" className="btn-action w-full justify-center py-2.5 text-xs gap-2">
