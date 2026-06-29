@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import type { SessionUser } from "@/lib/auth";
 import { logoutAction } from "@/lib/actions";
 import { adminNav, adminNavLabel, adminNavSections } from "@/components/admin/admin-nav";
+import { AdminCommandMenu } from "@/components/admin/admin-command-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Sheet,
@@ -161,6 +162,7 @@ export function AdminShell({
               </div>
             </div>
             <div className="hidden items-center gap-2 sm:flex">
+              <AdminCommandMenu />
               <span className="chip chip-lime text-[10px]">ADMIN</span>
               <span className="hidden h-5 w-px bg-white/10 sm:block" />
               <span className="max-w-[180px] truncate text-xs text-muted-foreground">{user.email}</span>
