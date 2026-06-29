@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import { ru } from "date-fns/locale";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import {
   BadgeCheck, Heart, MapPin, MessageCircle, Repeat2,
   Target, UserCheck, Megaphone, Zap,
@@ -16,6 +16,8 @@ import { parseTags } from "@/lib/geo";
 import {
   toggleLikeAction, toggleGoingAction, repostAction, joinChallengeAction,
 } from "@/lib/actions";
+import { copyPostToDiaryAction } from "@/lib/diary-actions";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { PostType } from "@prisma/client";
 
@@ -46,8 +48,8 @@ type PostData = {
     reward: string | null;
     isSeasonal: boolean;
     seasonName: string | null;
-    participants: { id: string }[];
-    _count: { reports: number };
+    participants?: { id: string }[];
+    _count: { reports: number; participants?: number };
   } | null;
   _count: { likes: number; comments: number; going: number; reposts: number };
   likes?: { id: string }[];
@@ -60,14 +62,9 @@ const typeConfig = {
   ANNOUNCEMENT: { label: "Объява",    icon: Megaphone, chipClass: "chip-ice" },
 };
 
-/* spring tokens from MOTION.md */
-const spring = {
-  snappy:  { type: "spring" as const, stiffness: 520, damping: 34 },
-  default: { type: "spring" as const, stiffness: 360, damping: 30 },
-  bouncy:  { type: "spring" as const, stiffness: 420, damping: 18 },
-};
+import { spring } from "@/lib/motion-spring";
 
-export function PostCard({ post, index = 0 }: { post: PostData; index?: number }) {
+export function PostCard({ post, index = 0, showAddToDiary = false }: { post: PostData; index?: number; showAddToDiary?: boolean }) {
   const config = typeConfig[post.type];
   const TypeIcon = config.icon;
   const [liked, setLiked] = useState((post.likes?.length ?? 0) > 0);
@@ -75,7 +72,7 @@ export function PostCard({ post, index = 0 }: { post: PostData; index?: number }
   const [likePop, setLikePop] = useState(false);
   const [going, setGoing] = useState((post.going?.length ?? 0) > 0);
   const [goingCount, setGoingCount] = useState(post._count.going);
-  const tags = parseTags(post.tags);
+  const tags = parseTags(post.tags ?? "");
 
   async function handleLike() {
     const next = !liked;
@@ -101,7 +98,13 @@ export function PostCard({ post, index = 0 }: { post: PostData; index?: number }
       animate={{ opacity: 1, y: 0 }}
       transition={{ ...spring.default, delay: index * 0.05 }}
       whileHover={{ y: -3 }}
-      className="card-surface group"
+      className={cn(
+        "card-surface group t-card-press overflow-hidden",
+        post.type === "ACTIVITY" && "border-l-[3px] border-l-lime",
+        post.type === "CHALLENGE" && "border-l-[3px] border-l-heat",
+        post.type === "ANNOUNCEMENT" && "border-l-[3px] border-l-ice",
+        index === 0 && "xl:border-lime/15 xl:shadow-[0_20px_50px_rgba(0,0,0,0.35),0_0_0_1px_rgba(200,255,87,0.08)]",
+      )}
     >
       <div className="p-5">
         {/* Header */}
@@ -176,8 +179,8 @@ export function PostCard({ post, index = 0 }: { post: PostData; index?: number }
               )}
             </div>
             <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>{post.challenge.participants.length} участников</span>
-              <span>{post.challenge._count.reports} / {post.challenge.goalCount} отчётов</span>
+              <span>{post.challenge.participants?.length ?? post.challenge._count.participants ?? 0} участников</span>
+              <span>{post.challenge._count.reports ?? 0} / {post.challenge.goalCount} отчётов</span>
             </div>
             <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/[0.06]">
               <motion.div
@@ -284,16 +287,28 @@ export function PostCard({ post, index = 0 }: { post: PostData; index?: number }
               whileTap={{ scale: 0.9 }}
               transition={spring.snappy}
               className={cn(
-                "ml-auto flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition-colors duration-200 cursor-pointer",
+                "flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition-colors duration-200 cursor-pointer",
                 going
                   ? "text-lime bg-lime/10"
-                  : "text-muted-foreground hover:text-foreground hover:bg-white/[0.04]"
+                  : "text-muted-foreground hover:text-foreground hover:bg-white/[0.04]",
+                showAddToDiary ? "" : "ml-auto",
               )}
             >
               <UserCheck className="h-4 w-4" />
               {going ? "Иду" : "Пойду"}
               {goingCount > 0 && ` · ${goingCount}`}
             </motion.button>
+          )}
+          {showAddToDiary && post.type === "ACTIVITY" && (
+            <button
+              type="button"
+              onClick={() => {
+                void copyPostToDiaryAction(post.id).then(() => toast.success("Добавлено в дневник"));
+              }}
+              className="ml-auto flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold text-lime bg-lime/10 hover:bg-lime/15 transition-colors cursor-pointer"
+            >
+              Добавить себе
+            </button>
           )}
         </div>
       </div>

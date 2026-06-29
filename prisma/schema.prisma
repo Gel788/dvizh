@@ -39,6 +39,63 @@ enum ClubRole {
   ADMIN
 }
 
+enum Visibility {
+  PRIVATE
+  FRIENDS
+  PUBLIC
+}
+
+enum DiaryPeriod {
+  TODAY
+  TOMORROW
+  WEEK
+  MONTH
+  YEAR
+  DREAM
+}
+
+enum ActivityType {
+  TASK_COMPLETED
+  TASK_CREATED
+  EVENT_ATTENDED
+  CHALLENGE_JOINED
+  CHALLENGE_CREATED
+  ACHIEVEMENT_UNLOCKED
+  DUEL_MARKED
+}
+
+enum MediaType {
+  FILM
+  SERIES
+  BOOK
+  GAME
+}
+
+enum MediaStatus {
+  WANT
+  IN_PROGRESS
+  DONE
+}
+
+enum DuelPeriod {
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
+}
+
+enum RecurrenceFreq {
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
+}
+
+enum FriendshipStatus {
+  PENDING
+  ACCEPTED
+}
+
 model User {
   id          String   @id @default(cuid())
   email       String   @unique
@@ -72,6 +129,20 @@ model User {
   eventAttendees     EventAttendee[]
   badges             UserBadge[]
   notifications      Notification[]
+  profile            UserProfile?
+  diaryTasks         DiaryTask[]
+  taskCopies         TaskCopy[]
+  activities         Activity[]
+  friendshipsSent    Friendship[]         @relation("friendshipRequester")
+  friendshipsRecv    Friendship[]         @relation("friendshipAddressee")
+  duelsCreated       Duel[]               @relation("duelCreator")
+  duelParticipants   DuelParticipant[]
+  sharedGoalsCreated SharedGoal[]         @relation("goalCreator")
+  sharedGoalMembers  SharedGoalMember[]
+  wishlists          Wishlist[]
+  mediaItems         MediaItem[]
+  privacySettings    PrivacySettings?
+  userAchievements   UserAchievement[]
 }
 
 model Follow {
@@ -147,6 +218,7 @@ model Challenge {
   reward       String?
   isSeasonal   Boolean   @default(false)
   seasonName   String?
+  isGlobal     Boolean   @default(false)
 
   post         Post                   @relation(fields: [postId], references: [id], onDelete: Cascade)
   participants ChallengeParticipant[]
@@ -325,4 +397,250 @@ model Notification {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, read])
+}
+
+model UserProfile {
+  userId          String   @id
+  xp              Int      @default(0)
+  level           Int      @default(1)
+  levelUnlockedAt DateTime @default(now())
+  mascotVariant   Int      @default(0)
+  mascotStage     Int      @default(0)
+  tasksCompleted  Int      @default(0)
+  tasksCreated    Int      @default(0)
+  healthConnected Boolean  @default(false)
+  healthSteps     Int      @default(0)
+  healthDistanceKm Float   @default(0)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model DiaryTask {
+  id           String       @id @default(cuid())
+  userId       String
+  title        String
+  note         String?
+  period       DiaryPeriod  @default(TODAY)
+  visibility   Visibility   @default(PRIVATE)
+  done         Boolean      @default(false)
+  doneAt       DateTime?
+  sortOrder    Int          @default(0)
+  hashtag      String?
+  hashtagColor String?
+  dueDate      DateTime?
+  isRecurring  Boolean      @default(false)
+  recurrence   RecurrenceFreq?
+  reminderAt   DateTime?
+  trackStreak  Boolean      @default(false)
+  checklistJson String      @default("[]")
+  streak       Int          @default(0)
+  copyCount    Int          @default(0)
+  sourceTaskId String?
+  createdAt    DateTime     @default(now())
+
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceTask DiaryTask?  @relation("TaskCopies", fields: [sourceTaskId], references: [id], onDelete: SetNull)
+  copies     DiaryTask[] @relation("TaskCopies")
+  copiesMade TaskCopy[]
+
+  @@index([userId, period, done])
+}
+
+model TaskCopy {
+  id           String   @id @default(cuid())
+  sourceTaskId String
+  userId       String
+  createdAt    DateTime @default(now())
+
+  sourceTask DiaryTask @relation(fields: [sourceTaskId], references: [id], onDelete: Cascade)
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceTaskId, userId])
+}
+
+model Friendship {
+  id          String           @id @default(cuid())
+  requesterId String
+  addresseeId String
+  status      FriendshipStatus @default(PENDING)
+  createdAt   DateTime         @default(now())
+
+  requester User @relation("friendshipRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  addressee User @relation("friendshipAddressee", fields: [addresseeId], references: [id], onDelete: Cascade)
+
+  @@unique([requesterId, addresseeId])
+}
+
+model Activity {
+  id         String       @id @default(cuid())
+  userId     String
+  type       ActivityType
+  visibility Visibility   @default(FRIENDS)
+  title      String
+  body       String?
+  xpGained   Int?
+  postId     String?
+  taskId     String?
+  metadata   String       @default("{}")
+  createdAt  DateTime     @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
+}
+
+model AchievementDef {
+  id          String @id @default(cuid())
+  slug        String @unique
+  name        String
+  description String
+  category    String
+  icon        String @default("🏆")
+  color       String @default("#C8FF57")
+  threshold   Int    @default(1)
+
+  users UserAchievement[]
+}
+
+model UserAchievement {
+  id            String   @id @default(cuid())
+  userId        String
+  achievementId String
+  progress      Int      @default(0)
+  unlockedAt    DateTime?
+
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement AchievementDef @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, achievementId])
+}
+
+model Duel {
+  id          String     @id @default(cuid())
+  creatorId   String
+  title       String
+  description String?
+  emoji       String?
+  period      DuelPeriod @default(DAILY)
+  visibility  Visibility @default(PRIVATE)
+  createdAt   DateTime   @default(now())
+
+  creator      User              @relation("duelCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  participants DuelParticipant[]
+}
+
+model DuelParticipant {
+  id        String   @id @default(cuid())
+  duelId    String
+  userId    String
+  streak    Int      @default(0)
+  totalMarks Int     @default(0)
+  joinedAt  DateTime @default(now())
+
+  duel Duel @relation(fields: [duelId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  marks DuelMark[]
+
+  @@unique([duelId, userId])
+}
+
+model DuelMark {
+  id            String   @id @default(cuid())
+  participantId String
+  markedAt      DateTime @default(now())
+
+  participant DuelParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  @@index([participantId, markedAt])
+}
+
+model SharedGoal {
+  id          String   @id @default(cuid())
+  creatorId   String
+  title       String
+  createdAt   DateTime @default(now())
+
+  creator User               @relation("goalCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  members SharedGoalMember[]
+  items   SharedGoalItem[]
+}
+
+model SharedGoalMember {
+  id     String @id @default(cuid())
+  goalId String
+  userId String
+
+  goal SharedGoal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  user User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([goalId, userId])
+}
+
+model SharedGoalItem {
+  id        String  @id @default(cuid())
+  goalId    String
+  title     String
+  assigneeId String?
+  done      Boolean @default(false)
+  sortOrder Int     @default(0)
+
+  goal SharedGoal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+}
+
+model Wishlist {
+  id         String     @id @default(cuid())
+  userId     String
+  title      String
+  occasion   String?
+  eventAt    DateTime?
+  visibility Visibility @default(FRIENDS)
+  createdAt  DateTime   @default(now())
+
+  user  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items WishlistItem[]
+}
+
+model WishlistItem {
+  id        String  @id @default(cuid())
+  listId    String
+  title     String
+  imageUrl  String?
+  link      String?
+  price     String?
+  reserved  Boolean @default(false)
+  reservedBy String?
+
+  list Wishlist @relation(fields: [listId], references: [id], onDelete: Cascade)
+}
+
+model MediaItem {
+  id         String      @id @default(cuid())
+  userId     String
+  type       MediaType
+  title      String
+  status     MediaStatus @default(WANT)
+  rating     Int?
+  review     String?
+  visibility Visibility  @default(PUBLIC)
+  createdAt  DateTime    @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+}
+
+model PrivacySettings {
+  userId              String     @id
+  defaultDiary        Visibility @default(PRIVATE)
+  defaultWishlist     Visibility @default(FRIENDS)
+  defaultMedia        Visibility @default(PUBLIC)
+  defaultEvents       Visibility @default(FRIENDS)
+  diaryScope          String     @default("public_only")
+  friendRequests      String     @default("everyone")
+  subscriptions       String     @default("everyone")
+  profileInSearch     Boolean    @default(true)
+  locationPrecision   String     @default("district")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

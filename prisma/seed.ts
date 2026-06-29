@@ -1,12 +1,29 @@
 import { PrismaClient, PostType, AnnouncementCategory } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcryptjs";
+import { generateAchievementCatalog } from "../src/lib/achievements-generator";
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
   await prisma.notification.deleteMany();
+  await prisma.taskCopy.deleteMany();
+  await prisma.diaryTask.deleteMany();
+  await prisma.activity.deleteMany();
+  await prisma.userAchievement.deleteMany();
+  await prisma.achievementDef.deleteMany();
+  await prisma.duelParticipant.deleteMany();
+  await prisma.duel.deleteMany();
+  await prisma.sharedGoalItem.deleteMany();
+  await prisma.sharedGoalMember.deleteMany();
+  await prisma.sharedGoal.deleteMany();
+  await prisma.wishlistItem.deleteMany();
+  await prisma.wishlist.deleteMany();
+  await prisma.mediaItem.deleteMany();
+  await prisma.privacySettings.deleteMany();
+  await prisma.friendship.deleteMany();
+  await prisma.userProfile.deleteMany();
   await prisma.userBadge.deleteMany();
   await prisma.badge.deleteMany();
   await prisma.eventAttendee.deleteMany();
@@ -204,6 +221,7 @@ async function main() {
           rules: "Каждый день — фото отчёт. Пропуск = streak сбрасывается.",
           isSeasonal: true,
           seasonName: "Июньский вызов",
+          isGlobal: true,
         },
       },
     },
@@ -436,7 +454,182 @@ async function main() {
     ],
   });
 
-  console.log("Seed complete. Demo login: demo@dvizh.app / demo1234");
+  await prisma.achievementDef.createMany({
+    data: generateAchievementCatalog().map((a) => ({
+      slug: a.slug,
+      name: a.name,
+      description: a.description,
+      category: a.category,
+      icon: a.icon,
+      color: a.color,
+      threshold: a.threshold,
+    })),
+  });
+
+  await prisma.userProfile.createMany({
+    data: users.map((u, i) => ({
+      userId: u.id,
+      xp: [3520, 2100, 890, 450, 1200][i] ?? 500,
+      level: [14, 11, 8, 5, 10][i] ?? 5,
+      tasksCompleted: [42, 28, 15, 8, 12][i] ?? 5,
+      tasksCreated: [20, 12, 8, 4, 10][i] ?? 3,
+      mascotVariant: i % 3,
+      mascotStage: Math.min(3, Math.floor(i / 2)),
+    })),
+  });
+
+  await prisma.privacySettings.createMany({
+    data: users.map((u) => ({ userId: u.id })),
+  });
+
+  await prisma.friendship.createMany({
+    data: [
+      { requesterId: demo.id, addresseeId: anna.id, status: "ACCEPTED" },
+      { requesterId: demo.id, addresseeId: max.id, status: "ACCEPTED" },
+      { requesterId: daria.id, addresseeId: demo.id, status: "ACCEPTED" },
+    ],
+  });
+
+  const demoTasks = await Promise.all([
+    prisma.diaryTask.create({ data: { userId: demo.id, title: "Пробежка 5 км перед работой", period: "TODAY", hashtag: "спорт", streak: 14, sortOrder: 0, dueDate: new Date() } }),
+    prisma.diaryTask.create({ data: { userId: demo.id, title: "Позвонить маме", period: "TODAY", hashtag: "семья", sortOrder: 1, dueDate: new Date() } }),
+    prisma.diaryTask.create({ data: { userId: demo.id, title: "20 страниц «Дюны»", period: "TODAY", hashtag: "книги", streak: 6, sortOrder: 2, dueDate: new Date() } }),
+    prisma.diaryTask.create({ data: { userId: demo.id, title: "Встреча с Лёшей в 14:00", period: "TOMORROW", hashtag: "встречи", sortOrder: 0, dueDate: new Date(Date.now() + 86400000) } }),
+    prisma.diaryTask.create({ data: { userId: demo.id, title: "Сходить в зал 3 раза", period: "WEEK", hashtag: "спорт", sortOrder: 0, dueDate: new Date(Date.now() + 3 * 86400000) } }),
+    prisma.diaryTask.create({ data: { userId: demo.id, title: "Пробежать полумарафон", period: "YEAR", hashtag: "спорт", sortOrder: 0 } }),
+    prisma.diaryTask.create({ data: { userId: demo.id, title: "Прочитать 24 книги", period: "YEAR", hashtag: "книги", checklistJson: JSON.stringify(["7 из 24"]), sortOrder: 1 } }),
+    prisma.diaryTask.create({ data: { userId: demo.id, title: "Выучить испанский до B1", period: "DREAM", hashtag: "языки", sortOrder: 0 } }),
+    prisma.diaryTask.create({
+      data: {
+        userId: anna.id,
+        title: "Утренняя пробежка 8 км",
+        period: "TODAY",
+        visibility: "FRIENDS",
+        hashtag: "бег",
+        streak: 21,
+        done: true,
+        doneAt: new Date(),
+      },
+    }),
+    prisma.diaryTask.create({
+      data: {
+        userId: max.id,
+        title: "Волонтёрская смена в приюте",
+        period: "TODAY",
+        visibility: "PUBLIC",
+        hashtag: "волонтёрство",
+        copyCount: 3,
+      },
+    }),
+  ]);
+
+  await prisma.activity.createMany({
+    data: [
+      {
+        userId: anna.id,
+        type: "TASK_COMPLETED",
+        visibility: "FRIENDS",
+        title: "Утренняя пробежка 8 км",
+        body: "#бег",
+        xpGained: 10,
+        taskId: demoTasks[6].id,
+      },
+      {
+        userId: max.id,
+        type: "TASK_CREATED",
+        visibility: "PUBLIC",
+        title: "Волонтёрская смена в приюте",
+        body: "#волонтёрство",
+        taskId: demoTasks[7].id,
+      },
+      {
+        userId: anna.id,
+        type: "CHALLENGE_JOINED",
+        visibility: "FRIENDS",
+        title: "Вступила в «30 дней без лифта»",
+        postId: challengePost.id,
+      },
+    ],
+  });
+
+  const duel = await prisma.duel.create({
+    data: {
+      creatorId: demo.id,
+      title: "10 000 шагов каждый день",
+      description: "С Аней и Максом",
+      emoji: "👟",
+      period: "DAILY",
+      visibility: "PRIVATE",
+      participants: {
+        create: [
+          { userId: demo.id, streak: 12, totalMarks: 12 },
+          { userId: anna.id, streak: 9, totalMarks: 9 },
+          { userId: max.id, streak: 7, totalMarks: 7 },
+        ],
+      },
+    },
+    include: { participants: true },
+  });
+
+  const now = new Date();
+  for (const p of duel.participants) {
+    for (let i = 0; i < 14; i++) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      if (Math.random() > 0.3) {
+        await prisma.duelMark.create({ data: { participantId: p.id, markedAt: d } });
+      }
+    }
+  }
+
+  const goal = await prisma.sharedGoal.create({
+    data: {
+      creatorId: demo.id,
+      title: "Подготовка к ДР Маши",
+      members: { create: [{ userId: demo.id }, { userId: anna.id }, { userId: max.id }] },
+      items: {
+        create: [
+          { title: "Заказать торт", assigneeId: anna.id, sortOrder: 0 },
+          { title: "Купить свечи", done: true, sortOrder: 1 },
+          { title: "Собрать гостей в чат", assigneeId: demo.id, sortOrder: 2 },
+        ],
+      },
+    },
+  });
+
+  const wishlist = await prisma.wishlist.create({
+    data: {
+      userId: demo.id,
+      title: "Мой день рождения",
+      occasion: "Июль 2026",
+      eventAt: new Date(Date.now() + 23 * 86400000),
+      visibility: "FRIENDS",
+      items: {
+        create: [
+          { title: "Kindle Paperwhite", price: "12 990 ₽", link: "https://example.com" },
+          { title: "Беговые кроссовки", price: "8 500 ₽", reserved: true, reservedBy: "anna" },
+        ],
+      },
+    },
+  });
+
+  await prisma.mediaItem.createMany({
+    data: [
+      { userId: demo.id, type: "FILM", title: "Дюна: Часть вторая", status: "DONE", rating: 5, review: "Эпично", visibility: "PUBLIC" },
+      { userId: demo.id, type: "BOOK", title: "Дюна", status: "IN_PROGRESS", visibility: "PUBLIC" },
+      { userId: demo.id, type: "SERIES", title: "The Bear", status: "WANT", visibility: "FRIENDS" },
+      { userId: demo.id, type: "GAME", title: "Hades II", status: "WANT", visibility: "PUBLIC" },
+    ],
+  });
+
+  await prisma.challenge.updateMany({
+    where: { postId: businessChallengePost.id },
+    data: { isGlobal: true, isBusiness: true, reward: "+500 XP" },
+  });
+
+  console.log(`Seed complete. ${generateAchievementCatalog().length} achievements. Demo: demo@dvizh.app / demo1234`);
+  void goal;
+  void wishlist;
 }
 
 main()

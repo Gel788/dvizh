@@ -1,14 +1,20 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { loginAction } from "@/lib/actions";
+import { getSession } from "@/lib/auth";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; next?: string }>;
 }) {
-  const { error } = await searchParams;
+  const { error, next } = await searchParams;
+  const session = await getSession();
+  const returnTo = next?.startsWith("/") && !next.startsWith("//") ? next : "/";
+
+  if (session) redirect(returnTo);
 
   return (
     <div className="dvizh-grid min-h-screen flex items-center justify-center p-4">
@@ -36,6 +42,7 @@ export default async function LoginPage({
           )}
 
           <form action={loginAction} className="space-y-4">
+            <input type="hidden" name="next" value={returnTo} />
             <div className="space-y-1.5">
               <Label htmlFor="email" className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">
                 Email

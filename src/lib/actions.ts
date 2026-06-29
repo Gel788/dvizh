@@ -9,6 +9,7 @@ import {
   getSession,
   hashPassword,
   verifyPassword,
+  type SessionUser,
 } from "@/lib/auth";
 import { haversineKm, parseTags } from "@/lib/geo";
 import type {
@@ -57,7 +58,8 @@ export async function loginAction(formData: FormData) {
   }
 
   await createSession(user.id);
-  redirect("/");
+  const next = String(formData.get("next") ?? "").trim();
+  redirect(next.startsWith("/") && !next.startsWith("//") ? next : "/");
 }
 
 export async function logoutAction() {
@@ -442,8 +444,12 @@ export type FeedFilters = {
   feed?: "all" | "following" | "nearby";
 };
 
-export async function getFeedPosts(filters: FeedFilters = {}) {
-  const session = await getSession();
+export async function getFeedPosts(
+  filters: FeedFilters = {},
+  sessionOverride?: SessionUser | null
+) {
+  const session =
+    sessionOverride !== undefined ? sessionOverride : await getSession();
   const where: Record<string, unknown> = {};
 
   if (filters.city) where.city = filters.city;
@@ -451,7 +457,9 @@ export async function getFeedPosts(filters: FeedFilters = {}) {
   if (filters.district) where.district = filters.district;
   if (filters.tag) where.tags = { contains: filters.tag };
 
-  if (filters.feed === "following" && session) {
+  if (filters.feed === "following") {
+    if (!session) return [];
+
     const follows = await db.follow.findMany({
       where: { followerId: session.id },
       select: { followingId: true },
@@ -555,6 +563,37 @@ export async function getLeaderboard(city: string, district?: string) {
     },
   });
   return users;
+}
+
+export async function getChallengeLeaderboard(city?: string, scope: "local" | "global" = "local") {
+  const challenges = await db.challenge.findMany({
+    where: scope === "local" && city
+      ? { post: { city } }
+      : {},
+    include: {
+      post: {
+        select: {
+          id: true,
+          title: true,
+          content: true,
+          city: true,
+          district: true,
+          author: {
+            select: { id: true, name: true, username: true, avatar: true, verified: true },
+          },
+        },
+      },
+      participants: {
+        orderBy: { progress: "desc" },
+        take: 1,
+        include: { user: { select: { name: true, username: true } } },
+      },
+      _count: { select: { participants: true, reports: true } },
+    },
+    orderBy: { participants: { _count: "desc" } },
+    take: 20,
+  });
+  return challenges;
 }
 
 export async function getStats() {

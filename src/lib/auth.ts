@@ -1,5 +1,6 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
+import { cache } from "react";
 import bcrypt from "bcryptjs";
 import { db } from "./db";
 
@@ -8,6 +9,14 @@ const SECRET = new TextEncoder().encode(
 );
 
 const COOKIE = "dar_session";
+
+function sessionCookieSecure() {
+  if (process.env.COOKIE_SECURE === "true") return true;
+  if (process.env.COOKIE_SECURE === "false") return false;
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? process.env.SITE_URL ?? "";
+  if (siteUrl.startsWith("https://")) return true;
+  return false;
+}
 
 export type SessionUser = {
   id: string;
@@ -31,16 +40,42 @@ export async function verifyPassword(password: string, hash: string) {
   return bcrypt.compare(password, hash);
 }
 
-export async function createSession(userId: string) {
-  const token = await new SignJWT({ sub: userId })
+const SESSION_USER_SELECT = {
+  id: true,
+  email: true,
+  name: true,
+  username: true,
+  avatar: true,
+  city: true,
+  district: true,
+  lat: true,
+  lng: true,
+  verified: true,
+  reputation: true,
+} as const;
+
+export async function signAccessToken(userId: string) {
+  return new SignJWT({ sub: userId })
     .setProtectedHeader({ alg: "HS256" })
     .setExpirationTime("30d")
     .sign(SECRET);
+}
+
+async function findSessionUser(userId: string): Promise<SessionUser | null> {
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: SESSION_USER_SELECT,
+  });
+  return user;
+}
+
+export async function createSession(userId: string) {
+  const token = await signAccessToken(userId);
 
   const cookieStore = await cookies();
   cookieStore.set(COOKIE, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: sessionCookieSecure(),
     sameSite: "lax",
     path: "/",
     maxAge: 60 * 60 * 24 * 30,
@@ -52,7 +87,7 @@ export async function destroySession() {
   cookieStore.delete(COOKIE);
 }
 
-export async function getSession(): Promise<SessionUser | null> {
+export const getSession = cache(async (): Promise<SessionUser | null> => {
   const cookieStore = await cookies();
   const token = cookieStore.get(COOKIE)?.value;
   if (!token) return null;
@@ -62,30 +97,41 @@ export async function getSession(): Promise<SessionUser | null> {
     const userId = payload.sub;
     if (!userId) return null;
 
-    const user = await db.user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        username: true,
-        avatar: true,
-        city: true,
-        district: true,
-        lat: true,
-        lng: true,
-        verified: true,
-        reputation: true,
-      },
-    });
-    return user;
+    return findSessionUser(userId);
   } catch {
+    // Нельзя менять cookies в RSC — только в Server Action / Route Handler
     return null;
   }
-}
+});
 
 export async function requireSession() {
   const session = await getSession();
+  if (!session) throw new Error("UNAUTHORIZED");
+  return session;
+}
+
+export async function getSessionFromRequest(
+  request: Request
+): Promise<SessionUser | null> {
+  const auth = request.headers.get("authorization");
+  if (auth?.startsWith("Bearer ")) {
+    const token = auth.slice(7).trim();
+    if (!token) return null;
+    try {
+      const { payload } = await jwtVerify(token, SECRET);
+      const userId = payload.sub;
+      if (!userId || typeof userId !== "string") return null;
+      return findSessionUser(userId);
+    } catch {
+      return null;
+    }
+  }
+
+  return getSession();
+}
+
+export async function requireSessionFromRequest(request: Request): Promise<SessionUser> {
+  const session = await getSessionFromRequest(request);
   if (!session) throw new Error("UNAUTHORIZED");
   return session;
 }

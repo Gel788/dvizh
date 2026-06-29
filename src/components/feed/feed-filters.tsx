@@ -23,14 +23,14 @@ const typeOptions = [
   { value: "ALL",          label: "Всё" },
   { value: "ACTIVITY",     label: "Движ" },
   { value: "CHALLENGE",    label: "Челленджи" },
-  { value: "ANNOUNCEMENT", label: "Объявы" },
+  { value: "ANNOUNCEMENT", label: "События" },
 ];
 
-export function FeedFilters() {
+export function FeedFilters({ basePath = "/" }: { basePath?: string }) {
   const router = useRouter();
   const params = useSearchParams();
 
-  const feed     = params.get("feed")     ?? "all";
+  const feed     = params.get("feed")     ?? (basePath === "/friends" ? "following" : "all");
   const city     = params.get("city")     ?? "Москва";
   const type     = params.get("type")     ?? "ALL";
   const district = params.get("district") ?? "";
@@ -39,42 +39,44 @@ export function FeedFilters() {
   function update(key: string, value: string | null) {
     const next = new URLSearchParams(params.toString());
     if (value) next.set(key, value); else next.delete(key);
-    router.push(`/?${next.toString()}`);
+    router.push(`${basePath}?${next.toString()}`);
   }
 
   return (
     <div className="rounded-2xl border border-white/[0.07] bg-card/80 backdrop-blur-sm p-4 space-y-3">
-      {/* Feed tabs */}
-      <div className="flex gap-1.5">
-        {feedTabs.map((tab) => (
-          <button
-            key={tab.value}
-            type="button"
-            onClick={() => update("feed", tab.value)}
-            className={cn(
-              "flex-1 rounded-xl px-3 py-2 text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer",
-              feed === tab.value
-                ? "bg-lime text-lime-foreground shadow-[0_4px_16px_rgba(200,255,87,0.25)]"
-                : "text-muted-foreground hover:text-foreground hover:bg-white/[0.04]"
-            )}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      {basePath === "/" && (
+        <div className="flex gap-1.5">
+          {feedTabs.map((tab) => (
+            <button
+              key={tab.value}
+              type="button"
+              onClick={() => update("feed", tab.value)}
+              className={cn(
+                "flex-1 rounded-xl px-3 py-2 text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer",
+                feed === tab.value
+                  ? "bg-lime text-lime-foreground shadow-[0_4px_16px_rgba(200,255,87,0.25)]"
+                  : "text-muted-foreground hover:text-foreground hover:bg-white/[0.04]",
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      )}
 
-      {/* Type + City + Sheet */}
       <div className="flex flex-wrap items-center gap-2">
-        <Select value={city} onValueChange={(v) => update("city", v)}>
-          <SelectTrigger className="w-[148px] h-9 rounded-xl border-white/[0.07] bg-white/[0.04] text-xs font-semibold cursor-pointer">
-            <SelectValue placeholder="Город" />
-          </SelectTrigger>
-          <SelectContent className="border-white/[0.09] bg-popover">
-            {CITIES.map((c) => (
-              <SelectItem key={c} value={c} className="cursor-pointer text-xs font-medium">{c}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {basePath === "/" && (
+          <Select value={city} onValueChange={(v) => update("city", v)}>
+            <SelectTrigger className="w-[148px] h-9 rounded-xl border-white/[0.07] bg-white/[0.04] text-xs font-semibold cursor-pointer">
+              <SelectValue placeholder="Город" />
+            </SelectTrigger>
+            <SelectContent className="border-white/[0.09] bg-popover">
+              {CITIES.map((c) => (
+                <SelectItem key={c} value={c} className="cursor-pointer text-xs font-medium">{c}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
 
         <Select value={type} onValueChange={(v) => update("type", v)}>
           <SelectTrigger className="w-[136px] h-9 rounded-xl border-white/[0.07] bg-white/[0.04] text-xs font-semibold cursor-pointer">

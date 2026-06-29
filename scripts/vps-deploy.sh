@@ -1,0 +1,75 @@
+#!/bin/bash
+# Полный деплой на VPS: pull → prisma → build → pm2 → smoke API
+set -euo pipefail
+
+APP="${APP_DIR:-/opt/dvizh}"
+cd "$APP"
+
+echo "=== Swap ==="
+swapon /swapfile 2>/dev/null || true
+
+echo "=== .env ==="
+if [ ! -f .env ]; then
+  cat > .env << 'ENV'
+DATABASE_URL=postgresql://dvizh:dvizh_test_2026@localhost:5432/dvizh?schema=public
+JWT_SECRET=prod-dvizh-demo-secret-change-me
+NODE_ENV=production
+COOKIE_SECURE=true
+SITE_URL=https://flroal.ru
+NEXT_PUBLIC_SITE_URL=https://flroal.ru
+ENV
+fi
+
+echo "=== PostgreSQL ==="
+sudo -u postgres psql -tc "SELECT 1 FROM pg_roles WHERE rolname='dvizh'" | grep -q 1 || \
+  sudo -u postgres psql -c "CREATE USER dvizh WITH PASSWORD 'dvizh_test_2026' CREATEDB;"
+sudo -u postgres psql -tc "SELECT 1 FROM pg_database WHERE datname='dvizh'" | grep -q 1 || \
+  sudo -u postgres psql -c "CREATE DATABASE dvizh OWNER dvizh;"
+
+echo "=== Git pull ==="
+if [ -d .git ]; then
+  git fetch origin main
+  git reset --hard origin/main
+else
+  git clone --depth 1 https://github.com/Gel788/dvizh.git "$APP"
+  cd "$APP"
+fi
+
+echo "=== Dependencies + DB ==="
+export NODE_OPTIONS="--max-old-space-size=2048"
+npm ci
+npx prisma generate
+npx prisma db push
+npm run db:seed 2>&1 | tail -8 || true
+
+echo "=== Build ==="
+npm run build
+
+echo "=== PM2 ==="
+pm2 delete dvizh 2>/dev/null || true
+pm2 start ecosystem.config.cjs
+pm2 save
+
+systemctl restart nginx 2>/dev/null || true
+sleep 4
+
+echo "=== API smoke ==="
+curl -sf "http://127.0.0.1:3000/api/v1/health" | head -c 200 && echo ""
+curl -s -o /dev/null -w "login: HTTP %{http_code}\n" -X POST http://127.0.0.1:3000/api/v1/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"demo@dvizh.app","password":"demo1234"}'
+TOKEN=$(curl -sf -X POST http://127.0.0.1:3000/api/v1/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"demo@dvizh.app","password":"demo1234"}' | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
+if [ -n "$TOKEN" ]; then
+  curl -sf -H "Authorization: Bearer $TOKEN" "http://127.0.0.1:3000/api/v1/profile" | head -c 120 && echo ""
+  curl -sf -H "Authorization: Bearer $TOKEN" "http://127.0.0.1:3000/api/v1/feed/curated?city=Москва" | head -c 120 && echo ""
+  echo "API OK — token works"
+else
+  echo "WARN: login failed — check seed and JWT_SECRET"
+fi
+
+curl -s -o /dev/null -w "Site: HTTP %{http_code}\n" https://flroal.ru/api/v1/health || \
+  curl -s -o /dev/null -w "Site (http): HTTP %{http_code}\n" http://127.0.0.1/
+
+pm2 list
