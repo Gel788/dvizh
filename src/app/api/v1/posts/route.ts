@@ -13,6 +13,8 @@ type CreatePostBody = {
   tags?: string;
   goalCount?: number;
   reward?: string;
+  lat?: number;
+  lng?: number;
 };
 
 export async function POST(request: Request) {
@@ -25,7 +27,9 @@ export async function POST(request: Request) {
     const content = String(body.content ?? "").trim();
     const title = String(body.title ?? "").trim() || null;
     const city = String(body.city ?? session.city).trim() || session.city;
-    const district = String(body.district ?? "").trim() || null;
+    const district = String(body.district ?? session.district ?? "").trim() || null;
+    const lat = body.lat ?? session.lat;
+    const lng = body.lng ?? session.lng;
     const tags = parseTags(String(body.tags ?? "")).join(",");
 
     if (!content) return jsonError("Текст обязателен", 400, "EMPTY");
@@ -38,8 +42,8 @@ export async function POST(request: Request) {
         content,
         city,
         district,
-        lat: session.lat,
-        lng: session.lng,
+        lat,
+        lng,
         tags,
         challenge:
           type === "CHALLENGE"

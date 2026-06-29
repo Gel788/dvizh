@@ -26,11 +26,13 @@ export default function DgisMapInner({
   center,
   userPos,
   compact = true,
+  radiusM = 1500,
 }: {
   markers: MapMarker[];
   center: [number, number];
   userPos: [number, number] | null;
   compact?: boolean;
+  radiusM?: number;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<Map | null>(null);
@@ -104,7 +106,7 @@ export default function DgisMapInner({
       });
       const circle = new mapgl.Circle(map, {
         coordinates: [lng, lat],
-        radius: 1500,
+        radius: radiusM,
         color: "#c8ff5712",
         strokeColor: "#c8ff57",
         strokeWidth: 1.5,
@@ -123,7 +125,7 @@ export default function DgisMapInner({
       });
       overlayRef.current.push(marker);
     });
-  }, [markers, userPos, ready]);
+  }, [markers, userPos, ready, radiusM]);
 
   if (!API_KEY) return null;
 

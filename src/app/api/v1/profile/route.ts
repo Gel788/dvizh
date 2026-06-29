@@ -21,6 +21,8 @@ export async function GET(request: Request) {
           bio: true,
           city: true,
           district: true,
+          lat: true,
+          lng: true,
           verified: true,
           reputation: true,
           _count: { select: { posts: true, followers: true, following: true } },
@@ -58,6 +60,8 @@ type PatchBody = {
   city?: string;
   district?: string;
   mascot?: string;
+  lat?: number;
+  lng?: number;
 };
 
 export async function PATCH(request: Request) {
@@ -73,6 +77,8 @@ export async function PATCH(request: Request) {
         ...(body.bio != null ? { bio: body.bio.trim() || null } : {}),
         ...(body.city != null ? { city: body.city.trim() || session.city } : {}),
         ...(body.district != null ? { district: body.district.trim() || null } : {}),
+        ...(body.lat != null && Number.isFinite(body.lat) ? { lat: body.lat } : {}),
+        ...(body.lng != null && Number.isFinite(body.lng) ? { lng: body.lng } : {}),
       },
       select: {
         id: true,
@@ -83,6 +89,8 @@ export async function PATCH(request: Request) {
         bio: true,
         city: true,
         district: true,
+        lat: true,
+        lng: true,
         verified: true,
         reputation: true,
         _count: { select: { posts: true, followers: true, following: true } },

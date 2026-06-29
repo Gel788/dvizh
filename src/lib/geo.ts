@@ -44,6 +44,28 @@ export const CITY_COORDS: Record<string, { lat: number; lng: number }> = {
   Екатеринбург: { lat: 56.8389, lng: 60.6057 },
 };
 
+/** Пешая доступность — «рядом» по умолчанию */
+export const DEFAULT_NEARBY_RADIUS_KM = 1.5;
+
+export function parseCoord(value: string | null | undefined): number | undefined {
+  if (value == null || value === "") return undefined;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : undefined;
+}
+
+export function resolveOrigin(
+  session: { lat: number | null; lng: number | null; city: string } | null | undefined,
+  city: string,
+  overrides?: { lat?: number | null; lng?: number | null },
+) {
+  const fallback = CITY_COORDS[city] ?? CITY_COORDS["Москва"];
+  const lat = overrides?.lat ?? session?.lat ?? fallback.lat;
+  const lng = overrides?.lng ?? session?.lng ?? fallback.lng;
+  const hasGps = overrides?.lat != null && overrides?.lng != null
+    || (session?.lat != null && session?.lng != null);
+  return { lat, lng, hasGps };
+}
+
 export function parseTags(tags: string): string[] {
   return tags
     .split(",")

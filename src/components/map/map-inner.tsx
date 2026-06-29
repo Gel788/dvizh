@@ -41,11 +41,13 @@ export default function MapInner({
   center,
   userPos,
   compact = true,
+  radiusM = 1500,
 }: {
   markers: MapMarker[];
   center: [number, number];
   userPos: [number, number] | null;
   compact?: boolean;
+  radiusM?: number;
 }) {
   const mapCenter = userPos ?? center;
   const zoom = compact ? 14 : 12;
@@ -68,7 +70,7 @@ export default function MapInner({
           <Marker position={userPos} icon={userIcon} zIndexOffset={1000} />
           <Circle
             center={userPos}
-            radius={1500}
+            radius={radiusM}
             pathOptions={{ color: "#C8FF57", fillColor: "#C8FF57", fillOpacity: 0.07, weight: 1.5, dashArray: "6 8" }}
           />
         </>

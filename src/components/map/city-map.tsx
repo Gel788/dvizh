@@ -38,22 +38,39 @@ export function CityMap({
   markers,
   center,
   compact = true,
+  onUserPosition,
+  radiusM = 1500,
 }: {
   markers: MapMarker[];
   center: [number, number];
   compact?: boolean;
+  onUserPosition?: (pos: [number, number]) => void;
+  radiusM?: number;
 }) {
   const [userPos, setUserPos] = useState<[number, number] | null>(null);
 
   useEffect(() => {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
-      (pos) => setUserPos([pos.coords.latitude, pos.coords.longitude]),
+      (pos) => {
+        const next: [number, number] = [pos.coords.latitude, pos.coords.longitude];
+        setUserPos(next);
+        onUserPosition?.(next);
+      },
       () => setUserPos(null),
-      { enableHighAccuracy: false, timeout: 5000, maximumAge: 60_000 },
+      { enableHighAccuracy: true, timeout: 12_000, maximumAge: 60_000 },
     );
-  }, []);
+  }, [onUserPosition]);
 
+  const mapCenter = userPos ?? center;
   const MapComponent = DGIS_KEY ? DgisMapInner : MapInner;
-  return <MapComponent markers={markers} center={center} userPos={userPos} compact={compact} />;
+  return (
+    <MapComponent
+      markers={markers}
+      center={mapCenter}
+      userPos={userPos}
+      compact={compact}
+      radiusM={radiusM}
+    />
+  );
 }

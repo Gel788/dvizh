@@ -36,9 +36,13 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
       type: (params.type as PostType | "ALL") ?? "ALL",
       district: params.district,
       tag: params.tag,
-      radiusKm: Number(params.radius ?? 10),
-      userLat: session?.lat ?? coords.lat,
-      userLng: session?.lng ?? coords.lng,
+      ...(feedMode === "nearby"
+        ? {
+            radiusKm: Number(params.radius ?? 10),
+            userLat: session?.lat ?? coords.lat,
+            userLng: session?.lng ?? coords.lng,
+          }
+        : {}),
     }),
   ]);
 

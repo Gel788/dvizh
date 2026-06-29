@@ -55,6 +55,7 @@ export function buildNearbyItems(input: {
   events: {
     id: string; title: string; startAt: Date; lat: number | null; lng: number | null;
     _count: { attendees: number };
+    joined?: boolean;
   }[];
   localChallenges: {
     id: string; isBusiness: boolean; reward: string | null;
@@ -114,7 +115,7 @@ export function buildNearbyItems(input: {
       meta: `${ev._count.attendees} идут · ${when}`,
       eventId: ev.id,
       joinable: true,
-      joined: false,
+      joined: ev.joined ?? false,
       lat: ev.lat,
       lng: ev.lng,
     });
@@ -177,4 +178,11 @@ export function filterNearbyItem(item: NearbyItem, mapFilter: string) {
   if (mapFilter === "События") return item.kind === "event";
   if (mapFilter === "Люди") return item.kind === "person";
   return true;
+}
+
+/** Отсечь объекты дальше радиуса; без координат оставляем в конце списка */
+export function applyNearbyRadius(items: NearbyItem[], radiusKm: number) {
+  const withDist = items.filter((i) => i.distanceKm != null && i.distanceKm <= radiusKm);
+  const noCoords = items.filter((i) => i.distanceKm == null);
+  return [...withDist, ...noCoords];
 }

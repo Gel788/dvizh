@@ -1,6 +1,7 @@
 import { Sidebar, MobileNav } from "@/components/layout/sidebar";
 import { TopBar } from "@/components/layout/top-bar";
 import { TrendMarquee } from "@/components/brand/marquee";
+import { LocationSync } from "@/components/location/location-sync";
 import { getSession } from "@/lib/auth";
 import { db } from "@/lib/db";
 
@@ -14,6 +15,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
+      {user && <LocationSync />}
       <Sidebar user={user} unreadCount={unreadCount} />
       {/* offset for fixed sidebar */}
       <div className="flex flex-1 flex-col min-w-0 lg:pl-[248px] xl:pl-[260px]">

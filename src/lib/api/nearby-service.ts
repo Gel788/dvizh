@@ -1,20 +1,39 @@
 import { db } from "@/lib/db";
-import { CITY_COORDS } from "@/lib/geo";
-import { buildNearbyItems } from "@/lib/nearby-data";
+import {
+  DEFAULT_NEARBY_RADIUS_KM,
+  parseCoord,
+  resolveOrigin,
+} from "@/lib/geo";
+import { applyNearbyRadius, buildNearbyItems } from "@/lib/nearby-data";
 import type { SessionUser } from "@/lib/auth";
 
-export async function getNearbyPayload(session: SessionUser | null, city?: string) {
-  const resolvedCity = city ?? session?.city ?? "Москва";
-  const coords = CITY_COORDS[resolvedCity] ?? CITY_COORDS["Москва"];
-  const origin = {
-    lat: session?.lat ?? coords.lat,
-    lng: session?.lng ?? coords.lng,
-  };
+export type NearbyOptions = {
+  city?: string;
+  lat?: number | null;
+  lng?: number | null;
+  radiusKm?: number;
+  district?: string;
+};
+
+export async function getNearbyPayload(
+  session: SessionUser | null,
+  options: NearbyOptions = {},
+) {
+  const resolvedCity = options.city ?? session?.city ?? "Москва";
+  const origin = resolveOrigin(session, resolvedCity, {
+    lat: options.lat,
+    lng: options.lng,
+  });
+  const radiusKm = options.radiusKm ?? DEFAULT_NEARBY_RADIUS_KM;
   const userId = session?.id;
+  const district = options.district ?? session?.district ?? undefined;
 
   const [posts, localChallenges, globalChallenges, events] = await Promise.all([
     db.post.findMany({
-      where: { city: resolvedCity },
+      where: {
+        city: resolvedCity,
+        ...(district ? { district } : {}),
+      },
       select: {
         id: true,
         title: true,
@@ -22,19 +41,23 @@ export async function getNearbyPayload(session: SessionUser | null, city?: strin
         type: true,
         lat: true,
         lng: true,
+        district: true,
         author: { select: { name: true } },
       },
-      take: 40,
+      take: 60,
     }),
     db.challenge.findMany({
-      where: { isGlobal: false, post: { city: resolvedCity } },
+      where: {
+        isGlobal: false,
+        post: { city: resolvedCity, ...(district ? { district } : {}) },
+      },
       include: {
-        post: { select: { id: true, title: true, content: true, lat: true, lng: true } },
+        post: { select: { id: true, title: true, content: true, lat: true, lng: true, district: true } },
         _count: { select: { participants: true } },
         participants: userId ? { where: { userId }, select: { id: true } } : false,
       },
       orderBy: { participants: { _count: "desc" } },
-      take: 16,
+      take: 20,
     }),
     db.challenge.findMany({
       where: { isGlobal: true },
@@ -47,28 +70,55 @@ export async function getNearbyPayload(session: SessionUser | null, city?: strin
       take: 12,
     }),
     db.event.findMany({
-      where: { city: resolvedCity, startAt: { gte: new Date() } },
-      include: { _count: { select: { attendees: true } } },
+      where: {
+        city: resolvedCity,
+        startAt: { gte: new Date() },
+        ...(district ? { district } : {}),
+      },
+      include: {
+        _count: { select: { attendees: true } },
+        attendees: userId ? { where: { userId }, select: { id: true } } : false,
+      },
       orderBy: { startAt: "asc" },
-      take: 12,
+      take: 16,
     }),
   ]);
 
+  const { local, global } = buildNearbyItems({
+    origin,
+    posts,
+    events: events.map((ev) => ({
+      ...ev,
+      joined: Array.isArray(ev.attendees) ? ev.attendees.length > 0 : false,
+    })),
+    localChallenges: localChallenges.map((ch) => ({
+      ...ch,
+      joined: Array.isArray(ch.participants) ? ch.participants.length > 0 : false,
+    })),
+    globalChallenges: globalChallenges.map((ch) => ({
+      ...ch,
+      joined: Array.isArray(ch.participants) ? ch.participants.length > 0 : false,
+    })),
+  });
+
   return {
     city: resolvedCity,
-    origin,
-    ...buildNearbyItems({
-      origin,
-      posts,
-      events,
-      localChallenges: localChallenges.map((ch) => ({
-        ...ch,
-        joined: Array.isArray(ch.participants) ? ch.participants.length > 0 : false,
-      })),
-      globalChallenges: globalChallenges.map((ch) => ({
-        ...ch,
-        joined: Array.isArray(ch.participants) ? ch.participants.length > 0 : false,
-      })),
-    }),
+    district: district ?? null,
+    origin: { lat: origin.lat, lng: origin.lng },
+    radiusKm,
+    hasGps: origin.hasGps,
+    local: applyNearbyRadius(local, radiusKm),
+    global,
+  };
+}
+
+export function parseNearbyQuery(searchParams: URLSearchParams): NearbyOptions {
+  return {
+    city: searchParams.get("city") ?? undefined,
+    lat: parseCoord(searchParams.get("lat")),
+    lng: parseCoord(searchParams.get("lng")),
+    radiusKm: parseCoord(searchParams.get("radiusKm") ?? searchParams.get("radius"))
+      ?? DEFAULT_NEARBY_RADIUS_KM,
+    district: searchParams.get("district") ?? undefined,
   };
 }

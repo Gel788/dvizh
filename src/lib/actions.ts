@@ -426,6 +426,9 @@ export async function updateProfileAction(formData: FormData) {
   const session = await getSession();
   if (!session) redirect("/login");
 
+  const latRaw = formData.get("lat");
+  const lngRaw = formData.get("lng");
+
   await db.user.update({
     where: { id: session.id },
     data: {
@@ -433,11 +436,30 @@ export async function updateProfileAction(formData: FormData) {
       bio: String(formData.get("bio") ?? "").trim() || null,
       city: String(formData.get("city") ?? session.city),
       district: String(formData.get("district") ?? "").trim() || null,
+      ...(latRaw != null && latRaw !== "" ? { lat: Number(latRaw) } : {}),
+      ...(lngRaw != null && lngRaw !== "" ? { lng: Number(lngRaw) } : {}),
     },
   });
 
   revalidatePath("/settings");
+  revalidatePath("/nearby");
+  revalidatePath("/");
   revalidatePath(`/profile/${session.username}`);
+}
+
+export async function syncUserLocationAction(lat: number, lng: number) {
+  const session = await getSession();
+  if (!session) return { ok: false as const };
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return { ok: false as const };
+
+  await db.user.update({
+    where: { id: session.id },
+    data: { lat, lng },
+  });
+
+  revalidatePath("/nearby");
+  revalidatePath("/");
+  return { ok: true as const };
 }
 
 export type FeedFilters = {
@@ -533,15 +555,6 @@ export async function getFeedPosts(
     result = posts.filter((p) => {
       if (p.lat == null || p.lng == null) return false;
       return haversineKm(filters.userLat!, filters.userLng!, p.lat, p.lng) <= radius;
-    });
-  } else if (
-    filters.radiusKm &&
-    filters.userLat != null &&
-    filters.userLng != null
-  ) {
-    result = posts.filter((p) => {
-      if (p.lat == null || p.lng == null) return true;
-      return haversineKm(filters.userLat!, filters.userLng!, p.lat, p.lng) <= filters.radiusKm!;
     });
   }
 
