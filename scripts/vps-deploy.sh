@@ -15,8 +15,8 @@ DATABASE_URL=postgresql://dvizh:dvizh_test_2026@localhost:5432/dvizh?schema=publ
 JWT_SECRET=prod-dvizh-demo-secret-change-me
 NODE_ENV=production
 COOKIE_SECURE=true
-SITE_URL=https://flroal.ru
-NEXT_PUBLIC_SITE_URL=https://flroal.ru
+SITE_URL=https://www.flroal.ru
+NEXT_PUBLIC_SITE_URL=https://www.flroal.ru
 ENV
 fi
 
