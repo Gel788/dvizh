@@ -226,7 +226,7 @@ export async function createSponsoredPostAction(formData: FormData) {
     if (author) authorId = author.id;
   }
 
-  const post = await db.post.create({
+  await db.post.create({
     data: {
       type: "ACTIVITY",
       authorId,
@@ -242,5 +242,4 @@ export async function createSponsoredPostAction(formData: FormData) {
   invalidateFeedCache(city);
   revalidateAdmin();
   revalidatePath("/");
-  return post.id;
 }
