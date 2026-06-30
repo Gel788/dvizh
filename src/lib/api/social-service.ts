@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { normalizePostImages } from "@/lib/upload/media";
+import { normalizePostImages } from "@/lib/media-url";
 import type { SessionUser } from "@/lib/auth";
 
 const postInclude = (userId?: string) => ({

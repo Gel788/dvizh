@@ -1,5 +1,5 @@
 import { haversineKm, CITY_COORDS } from "@/lib/geo";
-import { firstPostImage } from "@/lib/upload/media";
+import { firstPostImage } from "@/lib/media-url";
 
 export type NearbyKind = "sponsor" | "event" | "challenge" | "person" | "global";
 

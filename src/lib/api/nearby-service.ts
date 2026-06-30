@@ -7,7 +7,7 @@ import {
 } from "@/lib/geo";
 import { buildNearbyItems } from "@/lib/nearby-data";
 import type { SessionUser } from "@/lib/auth";
-import { normalizePostImages } from "@/lib/upload/media";
+import { normalizePostImages } from "@/lib/media-url";
 
 const postSelect = {
   id: true,

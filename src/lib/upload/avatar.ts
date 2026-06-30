@@ -1,6 +1,6 @@
 import fs from "fs/promises";
 import path from "path";
-import { absoluteMediaUrl } from "@/lib/upload/media";
+import { absoluteMediaUrl } from "@/lib/media-url";
 
 const MAX_BYTES = 2 * 1024 * 1024;
 

@@ -9,7 +9,7 @@ import { parseTags } from "@/lib/geo";
 import { ACHIEVEMENT_DEFS, PERIOD_XP, effectiveLevel, streakXpMultiplier } from "@/lib/gamification";
 import { THEMES } from "@/lib/achievements-generator";
 import { getSharedGoalsForUser } from "@/lib/social-actions";
-import { normalizePostImages } from "@/lib/upload/media";
+import { normalizePostImages } from "@/lib/media-url";
 
 const PERIOD_MAP: Record<string, DiaryPeriod> = {
   today: "TODAY", tomorrow: "TOMORROW", week: "WEEK", month: "MONTH", year: "YEAR", dream: "DREAM",
