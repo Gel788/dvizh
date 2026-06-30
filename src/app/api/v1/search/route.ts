@@ -11,6 +11,6 @@ export async function GET(request: Request) {
 
   const session = await getSessionFromRequest(request);
   const city = searchParams.get("city") ?? session?.city ?? undefined;
-  const results = await searchPlatform(q, city);
+  const results = await searchPlatform(q, city, session?.id);
   return jsonOk(results);
 }

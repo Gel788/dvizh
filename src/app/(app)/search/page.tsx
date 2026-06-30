@@ -1,10 +1,9 @@
-import Link from "next/link";
 import { searchPlatform } from "@/lib/actions";
 import { getSession } from "@/lib/auth";
 import { PageShell } from "@/components/layout/page-shell";
 import { Search } from "lucide-react";
 import { PostCard } from "@/components/feed/post-card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { SearchUserRow } from "@/components/social/search-user-row";
 
 type SearchParams = Promise<{ q?: string; city?: string }>;
 
@@ -13,7 +12,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
   const q = params.q?.trim() ?? "";
   const session = await getSession();
   const city = params.city ?? session?.city;
-  const results = q.length >= 2 ? await searchPlatform(q, city) : { users: [], posts: [], query: q };
+  const results = q.length >= 2 ? await searchPlatform(q, city, session?.id) : { users: [], posts: [], query: q };
 
   return (
     <PageShell
@@ -33,22 +32,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
             ) : (
               <ul className="space-y-2">
                 {results.users.map((u) => (
-                  <li key={u.id}>
-                    <Link
-                      href={`/profile/${u.username}`}
-                      className="flex items-center gap-3 rounded-2xl border border-white/[0.07] bg-card/60 p-3 hover:border-lime/25 transition-colors"
-                    >
-                      <Avatar className="h-11 w-11">
-                        <AvatarImage src={u.avatar ?? undefined} />
-                        <AvatarFallback className="bg-lime/15 text-lime text-xs font-bold">{u.name.slice(0, 2)}</AvatarFallback>
-                      </Avatar>
-                      <div className="min-w-0">
-                        <p className="font-bold text-sm">{u.name}{u.verified ? " ✓" : ""}</p>
-                        <p className="text-xs text-muted-foreground">@{u.username} · {u.city}{u.district ? ` · ${u.district}` : ""}</p>
-                      </div>
-                      <span className="ml-auto text-xs text-muted-foreground">{u._count.followers} подп.</span>
-                    </Link>
-                  </li>
+                  <SearchUserRow key={u.id} user={u} sessionId={session?.id} />
                 ))}
               </ul>
             )}

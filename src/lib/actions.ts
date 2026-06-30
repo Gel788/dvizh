@@ -321,6 +321,54 @@ export async function toggleFollowAction(userId: string) {
   revalidatePath(`/profile/${userId}`);
 }
 
+export async function friendRequestAction(userId: string) {
+  const session = await getSession();
+  if (!session) redirect("/login");
+
+  const { sendFriendRequest } = await import("@/lib/api/friendship-service");
+  await sendFriendRequest(session, userId);
+  revalidatePath(`/profile/${userId}`);
+  revalidatePath("/search");
+  revalidatePath("/friends");
+}
+
+export async function acceptFriendAction(friendshipId: string) {
+  const session = await getSession();
+  if (!session) redirect("/login");
+
+  const { acceptFriendRequest } = await import("@/lib/api/friendship-service");
+  await acceptFriendRequest(session, friendshipId);
+  revalidatePath("/friends");
+  revalidatePath("/profile");
+  revalidatePath("/search");
+}
+
+export async function rejectFriendAction(friendshipId: string) {
+  const session = await getSession();
+  if (!session) redirect("/login");
+
+  const { rejectFriendRequest } = await import("@/lib/api/friendship-service");
+  await rejectFriendRequest(session, friendshipId);
+  revalidatePath("/friends");
+  revalidatePath("/search");
+}
+
+export async function uploadAvatarAction(formData: FormData) {
+  const session = await getSession();
+  if (!session) redirect("/login");
+
+  const dataUrl = String(formData.get("avatar") ?? "");
+  if (!dataUrl.startsWith("data:image/")) return;
+
+  const { saveAvatarFromDataUrl, absoluteAvatarUrl } = await import("@/lib/upload/avatar");
+  const relative = await saveAvatarFromDataUrl(session.id, dataUrl);
+  const avatar = absoluteAvatarUrl(relative);
+
+  await db.user.update({ where: { id: session.id }, data: { avatar } });
+  revalidatePath("/settings");
+  revalidatePath(`/profile/${session.username}`);
+}
+
 export async function joinClubAction(clubId: string) {
   const session = await getSession();
   if (!session) redirect("/login");
@@ -644,7 +692,7 @@ export async function getChallengeLeaderboard(
   return challenges;
 }
 
-export async function searchPlatform(q: string, city?: string) {
+export async function searchPlatform(q: string, city?: string, viewerId?: string) {
   const term = q.trim();
   if (term.length < 2) return { users: [], posts: [] };
 
@@ -688,6 +736,24 @@ export async function searchPlatform(q: string, city?: string) {
       },
     }),
   ]);
+
+  if (viewerId && users.length > 0) {
+    const { enrichUsersWithSocial } = await import("@/lib/api/friendship-service");
+    const social = await enrichUsersWithSocial(
+      viewerId,
+      users.map((u) => u.id).filter((id) => id !== viewerId),
+    );
+    return {
+      users: users.map((u) => ({
+        ...u,
+        isFollowing: social[u.id]?.isFollowing ?? false,
+        friendshipState: social[u.id]?.friendshipState ?? "none",
+        friendshipId: social[u.id]?.friendshipId ?? null,
+      })),
+      posts,
+      query: term,
+    };
+  }
 
   return { users, posts, query: term };
 }

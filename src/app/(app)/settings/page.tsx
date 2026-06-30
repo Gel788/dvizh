@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { updateProfileAction } from "@/lib/actions";
 import { getSession } from "@/lib/auth";
+import { AvatarUpload } from "@/components/profile/avatar-upload";
 import { CITIES, MOSCOW_DISTRICTS } from "@/lib/geo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,7 +28,8 @@ export default async function SettingsPage() {
         <CardHeader>
           <CardTitle className="font-heading">Профиль</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-6">
+          <AvatarUpload name={session.name} avatar={session.avatar} />
           <form action={updateProfileAction} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="name">Имя</Label>

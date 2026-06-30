@@ -62,6 +62,7 @@ type PatchBody = {
   mascot?: string;
   lat?: number;
   lng?: number;
+  avatar?: string;
 };
 
 export async function PATCH(request: Request) {
@@ -79,6 +80,7 @@ export async function PATCH(request: Request) {
         ...(body.district != null ? { district: body.district.trim() || null } : {}),
         ...(body.lat != null && Number.isFinite(body.lat) ? { lat: body.lat } : {}),
         ...(body.lng != null && Number.isFinite(body.lng) ? { lng: body.lng } : {}),
+        ...(body.avatar != null ? { avatar: body.avatar.trim() || null } : {}),
       },
       select: {
         id: true,

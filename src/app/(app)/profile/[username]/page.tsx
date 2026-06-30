@@ -4,6 +4,7 @@ import { ProfileView } from "@/components/profile/profile-view";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { getDiaryBundle } from "@/lib/diary-actions";
+import { getFriendshipState } from "@/lib/api/friendship-service";
 
 export default async function ProfilePage({
   params,
@@ -33,6 +34,10 @@ export default async function ProfilePage({
       }))
     : false;
 
+  const friendship = session && !isOwn
+    ? await getFriendshipState(session.id, user.id)
+    : { state: "none" as const, friendshipId: null };
+
   const posts = await db.post.findMany({
     where: { authorId: user.id },
     orderBy: { createdAt: "desc" },
@@ -60,6 +65,8 @@ export default async function ProfilePage({
         user={{ ...user, createdAt: user.createdAt }}
         isOwn={isOwn}
         isFollowing={isFollowing}
+        friendshipState={friendship.state}
+        friendshipId={friendship.friendshipId}
         sessionId={session?.id}
         posts={posts}
         diaryBundle={diaryBundle}

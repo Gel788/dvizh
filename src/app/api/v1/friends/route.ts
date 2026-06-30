@@ -1,7 +1,13 @@
 import { getFriendsFeed, getDuelsForUser } from "@/lib/diary-actions";
 import { getSharedGoalsForUser } from "@/lib/social-actions";
 import { requireSessionFromRequest } from "@/lib/auth";
-import { jsonError, jsonOk } from "@/lib/api/http";
+import { jsonError, jsonOk, readJson } from "@/lib/api/http";
+import {
+  acceptFriendRequest,
+  listPendingFriendRequests,
+  rejectFriendRequest,
+  sendFriendRequest,
+} from "@/lib/api/friendship-service";
 import { db } from "@/lib/db";
 import type { PostType } from "@prisma/client";
 
@@ -48,8 +54,52 @@ export async function GET(request: Request) {
     return jsonOk({ goals });
   }
 
+  if (view === "pending") {
+    const pending = await listPendingFriendRequests(session.id);
+    return jsonOk({ pending });
+  }
+
   const data = await getFriendsFeed(session.id, city, type, "feed");
   return jsonOk(data);
+  } catch {
+    return jsonError("Требуется авторизация", 401, "UNAUTHORIZED");
+  }
+}
+
+type FriendPostBody = {
+  action: "request" | "accept" | "reject";
+  userId?: string;
+  friendshipId?: string;
+};
+
+export async function POST(request: Request) {
+  try {
+    const session = await requireSessionFromRequest(request);
+    const body = await readJson<FriendPostBody>(request);
+    if (!body?.action) return jsonError("Укажите action", 400, "INVALID_BODY");
+
+    if (body.action === "request") {
+      if (!body.userId) return jsonError("Укажите userId", 400, "INVALID_BODY");
+      const result = await sendFriendRequest(session, body.userId);
+      if ("error" in result) return jsonError(result.error!, 400, "FRIEND_REQUEST_FAILED");
+      return jsonOk(result);
+    }
+
+    if (body.action === "accept") {
+      if (!body.friendshipId) return jsonError("Укажите friendshipId", 400, "INVALID_BODY");
+      const result = await acceptFriendRequest(session, body.friendshipId);
+      if ("error" in result) return jsonError(result.error!, 400, "FRIEND_ACCEPT_FAILED");
+      return jsonOk(result);
+    }
+
+    if (body.action === "reject") {
+      if (!body.friendshipId) return jsonError("Укажите friendshipId", 400, "INVALID_BODY");
+      const result = await rejectFriendRequest(session, body.friendshipId);
+      if ("error" in result) return jsonError(result.error!, 400, "FRIEND_REJECT_FAILED");
+      return jsonOk(result);
+    }
+
+    return jsonError("Неизвестное действие", 400, "INVALID_ACTION");
   } catch {
     return jsonError("Требуется авторизация", 401, "UNAUTHORIZED");
   }

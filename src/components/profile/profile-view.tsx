@@ -5,7 +5,6 @@ import { useSearchParams } from "next/navigation";
 import { Settings, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
 import { PostCard } from "@/components/feed/post-card";
 import { Mascot } from "./mascot";
 import { ProfileTabs } from "./profile-tabs";
@@ -19,7 +18,9 @@ import { DiaryProvider, useDiary } from "./diary-context";
 import { AddTaskSheet } from "./add-task-sheet";
 import { AchievementPopup } from "./achievement-popup";
 import { levelInfo, rankName } from "./profile-data";
-import { toggleFollowAction } from "@/lib/actions";
+import { VerifiedBadge } from "@/components/ui/verified-badge";
+import { UserSocialButtons } from "@/components/social/user-social-buttons";
+import type { FriendshipState } from "@/lib/api/friendship-service";
 import type { DiaryBundle } from "@/lib/diary-actions";
 
 export type ProfileTab = "diary" | "achievements" | "duels" | "wishlists" | "media" | "privacy";
@@ -45,6 +46,8 @@ type ProfileProps = {
   user: ProfileUser;
   isOwn: boolean;
   isFollowing: boolean;
+  friendshipState?: FriendshipState;
+  friendshipId?: string | null;
   sessionId?: string;
   posts: PostItem[];
   diaryBundle?: DiaryBundle;
@@ -96,10 +99,17 @@ function OwnProfile({ user }: ProfileProps) {
   );
 }
 
-function GuestProfile({ user, isFollowing, sessionId, posts }: ProfileProps) {
+function GuestProfile({ user, isFollowing, friendshipState, friendshipId, sessionId, posts }: ProfileProps) {
   return (
     <div className="p-4 lg:p-8 max-w-2xl mx-auto pb-28 relative space-y-5">
-      <ProfileHeader user={user} isOwn={false} isFollowing={isFollowing} sessionId={sessionId} />
+      <ProfileHeader
+        user={user}
+        isOwn={false}
+        isFollowing={isFollowing}
+        friendshipState={friendshipState}
+        friendshipId={friendshipId}
+        sessionId={sessionId}
+      />
       <div className="space-y-3">
         <h2 className="font-heading font-bold text-lg">Публичные действия</h2>
         {posts.length === 0 ? (
@@ -113,10 +123,10 @@ function GuestProfile({ user, isFollowing, sessionId, posts }: ProfileProps) {
 }
 
 function ProfileHeader({
-  user, isOwn, xp = 0, level, isFollowing, sessionId,
+  user, isOwn, xp = 0, level, isFollowing, friendshipState, friendshipId, sessionId,
 }: {
   user: ProfileUser; isOwn: boolean; xp?: number; level?: number;
-  isFollowing?: boolean; sessionId?: string;
+  isFollowing?: boolean; friendshipState?: FriendshipState; friendshipId?: string | null; sessionId?: string;
 }) {
   const li = levelInfo(xp);
   const displayLevel = level ?? li.level;
@@ -145,7 +155,10 @@ function ProfileHeader({
           {isOwn && <Mascot className="absolute -right-3 -bottom-3 w-11 h-11" />}
         </div>
         <div className="min-w-0">
-          <p className="font-heading text-lg font-bold leading-tight">{user.name}</p>
+          <p className="font-heading text-lg font-bold leading-tight flex items-center gap-1.5">
+            {user.name}
+            {user.verified && <VerifiedBadge className="h-5 w-5" />}
+          </p>
           <p className="text-sm text-muted-foreground">
             @{user.username} · уровень {displayLevel} · {rankName(displayLevel)}
           </p>
@@ -154,11 +167,12 @@ function ProfileHeader({
           </p>
         </div>
         {!isOwn && sessionId && (
-          <form action={toggleFollowAction.bind(null, user.id)} className="ml-auto shrink-0">
-            <Button type="submit" variant={isFollowing ? "outline" : "default"} size="sm" className="cursor-pointer">
-              {isFollowing ? "Отписаться" : "Подписаться"}
-            </Button>
-          </form>
+          <UserSocialButtons
+            userId={user.id}
+            isFollowing={isFollowing ?? false}
+            friendshipState={friendshipState ?? "none"}
+            friendshipId={friendshipId ?? null}
+          />
         )}
       </div>
 

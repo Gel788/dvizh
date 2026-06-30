@@ -209,3 +209,38 @@ export async function createAchievementAction(formData: FormData) {
   });
   revalidateAdmin();
 }
+
+export async function createSponsoredPostAction(formData: FormData) {
+  const admin = await guard();
+  const title = String(formData.get("title") ?? "").trim();
+  const content = String(formData.get("content") ?? "").trim();
+  const city = String(formData.get("city") ?? "Москва").trim();
+  const boost = Number(formData.get("boost") ?? 80);
+  const authorUsername = String(formData.get("authorUsername") ?? "").trim().toLowerCase();
+
+  if (!content) return;
+
+  let authorId = admin.id;
+  if (authorUsername) {
+    const author = await db.user.findUnique({ where: { username: authorUsername } });
+    if (author) authorId = author.id;
+  }
+
+  const post = await db.post.create({
+    data: {
+      type: "ACTIVITY",
+      authorId,
+      title: title || "Спонсор",
+      content,
+      city,
+      featuredInFeed: true,
+      featuredBoost: Math.max(0, Math.min(100, Math.round(boost))),
+      tags: "sponsored,реклама",
+    },
+  });
+
+  invalidateFeedCache(city);
+  revalidateAdmin();
+  revalidatePath("/");
+  return post.id;
+}

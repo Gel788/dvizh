@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { getSessionFromRequest } from "@/lib/auth";
 import { jsonError, jsonOk } from "@/lib/api/http";
+import { getFriendshipState } from "@/lib/api/friendship-service";
 
 type Ctx = { params: Promise<{ username: string }> };
 
@@ -35,6 +36,10 @@ export async function GET(request: Request, ctx: Ctx) {
       }))
     : false;
 
+  const friendship = session && !isOwn
+    ? await getFriendshipState(session.id, user.id)
+    : { state: "none" as const, friendshipId: null };
+
   const posts = await db.post.findMany({
     where: { authorId: user.id },
     orderBy: { createdAt: "desc" },
@@ -56,6 +61,8 @@ export async function GET(request: Request, ctx: Ctx) {
     user,
     isOwn,
     isFollowing,
+    friendshipState: friendship.state,
+    friendshipId: friendship.friendshipId,
     posts,
     followers: followers.map((f) => f.follower),
   });
