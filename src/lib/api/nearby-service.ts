@@ -7,6 +7,28 @@ import {
 } from "@/lib/geo";
 import { buildNearbyItems } from "@/lib/nearby-data";
 import type { SessionUser } from "@/lib/auth";
+import { normalizePostImages } from "@/lib/upload/media";
+
+const postSelect = {
+  id: true,
+  title: true,
+  content: true,
+  type: true,
+  lat: true,
+  lng: true,
+  district: true,
+  tags: true,
+  images: true,
+  featuredInFeed: true,
+  contactInfo: true,
+  author: {
+    select: {
+      id: true,
+      name: true,
+      privacySettings: { select: { locationPrecision: true } },
+    },
+  },
+} as const;
 
 export type NearbyOptions = {
   city?: string;
@@ -44,31 +66,22 @@ export async function getNearbyPayload(
         hiddenFromFeed: false,
       };
 
-  const [posts, localChallenges, globalChallenges, events] = await Promise.all([
+  const [postsRaw, sponsoredPosts, localChallenges, globalChallenges, events] = await Promise.all([
     db.post.findMany({
       where: postWhere,
-      select: {
-        id: true,
-        title: true,
-        content: true,
-        type: true,
-        lat: true,
-        lng: true,
-        district: true,
-        tags: true,
-        images: true,
-        featuredInFeed: true,
-        contactInfo: true,
-        author: {
-          select: {
-            id: true,
-            name: true,
-            privacySettings: { select: { locationPrecision: true } },
-          },
-        },
-      },
+      select: postSelect,
       orderBy: [{ featuredInFeed: "desc" }, { createdAt: "desc" }],
       take: 80,
+    }),
+    db.post.findMany({
+      where: {
+        city: resolvedCity,
+        hiddenFromFeed: false,
+        OR: [{ tags: { contains: "sponsored" } }, { featuredInFeed: true }],
+      },
+      select: postSelect,
+      orderBy: [{ featuredBoost: "desc" }, { createdAt: "desc" }],
+      take: 20,
     }),
     db.challenge.findMany({
       where: {
@@ -108,8 +121,19 @@ export async function getNearbyPayload(
     }),
   ]);
 
+  const seenPostIds = new Set<string>();
+  const posts = [...sponsoredPosts, ...postsRaw].filter((p) => {
+    if (seenPostIds.has(p.id)) return false;
+    seenPostIds.add(p.id);
+    return true;
+  }).map((p) => ({
+    ...p,
+    images: normalizePostImages(p.images),
+  }));
+
   const { local, global } = buildNearbyItems({
     origin,
+    city: resolvedCity,
     posts,
     events: events.map((ev) => ({
       ...ev,

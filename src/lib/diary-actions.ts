@@ -9,6 +9,7 @@ import { parseTags } from "@/lib/geo";
 import { ACHIEVEMENT_DEFS, PERIOD_XP, effectiveLevel, streakXpMultiplier } from "@/lib/gamification";
 import { THEMES } from "@/lib/achievements-generator";
 import { getSharedGoalsForUser } from "@/lib/social-actions";
+import { normalizePostImages } from "@/lib/upload/media";
 
 const PERIOD_MAP: Record<string, DiaryPeriod> = {
   today: "TODAY", tomorrow: "TOMORROW", week: "WEEK", month: "MONTH", year: "YEAR", dream: "DREAM",
@@ -1139,5 +1140,16 @@ export async function getCuratedFeed(city: string, userId?: string) {
     });
   }
 
-  return { items: mergedItems, digest, highlights };
+  const normalizedItems = mergedItems.map((item) => {
+    if (item.kind !== "post") return item;
+    return {
+      ...item,
+      post: {
+        ...item.post,
+        images: normalizePostImages(item.post.images),
+      },
+    };
+  });
+
+  return { items: normalizedItems, digest, highlights };
 }

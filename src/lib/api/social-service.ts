@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { normalizePostImages } from "@/lib/upload/media";
 import type { SessionUser } from "@/lib/auth";
 
 const postInclude = (userId?: string) => ({
@@ -33,7 +34,10 @@ export async function getPostById(postId: string, session?: SessionUser | null) 
     },
   });
 
-  return { post, comments };
+  return {
+    post: { ...post, images: normalizePostImages(post.images) },
+    comments,
+  };
 }
 
 export async function addComment(postId: string, content: string, session: SessionUser) {

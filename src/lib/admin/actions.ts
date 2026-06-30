@@ -232,7 +232,7 @@ export async function createSponsoredPostAction(formData: FormData) {
   }
 
   const { geocodeAddress, cityCenter } = await import("@/lib/geo/geocode");
-  const { absoluteMediaUrl, saveImageFromDataUrl, saveImageFromFile } = await import("@/lib/upload/media");
+  const { absoluteMediaUrl, normalizePostImages, saveImageFromDataUrl, saveImageFromFile } = await import("@/lib/upload/media");
   const { parseCoord } = await import("@/lib/geo");
 
   let lat = latRaw != null && latRaw !== "" ? parseCoord(String(latRaw)) ?? null : null;
@@ -256,13 +256,13 @@ export async function createSponsoredPostAction(formData: FormData) {
   try {
     if (imageFile instanceof File && imageFile.size > 0) {
       const rel = await saveImageFromFile("posts", "sponsor", imageFile);
-      images = absoluteMediaUrl(rel);
+      images = normalizePostImages(absoluteMediaUrl(rel));
     } else if (imageData.startsWith("data:image/")) {
       const rel = await saveImageFromDataUrl("posts", "sponsor", imageData);
-      images = absoluteMediaUrl(rel);
+      images = normalizePostImages(absoluteMediaUrl(rel));
     }
-  } catch {
-    // публикация без фото допустима
+  } catch (e) {
+    console.error("sponsored image upload failed", e);
   }
 
   await db.post.create({

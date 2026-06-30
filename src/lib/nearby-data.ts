@@ -1,4 +1,5 @@
-import { haversineKm } from "@/lib/geo";
+import { haversineKm, CITY_COORDS } from "@/lib/geo";
+import { firstPostImage } from "@/lib/upload/media";
 
 export type NearbyKind = "sponsor" | "event" | "challenge" | "person" | "global";
 
@@ -19,6 +20,7 @@ export type NearbyItem = {
   joined: boolean;
   lat: number | null;
   lng: number | null;
+  imageUrl?: string | null;
 };
 
 export function formatDistanceKm(km: number): string {
@@ -48,6 +50,7 @@ const KIND_META: Record<NearbyKind, { emoji: string; color: string; label: strin
 
 export function buildNearbyItems(input: {
   origin: { lat: number; lng: number };
+  city?: string;
   posts: {
     id: string; title: string | null; content: string; type: string;
     lat: number | null; lng: number | null; district?: string | null;
@@ -72,7 +75,8 @@ export function buildNearbyItems(input: {
     joined: boolean;
   }[];
 }): { local: NearbyItem[]; global: NearbyItem[] } {
-  const { origin, posts, events, localChallenges, globalChallenges } = input;
+  const { origin, posts, events, localChallenges, globalChallenges, city = "Москва" } = input;
+  const cityCenter = CITY_COORDS[city] ?? CITY_COORDS["Москва"];
   const local: NearbyItem[] = [];
 
   for (const ch of localChallenges) {
@@ -130,6 +134,9 @@ export function buildNearbyItems(input: {
 
     if (isSponsored) {
       const m = KIND_META.sponsor;
+      const lat = p.lat ?? cityCenter.lat;
+      const lng = p.lng ?? cityCenter.lng;
+      const km = d(origin, lat, lng);
       local.push({
         id: `p-${p.id}`,
         kind: "sponsor",
@@ -143,8 +150,9 @@ export function buildNearbyItems(input: {
         postId: p.id,
         joinable: false,
         joined: false,
-        lat: p.lat,
-        lng: p.lng,
+        lat,
+        lng,
+        imageUrl: firstPostImage(p.images),
       });
       continue;
     }
