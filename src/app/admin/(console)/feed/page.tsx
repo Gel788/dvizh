@@ -5,6 +5,7 @@ import { Sparkles } from "lucide-react";
 import { AdminPage, AdminPageHeader } from "@/components/admin/admin-page-header";
 import { AdminSection, AdminTable, AdminTd, AdminTh, AdminTr } from "@/components/admin/admin-table";
 import { SponsoredPostForm } from "@/components/admin/sponsored-post-form";
+import { togglePostFeaturedAction, updatePostFeaturedBoostAction } from "@/lib/admin/actions";
 import { db } from "@/lib/db";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
