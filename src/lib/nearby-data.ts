@@ -150,7 +150,6 @@ export function buildNearbyItems(input: {
     }
 
     if (p.type !== "ACTIVITY" && p.type !== "ANNOUNCEMENT") continue;
-    const km = d(origin, p.lat, p.lng);
     const isPerson = p.type === "ACTIVITY";
     const kind: NearbyKind = isPerson ? "person" : "event";
     const m = KIND_META[kind];
