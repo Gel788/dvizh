@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Settings, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ProfileAvatarPicker } from "./profile-avatar-picker";
 import { PostCard } from "@/components/feed/post-card";
 import { Mascot } from "./mascot";
 import { ProfileTabs } from "./profile-tabs";
@@ -20,6 +20,7 @@ import { AchievementPopup } from "./achievement-popup";
 import { levelInfo, rankName } from "./profile-data";
 import { VerifiedBadge } from "@/components/ui/verified-badge";
 import { UserSocialButtons } from "@/components/social/user-social-buttons";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { FriendshipState } from "@/lib/api/friendship-service";
 import type { DiaryBundle } from "@/lib/diary-actions";
 
@@ -148,11 +149,19 @@ function ProfileHeader({
 
       <div className="flex gap-4 items-center">
         <div className="relative shrink-0">
-          <Avatar className="h-16 w-16 ring-2 ring-lime/20">
-            <AvatarImage src={user.avatar ?? undefined} />
-            <AvatarFallback className="bg-lime/15 text-lime font-bold text-lg">{user.name.slice(0, 2)}</AvatarFallback>
-          </Avatar>
-          {isOwn && <Mascot className="absolute -right-3 -bottom-3 w-11 h-11" />}
+          {isOwn ? (
+            <>
+              <ProfileAvatarPicker name={user.name} avatar={user.avatar} size="lg" />
+              <Mascot className="absolute -right-3 -bottom-3 w-11 h-11 pointer-events-none" />
+            </>
+          ) : (
+            <>
+              <Avatar className="h-16 w-16 ring-2 ring-lime/20">
+                <AvatarImage src={user.avatar ?? undefined} key={user.avatar ?? "fb"} />
+                <AvatarFallback className="bg-lime/15 text-lime font-bold text-lg">{user.name.slice(0, 2)}</AvatarFallback>
+              </Avatar>
+            </>
+          )}
         </div>
         <div className="min-w-0">
           <p className="font-heading text-lg font-bold leading-tight flex items-center gap-1.5">

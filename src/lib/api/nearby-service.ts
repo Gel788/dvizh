@@ -29,12 +29,24 @@ export async function getNearbyPayload(
   const userId = session?.id;
   const district = options.district ?? session?.district ?? undefined;
 
+  const postWhere = district
+    ? {
+        city: resolvedCity,
+        hiddenFromFeed: false,
+        OR: [
+          { district },
+          { tags: { contains: "sponsored" } },
+          { featuredInFeed: true },
+        ],
+      }
+    : {
+        city: resolvedCity,
+        hiddenFromFeed: false,
+      };
+
   const [posts, localChallenges, globalChallenges, events] = await Promise.all([
     db.post.findMany({
-      where: {
-        city: resolvedCity,
-        ...(district ? { district } : {}),
-      },
+      where: postWhere,
       select: {
         id: true,
         title: true,
@@ -43,6 +55,10 @@ export async function getNearbyPayload(
         lat: true,
         lng: true,
         district: true,
+        tags: true,
+        images: true,
+        featuredInFeed: true,
+        contactInfo: true,
         author: {
           select: {
             id: true,
@@ -51,7 +67,8 @@ export async function getNearbyPayload(
           },
         },
       },
-      take: 60,
+      orderBy: [{ featuredInFeed: "desc" }, { createdAt: "desc" }],
+      take: 80,
     }),
     db.challenge.findMany({
       where: {

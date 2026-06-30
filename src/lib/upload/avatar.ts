@@ -1,5 +1,6 @@
 import fs from "fs/promises";
 import path from "path";
+import { absoluteMediaUrl } from "@/lib/upload/media";
 
 const MAX_BYTES = 2 * 1024 * 1024;
 
@@ -15,14 +16,12 @@ export async function saveAvatarFromDataUrl(userId: string, dataUrl: string): Pr
   await fs.mkdir(dir, { recursive: true });
 
   const filename = `${userId}.${ext === "jpeg" ? "jpg" : ext}`;
-  const filePath = path.join(dir, filename);
-  await fs.writeFile(filePath, buffer);
+  await fs.writeFile(path.join(dir, filename), buffer);
 
-  return `/uploads/avatars/${filename}`;
+  return absoluteMediaUrl(`/uploads/avatars/${filename}`);
 }
 
 export function absoluteAvatarUrl(relativePath: string): string {
-  const base = process.env.NEXT_PUBLIC_SITE_URL ?? process.env.SITE_URL ?? "";
-  if (!base) return relativePath;
-  return `${base.replace(/\/$/, "")}${relativePath}`;
+  const base = relativePath.split("?")[0];
+  return absoluteMediaUrl(base);
 }

@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { requireSessionFromRequest } from "@/lib/auth";
 import { jsonError, jsonOk, readJson } from "@/lib/api/http";
-import { absoluteAvatarUrl, saveAvatarFromDataUrl } from "@/lib/upload/avatar";
+import { saveAvatarFromDataUrl } from "@/lib/upload/avatar";
 
 type Body = { avatar?: string };
 
@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     }
 
     const relative = await saveAvatarFromDataUrl(session.id, body.avatar);
-    const avatar = absoluteAvatarUrl(relative);
+    const avatar = relative;
 
     const user = await db.user.update({
       where: { id: session.id },

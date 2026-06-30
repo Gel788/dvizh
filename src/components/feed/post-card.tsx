@@ -29,6 +29,9 @@ type PostData = {
   city: string;
   district: string | null;
   tags: string;
+  images?: string;
+  featuredInFeed?: boolean;
+  contactInfo?: string | null;
   createdAt: Date;
   author: {
     id: string;
@@ -73,6 +76,8 @@ export function PostCard({ post, index = 0, showAddToDiary = false }: { post: Po
   const [going, setGoing] = useState((post.going?.length ?? 0) > 0);
   const [goingCount, setGoingCount] = useState(post._count.going);
   const tags = parseTags(post.tags ?? "");
+  const isSponsored = tags.includes("sponsored") || post.featuredInFeed;
+  const images = (post.images ?? "").split(",").map((s) => s.trim()).filter(Boolean);
 
   async function handleLike() {
     const next = !liked;
@@ -103,6 +108,7 @@ export function PostCard({ post, index = 0, showAddToDiary = false }: { post: Po
         post.type === "ACTIVITY" && "border-l-[3px] border-l-lime",
         post.type === "CHALLENGE" && "border-l-[3px] border-l-heat",
         post.type === "ANNOUNCEMENT" && "border-l-[3px] border-l-ice",
+        isSponsored && "border-l-[3px] border-l-[#FFB020] ring-1 ring-[#FFB020]/20",
         index === 0 && "xl:border-lime/15 xl:shadow-[0_20px_50px_rgba(0,0,0,0.35),0_0_0_1px_rgba(200,255,87,0.08)]",
       )}
     >
@@ -143,6 +149,11 @@ export function PostCard({ post, index = 0, showAddToDiary = false }: { post: Po
                 <TypeIcon className="h-3 w-3" />
                 {config.label}
               </span>
+              {isSponsored && (
+                <span className="chip text-[10px] font-bold bg-[#FFB020]/15 text-[#FFB020] border border-[#FFB020]/30">
+                  ⭐ Спонсор
+                </span>
+              )}
               {(post.district || post.city) && (
                 <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
                   <MapPin className="h-2.5 w-2.5" />
@@ -163,6 +174,20 @@ export function PostCard({ post, index = 0, showAddToDiary = false }: { post: Po
           <p className="text-sm leading-relaxed text-foreground/75 line-clamp-4 whitespace-pre-wrap">
             {post.content}
           </p>
+          {post.contactInfo && (
+            <p className="mt-2 text-xs text-muted-foreground flex items-center gap-1">
+              <MapPin className="h-3 w-3 shrink-0" />
+              {post.contactInfo}
+            </p>
+          )}
+          {images.length > 0 && (
+            <div className="mt-3 grid gap-2">
+              {images.slice(0, 3).map((src) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img key={src} src={src} alt="" className="w-full max-h-64 rounded-xl object-cover" />
+              ))}
+            </div>
+          )}
         </Link>
 
         {/* Challenge block */}

@@ -4,12 +4,7 @@ import { ru } from "date-fns/locale";
 import { Sparkles } from "lucide-react";
 import { AdminPage, AdminPageHeader } from "@/components/admin/admin-page-header";
 import { AdminSection, AdminTable, AdminTd, AdminTh, AdminTr } from "@/components/admin/admin-table";
-import {
-  togglePostFeaturedAction,
-  updatePostFeaturedBoostAction,
-  createSponsoredPostAction,
-} from "@/lib/admin/actions";
-import { CITIES } from "@/lib/geo";
+import { SponsoredPostForm } from "@/components/admin/sponsored-post-form";
 import { db } from "@/lib/db";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -57,35 +52,7 @@ export default async function AdminFeedPage() {
       </div>
 
       <AdminSection title="Спонсорская публикация" icon={<Sparkles className="h-4 w-4 text-lime" />}>
-        <form action={createSponsoredPostAction} className="grid gap-3 rounded-2xl border border-white/10 bg-white/[0.02] p-4 lg:grid-cols-2">
-          <div className="space-y-2 lg:col-span-2">
-            <label className="text-xs text-white/50">Заголовок</label>
-            <Input name="title" placeholder="Название спонсора" className="h-9" />
-          </div>
-          <div className="space-y-2 lg:col-span-2">
-            <label className="text-xs text-white/50">Текст</label>
-            <Input name="content" required placeholder="Текст публикации" className="h-9" />
-          </div>
-          <div className="space-y-2">
-            <label className="text-xs text-white/50">Город</label>
-            <select name="city" defaultValue="Москва" className="h-9 w-full rounded-md border border-white/10 bg-transparent px-3 text-sm">
-              {CITIES.map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-2">
-            <label className="text-xs text-white/50">Boost (0–100)</label>
-            <Input name="boost" type="number" defaultValue={85} min={0} max={100} className="h-9" />
-          </div>
-          <div className="space-y-2 lg:col-span-2">
-            <label className="text-xs text-white/50">Автор (username, опционально)</label>
-            <Input name="authorUsername" placeholder="sponsor_brand" className="h-9" />
-          </div>
-          <div className="lg:col-span-2">
-            <Button type="submit" className="cursor-pointer">Опубликовать в ленту</Button>
-          </div>
-        </form>
+        <SponsoredPostForm />
       </AdminSection>
 
       <AdminSection title="Закреплённые" icon={<Sparkles className="h-4 w-4 text-lime" />}>

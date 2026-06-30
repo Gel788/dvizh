@@ -360,13 +360,13 @@ export async function uploadAvatarAction(formData: FormData) {
   const dataUrl = String(formData.get("avatar") ?? "");
   if (!dataUrl.startsWith("data:image/")) return;
 
-  const { saveAvatarFromDataUrl, absoluteAvatarUrl } = await import("@/lib/upload/avatar");
-  const relative = await saveAvatarFromDataUrl(session.id, dataUrl);
-  const avatar = absoluteAvatarUrl(relative);
+  const { saveAvatarFromDataUrl } = await import("@/lib/upload/avatar");
+  const avatar = await saveAvatarFromDataUrl(session.id, dataUrl);
 
   await db.user.update({ where: { id: session.id }, data: { avatar } });
   revalidatePath("/settings");
   revalidatePath(`/profile/${session.username}`);
+  revalidatePath("/");
 }
 
 export async function joinClubAction(clubId: string) {

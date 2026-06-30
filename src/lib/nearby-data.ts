@@ -50,7 +50,9 @@ export function buildNearbyItems(input: {
   origin: { lat: number; lng: number };
   posts: {
     id: string; title: string | null; content: string; type: string;
-    lat: number | null; lng: number | null; author?: { name: string };
+    lat: number | null; lng: number | null; district?: string | null;
+    tags?: string; images?: string; featuredInFeed?: boolean; contactInfo?: string | null;
+    author?: { name: string };
   }[];
   events: {
     id: string; title: string; startAt: Date; lat: number | null; lng: number | null;
@@ -122,6 +124,31 @@ export function buildNearbyItems(input: {
   }
 
   for (const p of posts) {
+    const tagStr = (p.tags ?? "").toLowerCase();
+    const isSponsored = tagStr.includes("sponsored") || p.featuredInFeed === true;
+    const km = d(origin, p.lat, p.lng);
+
+    if (isSponsored) {
+      const m = KIND_META.sponsor;
+      local.push({
+        id: `p-${p.id}`,
+        kind: "sponsor",
+        emoji: "⭐",
+        color: "#FFB020",
+        name: p.title ?? p.content.slice(0, 70),
+        typeLabel: m.label,
+        distanceKm: km,
+        distanceLabel: distLabel(km),
+        meta: [p.contactInfo, p.district].filter(Boolean).join(" · ") || p.content.slice(0, 80),
+        postId: p.id,
+        joinable: false,
+        joined: false,
+        lat: p.lat,
+        lng: p.lng,
+      });
+      continue;
+    }
+
     if (p.type !== "ACTIVITY" && p.type !== "ANNOUNCEMENT") continue;
     const km = d(origin, p.lat, p.lng);
     const isPerson = p.type === "ACTIVITY";
@@ -145,7 +172,11 @@ export function buildNearbyItems(input: {
     });
   }
 
-  local.sort((a, b) => (a.distanceKm ?? 99) - (b.distanceKm ?? 99));
+  local.sort((a, b) => {
+    if (a.kind === "sponsor" && b.kind !== "sponsor") return -1;
+    if (b.kind === "sponsor" && a.kind !== "sponsor") return 1;
+    return (a.distanceKm ?? 99) - (b.distanceKm ?? 99);
+  });
 
   const global: NearbyItem[] = globalChallenges.map((ch, i) => {
     const icons = ["📚", "💧", "🚭", "🏃", "🧘"];

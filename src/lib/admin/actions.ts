@@ -215,8 +215,13 @@ export async function createSponsoredPostAction(formData: FormData) {
   const title = String(formData.get("title") ?? "").trim();
   const content = String(formData.get("content") ?? "").trim();
   const city = String(formData.get("city") ?? "Москва").trim();
+  const address = String(formData.get("address") ?? "").trim();
+  const district = String(formData.get("district") ?? "").trim() || null;
   const boost = Number(formData.get("boost") ?? 80);
   const authorUsername = String(formData.get("authorUsername") ?? "").trim().toLowerCase();
+  const imageData = String(formData.get("imageData") ?? "").trim();
+  const latRaw = formData.get("lat");
+  const lngRaw = formData.get("lng");
 
   if (!content) return;
 
@@ -226,13 +231,53 @@ export async function createSponsoredPostAction(formData: FormData) {
     if (author) authorId = author.id;
   }
 
+  const { geocodeAddress, cityCenter } = await import("@/lib/geo/geocode");
+  const { absoluteMediaUrl, saveImageFromDataUrl, saveImageFromFile } = await import("@/lib/upload/media");
+  const { parseCoord } = await import("@/lib/geo");
+
+  let lat = latRaw != null && latRaw !== "" ? parseCoord(String(latRaw)) ?? null : null;
+  let lng = lngRaw != null && lngRaw !== "" ? parseCoord(String(lngRaw)) ?? null : null;
+
+  if (address && (lat == null || lng == null)) {
+    const geo = await geocodeAddress(address, city);
+    if (geo) {
+      lat = geo.lat;
+      lng = geo.lng;
+    }
+  }
+  if (lat == null || lng == null) {
+    const center = cityCenter(city);
+    lat = center.lat;
+    lng = center.lng;
+  }
+
+  let images = "";
+  const imageFile = formData.get("image");
+  try {
+    if (imageFile instanceof File && imageFile.size > 0) {
+      const rel = await saveImageFromFile("posts", "sponsor", imageFile);
+      images = absoluteMediaUrl(rel);
+    } else if (imageData.startsWith("data:image/")) {
+      const rel = await saveImageFromDataUrl("posts", "sponsor", imageData);
+      images = absoluteMediaUrl(rel);
+    }
+  } catch {
+    // публикация без фото допустима
+  }
+
   await db.post.create({
     data: {
-      type: "ACTIVITY",
+      type: "ANNOUNCEMENT",
       authorId,
       title: title || "Спонсор",
       content,
       city,
+      district,
+      lat,
+      lng,
+      radiusKm: 8,
+      contactInfo: address || null,
+      images,
       featuredInFeed: true,
       featuredBoost: Math.max(0, Math.min(100, Math.round(boost))),
       tags: "sponsored,реклама",
@@ -242,4 +287,6 @@ export async function createSponsoredPostAction(formData: FormData) {
   invalidateFeedCache(city);
   revalidateAdmin();
   revalidatePath("/");
+  revalidatePath("/nearby");
+  revalidatePath("/map");
 }
