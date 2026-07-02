@@ -14,31 +14,30 @@ export function FeedTipsCard({ tips }: { tips: Tip[] }) {
   const tip = tips[0];
 
   return (
-    <section className="space-y-2.5">
-      <h2 className="text-sm font-extrabold text-foreground px-0.5">Подсказки дня</h2>
-      <div className="card-surface flex items-center gap-3 p-3.5 rounded-[20px]">
-        <div className="h-14 w-14 shrink-0 rounded-2xl bg-lime/10 border border-lime/20 grid place-items-center text-xl">
+    <section className="pt-4">
+      <h2 className="text-[22px] font-extrabold text-[var(--ref-ink,#33251f)] mb-2.5">Подсказки дня</h2>
+      <div className="ref-card flex items-center gap-3 p-3 rounded-[19px]">
+        <div className="h-12 w-12 shrink-0 rounded-2xl bg-[var(--ref-green-soft,#eff9dc)] border border-[#dcecc8] grid place-items-center text-xl">
           {tip.imageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={tip.imageUrl} alt="" className="h-full w-full object-cover rounded-2xl" />
           ) : (
-            "✨"
+            "🌆"
           )}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-bold text-sm leading-snug">{tip.title}</p>
+          <p className="font-bold text-[14.5px] leading-snug text-[var(--ref-ink,#33251f)]">{tip.title}</p>
           {tip.subtitle && (
-            <p className="text-xs text-muted-foreground mt-1 leading-relaxed line-clamp-2">{tip.subtitle}</p>
+            <p className="text-[12px] font-semibold ref-muted mt-1 leading-relaxed line-clamp-2">{tip.subtitle}</p>
           )}
         </div>
         {tip.href ? (
-          <Link
-            href={tip.href}
-            className="shrink-0 rounded-full bg-lime/15 border border-lime/25 px-3 py-1.5 text-[11px] font-extrabold text-lime hover:bg-lime/20 transition-colors"
-          >
+          <Link href={tip.href} className="ref-chip ref-chip-green shrink-0 px-3 py-1.5">
             смотреть
           </Link>
-        ) : null}
+        ) : (
+          <span className="ref-chip ref-chip-green shrink-0 px-3 py-1.5">смотреть</span>
+        )}
       </div>
     </section>
   );

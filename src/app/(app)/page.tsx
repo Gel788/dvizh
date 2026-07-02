@@ -1,15 +1,10 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { FeedFilters } from "@/components/feed/feed-filters";
-import { PostCard } from "@/components/feed/post-card";
-import { CuratedAchievementCard } from "@/components/feed/curated-achievement-card";
-import { FeedDigest } from "@/components/feed/feed-digest";
-import { FeedHighlightCard } from "@/components/feed/feed-highlight-card";
 import { FeedHero } from "@/components/feed/feed-hero";
 import { PulseDayCard } from "@/components/feed/pulse-day-card";
 import { FeedTipsCard } from "@/components/feed/feed-tips-card";
-import { AppContent } from "@/components/layout/app-content";
-import { DesktopRail } from "@/components/layout/desktop-rail";
+import { FeedPostEventTile } from "@/components/feed/feed-post-event-tile";
+import { RefSurface } from "@/components/surface/ref-surface";
 import { getFeedPosts } from "@/lib/actions";
 import { getCuratedFeed } from "@/lib/diary-actions";
 import { getPulseDay } from "@/lib/pulse-service";
@@ -78,112 +73,61 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
     curatedPosts.push(post);
   }
 
-  const curatedAchievements = curated?.items
-    .filter((i): i is Extract<typeof i, { kind: "achievement" }> => i.kind === "achievement")
-    .map((i) => i.activity) ?? [];
-
   const seen = new Set(curatedPosts.map((p) => p.id));
   const displayPosts = [
     ...curatedPosts,
     ...posts.filter((p) => !seen.has(p.id)),
   ];
 
-  const cityScope = curated?.digest.scopes?.city;
-  const railStats = cityScope
-    ? [
-        { value: cityScope.stats[0]?.value ?? "0", label: "челл." },
-        { value: cityScope.stats[1]?.value ?? "0", label: "ивентов" },
-        { value: String(displayPosts.length), label: "в ленте" },
-      ]
-    : undefined;
+  const tipHighlight = curated?.highlights?.[0];
 
   return (
-    <div className="dvizh-grid min-h-full">
-      <AppContent
-        mainClassName="max-w-2xl xl:max-w-none mx-auto xl:mx-0 w-full"
-        rail={
-          <DesktopRail
-            city={city}
-            username={session?.username}
-            stats={railStats}
-          />
-        }
-      >
-        <FeedHero city={city} />
+    <RefSurface className="max-w-2xl mx-auto xl:max-w-3xl pb-32">
+      <FeedHero />
 
-        {pulse?.metrics && (
-          <div className="mt-2">
-            <PulseDayCard metrics={pulse.metrics} city={pulse.city} />
-          </div>
-        )}
-
-        {curated?.highlights?.[0] && (
-          <div className="mt-4">
-            <FeedTipsCard
-              tips={[{
-                title: curated.highlights[0].title,
-                subtitle: highlightSubtitle(curated.highlights[0]),
-              }]}
-            />
-          </div>
-        )}
-
-        <Suspense fallback={<div className="h-12 animate-pulse bg-muted/50 rounded-full mt-4" />}>
-          <FeedFilters />
-        </Suspense>
-
-        {(curated?.digest.scopes || curated?.highlights?.length || curatedAchievements.length > 0) && (
-          <div className="feed-bento mt-4 mb-4 space-y-3 xl:space-y-0">
-            {curated?.digest.scopes && (
-              <FeedDigest city={city} scopes={curated.digest.scopes} />
-            )}
-            <div className="space-y-3 min-w-0">
-              {curated?.highlights?.slice(curated?.highlights?.[0] ? 1 : 0, 3).map((h, i) => (
-                <FeedHighlightCard key={`${h.kind}-${i}`} item={h} index={i} />
-              ))}
-              {curatedAchievements.slice(0, 1).map((a) => (
-                <CuratedAchievementCard key={a.id} activity={a} />
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div className="space-y-3 mt-4">
-          {displayPosts.length > 0 && (
-            <div className="flex items-center justify-between px-0.5">
-              <h2 className="text-sm font-extrabold">Лента событий</h2>
-              <span className="text-xs font-bold text-muted-foreground">{displayPosts.length} карточек</span>
-            </div>
-          )}
-          {curated?.highlights && curated.highlights.length > 2 && (
-            <div className="xl:hidden space-y-3">
-              {curated.highlights.slice(2).map((h, i) => (
-                <FeedHighlightCard key={`${h.kind}-m-${i}`} item={h} index={i + 2} />
-              ))}
-            </div>
-          )}
-          {curatedAchievements.slice(1, 2).map((a) => (
-            <div key={a.id} className="xl:hidden">
-              <CuratedAchievementCard activity={a} />
-            </div>
-          ))}
-          {displayPosts.length === 0 && !curated?.highlights?.length ? (
-            <div className="text-center py-20 rounded-2xl border border-white/[0.06] bg-card">
-              <p className="font-heading text-3xl text-lime/60">ПОКА ТИХО</p>
-              <p className="text-muted-foreground text-sm mt-3">Запиши действие или зайди в «Рядом»</p>
-              <Link href="/nearby" className="btn-action mt-6 inline-flex">Смотреть рядом</Link>
-            </div>
-          ) : (
-            displayPosts.map((post, i) => (
-              <PostCard
-                key={post.id}
-                post={post}
-                index={i}
-              />
-            ))
-          )}
+      {pulse?.metrics && (
+        <div className="mt-1">
+          <PulseDayCard metrics={pulse.metrics} city={pulse.city} />
         </div>
-      </AppContent>
-    </div>
+      )}
+
+      {tipHighlight && (
+        <FeedTipsCard
+          tips={[{
+            title: tipHighlight.title,
+            subtitle: highlightSubtitle(tipHighlight),
+          }]}
+        />
+      )}
+
+      <section className="pt-4">
+        {displayPosts.length > 0 && (
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-[22px] font-extrabold text-[var(--ref-ink,#33251f)]">Лента событий</h2>
+            <span className="ref-card rounded-full px-3 py-1 text-[11px] font-extrabold ref-muted">
+              {displayPosts.length} карточек
+            </span>
+          </div>
+        )}
+
+        {displayPosts.length === 0 ? (
+          <div className="ref-card text-center py-16 px-6 mt-2">
+            <p className="text-[22px] font-extrabold text-[var(--ref-ink,#33251f)]">Пока тихо</p>
+            <p className="text-sm ref-muted mt-2">Запиши действие или зайди в «Рядом»</p>
+            <Link
+              href="/nearby"
+              className="inline-flex mt-5 rounded-full px-5 py-2.5 text-sm font-extrabold text-[var(--ref-ink,#33251f)]"
+              style={{ background: "linear-gradient(135deg, #f0cf2c, #98c84a)" }}
+            >
+              Смотреть рядом
+            </Link>
+          </div>
+        ) : (
+          displayPosts.map((post) => (
+            <FeedPostEventTile key={post.id} post={post} />
+          ))
+        )}
+      </section>
+    </RefSurface>
   );
 }

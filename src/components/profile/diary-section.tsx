@@ -106,20 +106,20 @@ export function DiarySection({ mode = "profile", userName }: DiarySectionProps) 
           <TodayGreetingCard xp={xp} name={userName} />
         )}
 
-        <div className="rounded-2xl border border-lime/15 bg-lime/[0.06] px-3.5 py-2.5">
-          <p className="text-xs font-semibold text-muted-foreground leading-relaxed">{hint}</p>
+        <div className="ref-tip-banner">
+          <p>{hint}</p>
         </div>
 
-        <div className="flex items-center justify-between px-0.5">
-          <h2 className="text-sm font-extrabold flex items-center gap-1.5">
+        <div className="flex items-center justify-between pt-2">
+          <h2 className="text-[22px] font-extrabold flex items-center gap-2 text-[var(--ref-ink,#33251f)]">
             <span aria-hidden>🎯</span> Приоритет
           </h2>
-          <span className="text-xs font-bold text-lime hover:underline cursor-pointer">
-            Все задачи →
+          <span className="ref-card rounded-full px-3 py-1.5 text-[11px] font-extrabold ref-muted cursor-pointer">
+            Все задачи ›
           </span>
         </div>
         {daySplit.priority.length === 0 ? (
-          <p className="text-sm text-muted-foreground px-1">Нет приоритетных дел.</p>
+          <p className="text-sm ref-muted px-1">Нет приоритетных дел.</p>
         ) : (
           <div className="space-y-2">
             {daySplit.priority.map((task, i) => (
@@ -130,7 +130,7 @@ export function DiarySection({ mode = "profile", userName }: DiarySectionProps) 
 
         {daySplit.timed.length > 0 && (
           <>
-            <DiarySectionHeader title="Сегодня ещё" />
+            <DiarySectionHeader title="Сегодня ещё" refStyle={isTodayPage} />
             <div className="space-y-2">
               {daySplit.timed.map((task, i) => (
                 <TaskRowV24 key={task.id} task={task} index={i} period="today" xpPopId={xpPop?.id ?? null} onToggle={handleToggle} />
@@ -141,7 +141,7 @@ export function DiarySection({ mode = "profile", userName }: DiarySectionProps) 
 
         {daySplit.regular.length > 0 && (
           <>
-            <DiarySectionHeader title="Задачи" />
+            <DiarySectionHeader title="Задачи" refStyle={isTodayPage} />
             <div className="space-y-2">
               {daySplit.regular.map((task, i) => (
                 <TaskRowV24 key={task.id} task={task} index={i} period="today" xpPopId={xpPop?.id ?? null} onToggle={handleToggle} />
@@ -151,9 +151,9 @@ export function DiarySection({ mode = "profile", userName }: DiarySectionProps) 
         )}
 
         {daySplit.priority.length === 0 && daySplit.timed.length === 0 && daySplit.regular.length === 0 && (
-          <div className="text-center py-14 text-muted-foreground">
+          <div className="text-center py-14 ref-muted">
             <p className="text-4xl mb-3">📝</p>
-            <p className="font-heading text-lg text-lime/80">Пока пусто</p>
+            <p className="text-lg font-extrabold text-[var(--ref-green-dark,#5f8d2b)]">Пока пусто</p>
           </div>
         )}
 

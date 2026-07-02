@@ -144,7 +144,7 @@ export function MobileNav({ user }: { user: SessionUser | null }) {
   }
 
   return (
-    <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50">
+    <nav className="mobile-bottom-nav lg:hidden fixed bottom-0 inset-x-0 z-50">
       <div className="flex items-end border-t border-white/[0.07] bg-sidebar/95 backdrop-blur-2xl pb-safe">
         {tabs.map((tab) => (
           <NavItem key={tab.href} href={tab.href} icon={tab.icon} label={tab.label} exact={tab.exact} />

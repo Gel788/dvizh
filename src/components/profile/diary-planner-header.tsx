@@ -250,16 +250,28 @@ export function DiarySectionHeader({
   title,
   actionLabel,
   onAction,
+  refStyle = false,
 }: {
   title: string;
   actionLabel?: string;
   onAction?: () => void;
+  refStyle?: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between px-1">
-      <h3 className="font-heading text-lg">{title}</h3>
+    <div className="flex items-center justify-between px-1 pt-2">
+      <h3 className={refStyle
+        ? "text-[22px] font-extrabold text-[var(--ref-ink,#33251f)]"
+        : "font-heading text-lg"}>
+        {title}
+      </h3>
       {actionLabel && onAction && (
-        <button type="button" onClick={onAction} className="text-xs font-bold text-lime cursor-pointer">
+        <button
+          type="button"
+          onClick={onAction}
+          className={refStyle
+            ? "ref-card rounded-full px-3 py-1 text-xs font-extrabold ref-muted cursor-pointer"
+            : "text-xs font-bold text-lime cursor-pointer"}
+        >
           {actionLabel}
         </button>
       )}

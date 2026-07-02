@@ -6,11 +6,6 @@ import { cn } from "@/lib/utils";
 import { PERIODS, type DiaryPeriod, type DiaryTask } from "./profile-data";
 
 const VIS_TEXT = { private: "Только я", friends: "Друзья", all: "Все" } as const;
-const VIS_CHIP = {
-  private: "bg-white/[0.06] text-muted-foreground",
-  friends: "bg-ice/15 text-ice",
-  all: "bg-lime/12 text-lime",
-} as const;
 
 function formatTime(iso?: string) {
   if (!iso) return null;
@@ -45,39 +40,19 @@ export function splitTodayTasks(all: DiaryTask[]) {
   return { priority, timed, regular, done };
 }
 
-function TaskBadges({ task, periodXp }: { task: DiaryTask; periodXp: number }) {
-  const vis = task.visibility ?? "private";
-  const time = formatTime(task.scheduledAt ?? task.reminderAt ?? task.dueDate);
+function TaskMetaLine({ task }: { task: DiaryTask }) {
+  const parts = [
+    task.tag ? `#${task.tag}` : null,
+    VIS_TEXT[task.visibility ?? "private"],
+    task.streak != null && task.streak >= 2 ? `🔥 ${task.streak}` : null,
+    task.askProof ? "фото-пруф" : null,
+    formatTime(task.scheduledAt ?? task.reminderAt ?? task.dueDate),
+  ].filter(Boolean);
 
   return (
-    <div className="flex flex-wrap gap-1.5 mt-2">
-      <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-md", VIS_CHIP[vis])}>
-        {VIS_TEXT[vis]}
-      </span>
-      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#FFB020]/12 text-[#FFB020]">
-        {periodXp} XP
-      </span>
-      {task.streak != null && task.streak >= 2 && (
-        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-heat/12 text-heat">
-          🔥 {task.streak}
-        </span>
-      )}
-      {task.askProof && (
-        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-white/[0.06] text-muted-foreground">
-          фото
-        </span>
-      )}
-      {time && (
-        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-white/[0.06] text-muted-foreground">
-          {time}
-        </span>
-      )}
-      {task.tag && (
-        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-white/[0.06] text-muted-foreground">
-          #{task.tag}
-        </span>
-      )}
-    </div>
+    <p className="text-[12px] font-semibold ref-muted mt-1 truncate">
+      {parts.join(" · ")}
+    </p>
   );
 }
 
@@ -94,31 +69,39 @@ export function TaskRowV24({ task, index, period, xpPopId, onToggle, showIndex =
   const periodXp = PERIODS[period].xp;
 
   return (
-    <div className="card-surface rounded-[20px] flex items-start gap-2.5 p-3.5 relative">
+    <div className={cn("ref-card flex items-center gap-2.5 p-3 my-1 relative", task.done && "opacity-60")}>
       <button
         type="button"
         onClick={() => onToggle(task.id)}
-        className="w-7 h-7 mt-0.5 rounded-[10px] border-2 border-white/[0.14] shrink-0 hover:border-lime/40 active:scale-95 transition-all cursor-pointer"
-        aria-label="Выполнить"
-      />
-      <div className="w-1.5 shrink-0" aria-hidden />
+        className={cn(
+          "w-7 h-7 shrink-0 rounded-[10px] border-[3px] transition-all cursor-pointer",
+          task.done
+            ? "bg-[var(--ref-success,#78d39e)] border-[var(--ref-success,#78d39e)] grid place-items-center"
+            : "bg-white border-[#dfd3c4] hover:border-[var(--ref-green,#98c84a)]",
+        )}
+        aria-label={task.done ? "Отменить выполнение" : "Выполнить"}
+      >
+        {task.done && <Check className="h-4 w-4 text-white" strokeWidth={3} />}
+      </button>
       {showIndex && (
-        <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-lime/15 text-[11px] font-extrabold text-lime border border-lime/25">
+        <span className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-[10px] bg-[#e9f8d4] text-[13px] font-extrabold text-[var(--ref-green-dark,#5f8d2b)]">
           {index + 1}
         </span>
       )}
-      <div className="flex-1 min-w-0 py-0.5">
-        <p className="font-bold text-[15px] leading-snug">{task.text}</p>
-        <TaskBadges task={task} periodXp={periodXp} />
+      <div className="flex-1 min-w-0">
+        <p className={cn("font-bold text-[14.5px] leading-snug text-[var(--ref-ink,#33251f)]", task.done && "line-through")}>
+          {task.text}
+        </p>
+        <TaskMetaLine task={task} />
       </div>
-      <span className="text-sm font-extrabold text-[#FFB020] shrink-0 pt-1">{periodXp} XP</span>
+      <span className="ref-xp shrink-0">{periodXp} XP</span>
       <AnimatePresence>
         {xpPopId === task.id && (
           <motion.span
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: -18 }}
             exit={{ opacity: 0, y: -36 }}
-            className="absolute right-12 top-1 font-heading text-lg text-[#FFB020] pointer-events-none"
+            className="absolute right-12 top-1 ref-xp text-lg pointer-events-none"
           >
             +{periodXp} XP
           </motion.span>
@@ -129,28 +112,14 @@ export function TaskRowV24({ task, index, period, xpPopId, onToggle, showIndex =
 }
 
 export function TaskRowDone({ task, onToggle }: { task: DiaryTask; onToggle?: (id: string) => void }) {
-  const meta = [
-    task.tag ? `#${task.tag}` : null,
-    task.visibility ? VIS_TEXT[task.visibility] : "Только я",
-    task.streak && task.streak >= 2 ? `🔥 ${task.streak}` : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
-
   return (
-    <div className="card-surface rounded-[20px] flex items-center gap-3 p-3.5 opacity-70">
-      <button
-        type="button"
-        onClick={() => onToggle?.(task.id)}
-        className="w-[22px] h-[22px] rounded-full bg-good grid place-items-center shrink-0 hover:opacity-80 active:scale-95 transition-all cursor-pointer"
-        aria-label="Отменить выполнение"
-      >
-        <Check className="h-3.5 w-3.5 text-white" strokeWidth={3} />
-      </button>
-      <div className="flex-1 min-w-0">
-        <p className="font-semibold text-[15px] line-through text-muted-foreground">{task.text}</p>
-        {meta && <p className="text-[11px] text-muted-foreground/80 mt-0.5">{meta}</p>}
-      </div>
-    </div>
+    <TaskRowV24
+      task={task}
+      index={0}
+      period="today"
+      xpPopId={null}
+      onToggle={onToggle ?? (() => {})}
+      showIndex={false}
+    />
   );
 }
