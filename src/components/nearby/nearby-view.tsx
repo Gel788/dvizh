@@ -211,6 +211,10 @@ export function NearbyView({
                   <Link href={`/post/${item.postId}`} className="font-bold text-sm leading-snug hover:text-lime transition-colors line-clamp-2">
                     {item.name}
                   </Link>
+                ) : item.eventId ? (
+                  <Link href={`/events/${item.eventId}`} className="font-bold text-sm leading-snug hover:text-lime transition-colors line-clamp-2">
+                    {item.name}
+                  </Link>
                 ) : (
                   <p className="font-bold text-sm leading-snug line-clamp-2">{item.name}</p>
                 )}

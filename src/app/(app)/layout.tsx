@@ -5,11 +5,21 @@ import { TrendMarquee } from "@/components/brand/marquee";
 import { LocationSync } from "@/components/location/location-sync";
 import { getSession } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await getSession();
+  if (user) {
+    const profile = await db.userProfile.findUnique({
+      where: { userId: user.id },
+      select: { onboardingDone: true },
+    });
+    if (profile && profile.onboardingDone === false) {
+      redirect("/onboarding");
+    }
+  }
   const unreadCount = user
     ? await db.notification.count({ where: { userId: user.id, read: false } })
     : 0;

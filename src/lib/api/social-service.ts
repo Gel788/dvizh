@@ -84,6 +84,23 @@ export async function toggleRepost(postId: string, session: SessionUser) {
 export async function toggleFollow(targetUserId: string, session: SessionUser) {
   if (session.id === targetUserId) return { following: false };
 
+  const privacy = await db.privacySettings.findUnique({ where: { userId: targetUserId } });
+  if (privacy?.subscriptions === "nobody") {
+    return { error: "FORBIDDEN" as const };
+  }
+  if (privacy?.subscriptions === "friends") {
+    const friend = await db.friendship.findFirst({
+      where: {
+        status: "ACCEPTED",
+        OR: [
+          { requesterId: session.id, addresseeId: targetUserId },
+          { requesterId: targetUserId, addresseeId: session.id },
+        ],
+      },
+    });
+    if (!friend) return { error: "FRIENDS_ONLY" as const };
+  }
+
   const existing = await db.follow.findUnique({
     where: { followerId_followingId: { followerId: session.id, followingId: targetUserId } },
   });

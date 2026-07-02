@@ -14,6 +14,7 @@ import { AchievementsSection } from "./achievements-section";
 import { DuelsSection } from "./duels-section";
 import { WishlistsSection } from "./wishlists-section";
 import { FriendWishlistsSection } from "./friend-wishlists-section";
+import { GuestMediaSection, GuestAchievementsSection, GuestChallengesSection } from "./guest-profile-sections";
 import { MediaSection } from "./media-section";
 import { PrivacySection } from "./privacy-section";
 import { DiaryProvider, useDiary } from "./diary-context";
@@ -56,7 +57,9 @@ type ProfileProps = {
   posts: PostItem[];
   diaryBundle?: DiaryBundle;
   friendWishlists?: Awaited<ReturnType<typeof import("@/lib/wishlist-service").listWishlistsForViewer>>;
+  guestBundle?: Awaited<ReturnType<typeof import("@/lib/guest-profile-service").getGuestProfileBundle>>;
   viewerUsername?: string;
+  viewerId?: string;
 };
 
 export function ProfileView(props: ProfileProps) {
@@ -125,7 +128,13 @@ function OwnProfile({ user }: ProfileProps) {
   );
 }
 
-function GuestProfile({ user, isFollowing, friendshipState, friendshipId, sessionId, posts, friendWishlists, viewerUsername }: ProfileProps) {
+function GuestProfile({
+  user, isFollowing, friendshipState, friendshipId, sessionId, posts,
+  friendWishlists, guestBundle, viewerUsername, viewerId,
+}: ProfileProps) {
+  const wishlists = guestBundle?.wishlists ?? friendWishlists ?? [];
+  const isSelf = sessionId === user.id;
+
   return (
     <div className="p-4 lg:p-8 max-w-2xl mx-auto pb-28 relative space-y-5">
       <ProfileHeader
@@ -136,8 +145,15 @@ function GuestProfile({ user, isFollowing, friendshipState, friendshipId, sessio
         friendshipId={friendshipId}
         sessionId={sessionId}
       />
-      {friendWishlists && friendWishlists.length > 0 && (
-        <FriendWishlistsSection wishlists={friendWishlists} viewerUsername={viewerUsername} />
+      {guestBundle && (
+        <>
+          <GuestMediaSection media={guestBundle.media} isSelf={isSelf} />
+          <GuestChallengesSection challenges={guestBundle.challenges} />
+          <GuestAchievementsSection achievements={guestBundle.achievements as { slug: string; name: string; icon: string; color: string }[]} />
+        </>
+      )}
+      {wishlists.length > 0 && (
+        <FriendWishlistsSection wishlists={wishlists} viewerUsername={viewerUsername} />
       )}
       <div className="space-y-3">
         <h2 className="font-heading font-bold text-lg">Публичные действия</h2>
@@ -226,12 +242,30 @@ function ProfileHeader({
       </div>
 
       <div className="grid grid-cols-4 gap-2">
-        {stats.map((s) => (
-          <div key={s.l} className="card-surface p-3 text-center">
-            <b className="font-heading text-lg text-lime block leading-none">{s.v}</b>
-            <small className="text-[10px] text-muted-foreground leading-tight block mt-1">{s.l}</small>
-          </div>
-        ))}
+        {stats.map((s) => {
+          const href = !isOwn
+            ? undefined
+            : s.l.includes("друга")
+              ? "/friends"
+              : s.l.includes("подписч")
+                ? `/profile/${user.username}?tab=achievements`
+                : s.l.includes("ачивок")
+                  ? `/profile/${user.username}?tab=achievements`
+                  : undefined;
+          const inner = (
+            <>
+              <b className="font-heading text-lg text-lime block leading-none">{s.v}</b>
+              <small className="text-[10px] text-muted-foreground leading-tight block mt-1">{s.l}</small>
+            </>
+          );
+          return href ? (
+            <Link key={s.l} href={href} className="card-surface p-3 text-center hover:border-lime/30 transition-colors block">
+              {inner}
+            </Link>
+          ) : (
+            <div key={s.l} className="card-surface p-3 text-center">{inner}</div>
+          );
+        })}
       </div>
     </div>
   );

@@ -144,6 +144,119 @@ export function generateAchievementCatalog(): AchievementTemplate[] {
     });
   }
 
+  const MEDIA_THRESHOLDS = [1, 3, 5, 10, 15, 25, 40, 60, 80, 100];
+  for (const t of MEDIA_THRESHOLDS) {
+    out.push({
+      slug: `media-done-${t}`,
+      name: t === 1 ? "Первый отзыв" : `${t} в медиалисте`,
+      description: `Заверши ${t} в медиалисте`,
+      category: "social",
+      icon: "🎬",
+      color: "#7C5CFF",
+      threshold: t,
+      kind: "social",
+    });
+  }
+
+  const DUEL_MARKS = [1, 3, 7, 14, 21, 30, 50, 75, 100, 150, 200, 365];
+  for (const t of DUEL_MARKS) {
+    out.push({
+      slug: `duel-mark-${t}`,
+      name: `Спор: ${t} отметок`,
+      description: `Отметься в споре ${t} раз`,
+      category: "social",
+      icon: "⚔️",
+      color: "#FF2D55",
+      threshold: t,
+      kind: "social",
+    });
+  }
+
+  const EVENTS_ATTEND = [1, 3, 5, 10, 20, 35, 50];
+  for (const t of EVENTS_ATTEND) {
+    out.push({
+      slug: `event-${t}`,
+      name: t === 1 ? "Первый движ" : `${t} событий`,
+      description: `Сходи на ${t} событий`,
+      category: "social",
+      icon: "📍",
+      color: "#00D9FF",
+      threshold: t,
+      kind: "social",
+    });
+  }
+
+  const HABITS = [
+    { key: "water", label: "Вода", icon: "💧" },
+    { key: "sleep", label: "Сон", icon: "😴" },
+    { key: "walk", label: "Шаги", icon: "👟" },
+    { key: "journal", label: "Дневник", icon: "📓" },
+    { key: "cook", label: "Готовка", icon: "🍳" },
+    { key: "music", label: "Музыка", icon: "🎵" },
+    { key: "photo", label: "Фото", icon: "📷" },
+    { key: "learn", label: "Учёба", icon: "🧠" },
+  ];
+  const HABIT_THRESHOLDS = [1, 5, 10, 25, 50, 100];
+  for (const h of HABITS) {
+    for (const t of HABIT_THRESHOLDS) {
+      out.push({
+        slug: `habit-${h.key}-${t}`,
+        name: `${h.label}: ${t}`,
+        description: `${t} дел по привычке «${h.label}»`,
+        category: "themes",
+        icon: h.icon,
+        color: "#22B07D",
+        threshold: t,
+        kind: "theme",
+        theme: h.key,
+      });
+    }
+  }
+
+  const DISTRICTS = ["center", "north", "south", "east", "west", "suburb"];
+  for (const d of DISTRICTS) {
+    for (const t of [1, 5, 10, 25]) {
+      out.push({
+        slug: `district-${d}-${t}`,
+        name: `Район ${d}: ${t}`,
+        description: `${t} дел в районе`,
+        category: "social",
+        icon: "🗺️",
+        color: "#2D6BFF",
+        threshold: t,
+        kind: "social",
+      });
+    }
+  }
+
+  const WISHLIST_ITEMS = [1, 3, 5, 10, 20, 30];
+  for (const t of WISHLIST_ITEMS) {
+    out.push({
+      slug: `wishlist-items-${t}`,
+      name: `${t} желаний`,
+      description: `Добавь ${t} пунктов в вишлист`,
+      category: "social",
+      icon: "🎁",
+      color: "#22B07D",
+      threshold: t,
+      kind: "social",
+    });
+  }
+
+  const TOGETHER = [1, 3, 5, 10, 20];
+  for (const t of TOGETHER) {
+    out.push({
+      slug: `together-${t}`,
+      name: `Вместе: ${t}`,
+      description: `Закрой ${t} пунктов в общих списках`,
+      category: "social",
+      icon: "🤝",
+      color: "#C8FF57",
+      threshold: t,
+      kind: "social",
+    });
+  }
+
   return out;
 }
 

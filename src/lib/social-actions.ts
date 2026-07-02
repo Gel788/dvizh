@@ -221,6 +221,21 @@ export async function addWishlistItemAction(
   revalidatePath(`/profile/${session.username}`);
 }
 
+export async function cheerActivityAction(activityId: string) {
+  const session = await me();
+  const activity = await db.activity.findUnique({ where: { id: activityId } });
+  if (!activity || activity.userId === session.id) return;
+  await db.notification.create({
+    data: {
+      userId: activity.userId,
+      type: "LIKE",
+      title: `${session.name} поддержал`,
+      body: activity.title,
+      link: "/friends?view=feed",
+    },
+  });
+}
+
 export async function connectHealthAction(steps: number, distanceKm: number) {
   const session = await me();
   await db.userProfile.upsert({

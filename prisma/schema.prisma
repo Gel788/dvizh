@@ -440,6 +440,7 @@ model UserProfile {
   healthConnected Boolean  @default(false)
   healthSteps     Int      @default(0)
   healthDistanceKm Float   @default(0)
+  onboardingDone  Boolean  @default(true)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

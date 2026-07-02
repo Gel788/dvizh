@@ -48,11 +48,15 @@ export async function registerAction(formData: FormData) {
       name,
       username,
       city,
+      profile: {
+        create: { onboardingDone: false, mascotVariant: 0 },
+      },
+      privacySettings: { create: {} },
     },
   });
 
   await createSession(user.id);
-  redirect("/");
+  redirect("/onboarding");
 }
 
 export async function loginAction(formData: FormData) {
@@ -406,6 +410,8 @@ export async function joinEventAction(eventId: string) {
   });
 
   revalidatePath("/events");
+  revalidatePath(`/events/${eventId}`);
+  revalidatePath("/nearby");
 }
 
 export async function createClubAction(formData: FormData) {
@@ -731,13 +737,14 @@ export async function searchPlatform(q: string, city?: string, viewerId?: string
   const term = q.trim();
   if (term.length < 2) return { users: [], posts: [], challenges: [], events: [], query: term };
 
-  const [users, posts, challenges, events] = await Promise.all([
+  const [usersRaw, posts, challenges, events] = await Promise.all([
     db.user.findMany({
       where: {
         OR: [
           { name: { contains: term, mode: "insensitive" } },
           { username: { contains: term, mode: "insensitive" } },
         ],
+        NOT: { privacySettings: { profileInSearch: false } },
       },
       orderBy: { reputation: "desc" },
       take: 12,
@@ -816,6 +823,7 @@ export async function searchPlatform(q: string, city?: string, viewerId?: string
     }),
   ]);
 
+  let users = usersRaw;
   if (viewerId && users.length > 0) {
     const { enrichUsersWithSocial } = await import("@/lib/api/friendship-service");
     const social = await enrichUsersWithSocial(

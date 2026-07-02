@@ -10,6 +10,7 @@ import { ru } from "date-fns/locale";
 import { FeedReactions } from "./feed-reactions";
 import { tagColor } from "@/components/profile/profile-data";
 import { CopyMediaButton } from "./copy-media-button";
+import { cheerActivityAction } from "@/lib/social-actions";
 
 type Activity = {
   id: string;
@@ -43,12 +44,24 @@ function parseTag(body: string | null) {
   return body.slice(1).split(/\s/)[0];
 }
 
+function parseMeta(metadata: string | null): Record<string, string> {
+  if (!metadata) return {};
+  try {
+    return JSON.parse(metadata) as Record<string, string>;
+  } catch {
+    return {};
+  }
+}
+
 export function ActivityCard({ activity, index = 0, onCopyTask }: { activity: Activity; index?: number; onCopyTask?: (taskId: string) => void }) {
-  const meta = TYPE_META[activity.type] ?? TYPE_META.TASK_COMPLETED;
-  const Icon = meta.icon;
+  const typeMeta = TYPE_META[activity.type] ?? TYPE_META.TASK_COMPLETED;
+  const Icon = typeMeta.icon;
   const when = formatDistanceToNow(new Date(activity.createdAt), { addSuffix: true, locale: ru });
   const tag = parseTag(activity.body);
   const col = tag ? tagColor(tag) : undefined;
+  const parsed = parseMeta(activity.metadata);
+  const challengePostId = parsed.challengePostId ?? parsed.postId;
+  const eventId = parsed.eventId;
 
   return (
     <motion.article
@@ -80,14 +93,14 @@ export function ActivityCard({ activity, index = 0, onCopyTask }: { activity: Ac
             <span className="text-[11px] text-muted-foreground">@{activity.user.username}</span>
           </div>
           <div className="flex items-center gap-2 mt-1">
-            <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold", meta.className)}>
+            <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold", typeMeta.className)}>
               <Icon className="h-3 w-3" />
-              {meta.label}
+              {typeMeta.label}
             </span>
             <span className="text-[11px] text-muted-foreground">{when}</span>
           </div>
           <p className="text-sm leading-relaxed mt-2">
-            {meta.act} <b className="font-bold">«{activity.title}»</b>
+            {typeMeta.act} <b className="font-bold">«{activity.title}»</b>
           </p>
           <div className="flex flex-wrap gap-2 items-center mt-2 text-xs">
             {tag && col && (
@@ -106,12 +119,21 @@ export function ActivityCard({ activity, index = 0, onCopyTask }: { activity: Ac
               + Забрать себе
             </button>
           )}
+          {activity.type === "TASK_CREATED" && activity.taskId && onCopyTask && (
+            <button
+              type="button"
+              onClick={() => onCopyTask(activity.taskId!)}
+              className="mt-3 w-full rounded-[13px] px-3 py-2.5 text-xs font-bold text-foreground bg-white/[0.04] border border-white/[0.08] hover:border-lime/30 transition-colors cursor-pointer"
+            >
+              Повторить
+            </button>
+          )}
           {activity.type.includes("CHALLENGE") && (
             <Link
-              href="/challenges"
+              href={challengePostId ? `/post/${challengePostId}` : "/challenges"}
               className="mt-3 inline-flex w-full items-center justify-center rounded-[13px] px-3 py-2.5 text-xs font-bold text-heat bg-heat/10 border border-heat/20 hover:bg-heat/15 transition-colors"
             >
-              Вступить
+              {activity.type === "CHALLENGE_CREATED" ? "Открыть" : "Вступить"}
             </Link>
           )}
           {(activity.type === "DUEL_MARKED" || activity.type === "DUEL_STARTED") && (
@@ -124,7 +146,7 @@ export function ActivityCard({ activity, index = 0, onCopyTask }: { activity: Ac
           )}
           {activity.type === "EVENT_ATTENDED" && (
             <Link
-              href="/nearby"
+              href={eventId ? `/events/${eventId}` : "/nearby"}
               className="mt-3 inline-flex w-full items-center justify-center rounded-[13px] px-3 py-2.5 text-xs font-bold text-ice bg-ice/10 border border-ice/20 hover:bg-ice/15 transition-colors"
             >
               Пойти
@@ -135,7 +157,7 @@ export function ActivityCard({ activity, index = 0, onCopyTask }: { activity: Ac
           )}
           {activity.type === "WISHLIST_ADDED" && (
             <Link
-              href={`/profile/${activity.user.username}?view=wishlist`}
+              href={`/profile/${activity.user.username}?tab=wishlists`}
               className="mt-3 inline-flex w-full items-center justify-center rounded-[13px] px-3 py-2.5 text-xs font-bold text-good bg-good/10 border border-good/20 hover:bg-good/15 transition-colors"
             >
               Открыть вишлист
@@ -151,14 +173,18 @@ export function ActivityCard({ activity, index = 0, onCopyTask }: { activity: Ac
           )}
           {activity.type === "ACHIEVEMENT_UNLOCKED" && (
             <Link
-              href={`/profile/${activity.user.username}?view=achievements`}
+              href={`/profile/${activity.user.username}?tab=achievements`}
               className="mt-3 inline-flex w-full items-center justify-center rounded-[13px] px-3 py-2.5 text-xs font-bold text-good bg-good/10 border border-good/20 hover:bg-good/15 transition-colors"
             >
               Открыть ачивку
             </Link>
           )}
           <div className="flex items-center gap-2 mt-3 pt-3 border-t border-white/[0.06]">
-            <button type="button" className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-lime transition-colors cursor-pointer">
+            <button
+              type="button"
+              onClick={() => void cheerActivityAction(activity.id)}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-lime transition-colors cursor-pointer"
+            >
               <Heart className="h-4 w-4" /> Поддержать
             </button>
             <FeedReactions likes={0} comments={0} className="border-0 pt-0 mt-0 flex-1 justify-end" />

@@ -55,6 +55,9 @@ pm2 delete dvizh 2>/dev/null || true
 pm2 start ecosystem.config.cjs
 pm2 save
 
+# автозапуск после ребута
+pm2 startup systemd -u root --hp /root 2>/dev/null | tail -1 | bash 2>/dev/null || true
+
 systemctl restart nginx 2>/dev/null || true
 sleep 4
 

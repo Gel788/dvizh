@@ -20,6 +20,35 @@ export async function listMediaForUser(userId: string) {
   });
 }
 
+async function canViewUserContent(viewerId: string, ownerId: string) {
+  if (viewerId === ownerId) return { isOwner: true, isFriend: true };
+  const row = await db.friendship.findFirst({
+    where: {
+      status: "ACCEPTED",
+      OR: [
+        { requesterId: viewerId, addresseeId: ownerId },
+        { requesterId: ownerId, addresseeId: viewerId },
+      ],
+    },
+  });
+  return { isOwner: false, isFriend: !!row };
+}
+
+export async function listMediaForViewer(ownerId: string, viewerId: string) {
+  const { isOwner, isFriend } = await canViewUserContent(viewerId, ownerId);
+  if (!isOwner && !isFriend) {
+    return db.mediaItem.findMany({
+      where: { userId: ownerId, visibility: "PUBLIC" },
+      orderBy: [{ pinned: "desc" }, { createdAt: "desc" }],
+    });
+  }
+  if (isOwner) return listMediaForUser(ownerId);
+  return db.mediaItem.findMany({
+    where: { userId: ownerId, visibility: { in: ["FRIENDS", "PUBLIC"] } },
+    orderBy: [{ pinned: "desc" }, { createdAt: "desc" }],
+  });
+}
+
 export async function updateMediaItem(
   userId: string,
   itemId: string,
