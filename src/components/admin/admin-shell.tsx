@@ -99,7 +99,7 @@ export function AdminShell({
             <div className="min-w-0">
               <p className="font-heading text-lg leading-none text-lime">АДМИН</p>
               <p className="mt-1 truncate text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                ДВИЖ · control
+                ДВЖ · control
               </p>
             </div>
           </Link>

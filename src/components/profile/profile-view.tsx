@@ -158,13 +158,13 @@ function ProfileHeader({
     : 1;
   const stats = isOwn
     ? [
-        { v: daysInApp, l: "дней в ДВИЖ" },
+        { v: daysInApp, l: "дней в ДВЖ" },
         { v: user._count.following, l: "друга" },
         { v: user._count.followers, l: "подписчика" },
         { v: user.badges.length || 0, l: "из 500 ачивок" },
       ]
     : [
-        { v: daysInApp, l: "дней в ДВИЖ" },
+        { v: daysInApp, l: "дней в ДВЖ" },
         { v: user._count.following, l: "друга" },
         { v: user._count.followers, l: "подписчика" },
         { v: user._count.posts, l: "публикаций" },

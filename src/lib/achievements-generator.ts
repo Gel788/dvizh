@@ -111,7 +111,7 @@ export function generateAchievementCatalog(): AchievementTemplate[] {
     out.push({
       slug: `friends-${t}`,
       name: t === 1 ? "Первый друг" : `${t} друзей`,
-      description: `Имей ${t} друзей в ДВИЖ`,
+      description: `Имей ${t} друзей в ДВЖ`,
       category: "social",
       icon: "🤝",
       color: "#00D9FF",

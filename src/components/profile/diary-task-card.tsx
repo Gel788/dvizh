@@ -11,7 +11,7 @@ function taskMeta(task: DiaryTask) {
   return [
     task.tag ? `#${task.tag}` : null,
     task.visibility ? VIS_TEXT[task.visibility] : "Только я",
-    task.streak ? `🔥 ${task.streak}` : null,
+    task.streak && task.streak >= 2 ? `🔥 ${task.streak}` : null,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -84,13 +84,18 @@ export function TaskRowV24({ task, index, period, xpPopId, onToggle }: TaskRowPr
   );
 }
 
-export function TaskRowDone({ task }: { task: DiaryTask }) {
+export function TaskRowDone({ task, onToggle }: { task: DiaryTask; onToggle?: (id: string) => void }) {
   const meta = taskMeta(task);
   return (
     <div className="card-surface flex items-center gap-3 p-3 opacity-70">
-      <span className="w-[22px] h-[22px] rounded-full bg-good grid place-items-center shrink-0">
+      <button
+        type="button"
+        onClick={() => onToggle?.(task.id)}
+        className="w-[22px] h-[22px] rounded-full bg-good grid place-items-center shrink-0 hover:opacity-80 active:scale-95 transition-all cursor-pointer"
+        aria-label="Отменить выполнение"
+      >
         <Check className="h-3.5 w-3.5 text-white" strokeWidth={3} />
-      </span>
+      </button>
       <div className="flex-1 min-w-0">
         <p className="font-semibold text-[15px] line-through text-muted-foreground">{task.text}</p>
         {meta && <p className="text-[11px] text-muted-foreground/80">{meta}</p>}

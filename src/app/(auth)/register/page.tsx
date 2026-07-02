@@ -16,13 +16,13 @@ export default function RegisterPage() {
       <div className="relative w-full max-w-md">
         <div className="rounded-2xl border border-white/[0.09] bg-card/90 backdrop-blur-xl p-8">
           <div className="mb-7 text-center">
-            <p className="font-heading text-5xl text-neon-lime -skew-x-3 leading-none">ДВИЖ</p>
+            <p className="font-heading text-5xl text-neon-lime -skew-x-3 leading-none">ДВЖ</p>
             <p className="mt-2 text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
               город / движение
             </p>
           </div>
 
-          <h2 className="font-bold text-lg mb-1 text-center">Врывайся в ДВИЖ</h2>
+          <h2 className="font-bold text-lg mb-1 text-center">Врывайся в движ</h2>
           <p className="text-sm text-muted-foreground text-center mb-6">Твой район ждёт</p>
 
           <form action={registerAction} className="space-y-4">

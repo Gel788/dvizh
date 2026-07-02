@@ -57,7 +57,8 @@ export function DiaryPlannerHeader({ onCreate, onViewChanged, onPeriodChanged }:
       <div className="card-surface p-4">
         <div className="flex items-start gap-3">
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-extrabold uppercase tracking-[0.08em] text-lime">Дневник</p>
+            <p className="text-xs font-extrabold uppercase tracking-[0.08em] text-lime">ДВЖ</p>
+            <p className="text-[11px] font-semibold text-muted-foreground -mt-0.5">Твой ритм — твоя жизнь</p>
             <h1 className="font-heading text-[26px] leading-tight tracking-tight mt-1">{formatWeekday(plannerDay)}</h1>
             <button
               type="button"

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 
-const WORD = "ДВИЖ";
+const WORD = "ДВЖ";
 const STORAGE_KEY = "dvizh_splash_v1";
 
 type Phase = "boot" | "typing" | "enterReveal" | "cursorMove" | "click" | "done";
@@ -152,7 +152,7 @@ export function SplashGate({ children }: { children: React.ReactNode }) {
             ref={rootRef}
             key="splash"
             role="dialog"
-            aria-label="Загрузка ДВИЖ"
+            aria-label="Загрузка ДВЖ"
             initial={{ opacity: 1 }}
             exit={{ opacity: 0, scale: 1.02 }}
             transition={{ duration: reducedMotion ? 0.08 : 0.38, ease: [0.22, 1, 0.36, 1] }}

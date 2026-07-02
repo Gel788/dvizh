@@ -23,7 +23,7 @@ export function TopBar({ user, unreadCount = 0 }: { user: SessionUser | null; un
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-lime">
             <span className="font-heading text-lg text-lime-foreground leading-none -skew-x-6">Д</span>
           </div>
-          <span className="font-heading text-lg text-neon-lime -skew-x-3">ДВИЖ</span>
+          <span className="font-heading text-lg text-neon-lime -skew-x-3">ДВЖ</span>
         </Link>
 
         <SearchBar />

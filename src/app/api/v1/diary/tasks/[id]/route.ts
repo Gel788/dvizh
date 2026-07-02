@@ -1,4 +1,4 @@
-import { getDiaryTaskForUser, updateDiaryTaskForUser } from "@/lib/diary-actions";
+import { getDiaryTaskForUser, updateDiaryTaskForUser, deleteDiaryTaskForUser } from "@/lib/diary-actions";
 import { requireSessionFromRequest } from "@/lib/auth";
 import { jsonError, jsonOk, readJson } from "@/lib/api/http";
 
@@ -50,6 +50,21 @@ export async function PATCH(
     if (!updated) return jsonError("Задача не найдена", 404, "NOT_FOUND");
 
     return jsonOk({ task: updated });
+  } catch {
+    return jsonError("Требуется авторизация", 401, "UNAUTHORIZED");
+  }
+}
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    const session = await requireSessionFromRequest(_request);
+    const { id } = await params;
+    const task = await deleteDiaryTaskForUser(session.id, id);
+    if (!task) return jsonError("Задача не найдена", 404, "NOT_FOUND");
+    return jsonOk({ task });
   } catch {
     return jsonError("Требуется авторизация", 401, "UNAUTHORIZED");
   }

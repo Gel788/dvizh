@@ -13,13 +13,13 @@ async function me() {
 }
 
 export async function finishOnboardingAction(input: {
+  displayName?: string;
   mascotVariant: number;
   city: string;
   district?: string;
   defaultDiary: string;
   defaultMedia: string;
   defaultWishlist: string;
-  askProofDefault: boolean;
   firstTaskTitle: string;
   firstTaskPriority: boolean;
 }) {
@@ -32,6 +32,7 @@ export async function finishOnboardingAction(input: {
     db.user.update({
       where: { id: session.id },
       data: {
+        ...(input.displayName?.trim() ? { name: input.displayName.trim() } : {}),
         city: input.city.trim() || session.city,
         district: input.district?.trim() || null,
       },
@@ -71,11 +72,10 @@ export async function finishOnboardingAction(input: {
       period: "today",
       visibility: input.defaultDiary === "all" ? "all" : input.defaultDiary === "friends" ? "friends" : "private",
       priority: input.firstTaskPriority,
-      askProof: input.askProofDefault,
+      askProof: false,
     });
   }
 
-  revalidatePath("/");
-  revalidatePath(`/profile/${session.username}`);
-  redirect("/profile/" + session.username);
+  revalidatePath("/today");
+  redirect("/today");
 }

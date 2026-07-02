@@ -6,7 +6,7 @@ import { anton, epilogue } from "@/lib/fonts";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "ДВИЖ — город в движении",
+  title: "ДВЖ — твой ритм",
   description:
     "Молодёжная соцсеть локальных активностей, челленджей и объявлений. Врывайся в движ своего района.",
   themeColor: "#08080D",

@@ -383,11 +383,15 @@ export async function getDiaryBundle(
 
 export async function completeDiaryTaskForUser(userId: string, taskId: string) {
   const task = await db.diaryTask.findFirst({ where: { id: taskId, userId } });
-  if (!task || task.done) return { xpGain: 0, levelUp: false, newLevel: 0, achievements: [] as string[] };
+  if (!task || task.done) return { xpGain: 0, levelUp: false, newLevel: 0, achievements: [] as string[], alreadyDone: true };
 
+  const todayKey = userDayKey(new Date(), DEFAULT_TZ_OFFSET_MINUTES);
   const nextStreak = task.trackStreak ? task.streak + 1 : task.streak;
   const base = PERIOD_XP[task.period];
-  const gain = Math.round(base * (task.trackStreak ? streakXpMultiplier(nextStreak) : 1));
+  const gain =
+    task.lastXpDay === todayKey
+      ? 0
+      : Math.round(base * (task.trackStreak ? streakXpMultiplier(nextStreak) : 1));
   const profile = await ensureProfile(userId);
   const before = effectiveLevel(profile.xp, profile.level, profile.levelUnlockedAt);
   const newXp = profile.xp + gain;
@@ -397,25 +401,28 @@ export async function completeDiaryTaskForUser(userId: string, taskId: string) {
     data: {
       done: true,
       doneAt: new Date(),
+      ...(gain > 0 ? { lastXpDay: todayKey } : {}),
       ...(task.trackStreak ? { streak: nextStreak } : {}),
     },
   });
 
   const afterLevel = effectiveLevel(newXp, profile.level, profile.levelUnlockedAt);
-  const levelUp = afterLevel > before;
+  const levelUp = gain > 0 && afterLevel > before;
 
-  await db.userProfile.update({
-    where: { userId },
-    data: {
-      xp: newXp,
-      level: levelUp ? afterLevel : profile.level,
-      levelUnlockedAt: levelUp ? new Date() : profile.levelUnlockedAt,
-      tasksCompleted: profile.tasksCompleted + 1,
-    },
-  });
+  if (gain > 0) {
+    await db.userProfile.update({
+      where: { userId },
+      data: {
+        xp: newXp,
+        level: levelUp ? afterLevel : profile.level,
+        levelUnlockedAt: levelUp ? new Date() : profile.levelUnlockedAt,
+        tasksCompleted: profile.tasksCompleted + 1,
+      },
+    });
+  }
 
   const vis = task.visibility;
-  if (vis !== "PRIVATE") {
+  if (vis !== "PRIVATE" && gain > 0) {
     await db.activity.create({
       data: {
         userId,
@@ -430,17 +437,58 @@ export async function completeDiaryTaskForUser(userId: string, taskId: string) {
   }
 
   let unlocked: string[] = [];
-  try {
-    unlocked = await checkAchievements(userId, {
-      tasksCompleted: profile.tasksCompleted + 1,
-      tasksCreated: profile.tasksCreated,
-      level: afterLevel,
-    });
-  } catch {
-    // ачивки не должны блокировать отметку задачи
+  if (gain > 0) {
+    try {
+      unlocked = await checkAchievements(userId, {
+        tasksCompleted: profile.tasksCompleted + 1,
+        tasksCreated: profile.tasksCreated,
+        level: afterLevel,
+      });
+    } catch {
+      // ачивки не должны блокировать отметку задачи
+    }
   }
 
-  return { xpGain: gain, levelUp, newLevel: afterLevel, achievements: unlocked };
+  return { xpGain: gain, levelUp, newLevel: afterLevel, achievements: unlocked, alreadyDone: false };
+}
+
+export async function uncompleteDiaryTaskForUser(userId: string, taskId: string) {
+  const task = await db.diaryTask.findFirst({ where: { id: taskId, userId } });
+  if (!task || !task.done) return { xpLoss: 0, levelDown: false, newLevel: 0 };
+
+  const todayKey = userDayKey(new Date(), DEFAULT_TZ_OFFSET_MINUTES);
+  const base = PERIOD_XP[task.period];
+  const streakForCalc = task.trackStreak ? Math.max(1, task.streak) : task.streak;
+  const wouldGain = Math.round(base * (task.trackStreak ? streakXpMultiplier(streakForCalc) : 1));
+  const xpLoss = task.lastXpDay === todayKey ? wouldGain : 0;
+
+  const profile = await ensureProfile(userId);
+  const before = effectiveLevel(profile.xp, profile.level, profile.levelUnlockedAt);
+  const newXp = Math.max(0, profile.xp - xpLoss);
+  const afterLevel = effectiveLevel(newXp, profile.level, profile.levelUnlockedAt);
+
+  await db.diaryTask.update({
+    where: { id: taskId },
+    data: {
+      done: false,
+      doneAt: null,
+      ...(task.trackStreak && task.streak > 0 ? { streak: task.streak - 1 } : {}),
+    },
+  });
+
+  if (xpLoss > 0) {
+    await db.userProfile.update({
+      where: { userId },
+      data: {
+        xp: newXp,
+        level: afterLevel,
+        ...(afterLevel < before ? { levelUnlockedAt: new Date() } : {}),
+        tasksCompleted: Math.max(0, profile.tasksCompleted - 1),
+      },
+    });
+  }
+
+  return { xpLoss, levelDown: afterLevel < before, newLevel: afterLevel };
 }
 
 export async function completeDiaryTaskAction(taskId: string) {
@@ -448,11 +496,23 @@ export async function completeDiaryTaskAction(taskId: string) {
   if (!session) redirect("/login");
 
   const result = await completeDiaryTaskForUser(session.id, taskId);
-  if (result.xpGain === 0 && !result.levelUp) return result;
+  if (result.alreadyDone) return result;
 
   revalidatePath(`/profile/${session.username}`);
   revalidatePath("/friends");
   revalidatePath("/");
+  revalidatePath("/today");
+  return result;
+}
+
+export async function uncompleteDiaryTaskAction(taskId: string) {
+  const session = await getSession();
+  if (!session) redirect("/login");
+
+  const result = await uncompleteDiaryTaskForUser(session.id, taskId);
+
+  revalidatePath(`/profile/${session.username}`);
+  revalidatePath("/today");
   return result;
 }
 
@@ -632,6 +692,27 @@ export async function updateDiaryTaskForUser(
   });
 
   return diaryTaskRowToClientDto(row);
+}
+
+export async function deleteDiaryTaskForUser(userId: string, taskId: string) {
+  const task = await db.diaryTask.findFirst({ where: { id: taskId, userId } });
+  if (!task) return null;
+  const snapshot = diaryTaskRowToClientDto(task);
+  await db.diaryTask.delete({ where: { id: taskId } });
+  return snapshot;
+}
+
+export async function deleteDiaryTaskAction(taskId: string) {
+  const session = await getSession();
+  if (!session) redirect("/login");
+
+  const snapshot = await deleteDiaryTaskForUser(session.id, taskId);
+  if (!snapshot) return null;
+
+  revalidatePath(`/profile/${session.username}`);
+  revalidatePath("/today");
+  revalidatePath("/friends");
+  return snapshot;
 }
 
 export async function createDiaryTaskAction(input: {

@@ -11,6 +11,8 @@ import {
 import { parseDayKey, todayKey } from "@/lib/diary-day-utils";
 import {
   completeDiaryTaskAction,
+  uncompleteDiaryTaskAction,
+  deleteDiaryTaskAction,
   createDiaryTaskAction,
   reorderTasksAction,
   fetchCalendarAction,
@@ -30,6 +32,7 @@ type DiaryContextValue = DiaryBundle & {
   openSheet: () => void;
   closeSheet: () => void;
   toggleTask: (id: string) => void;
+  deleteTask: (id: string) => void;
   addTask: (input: {
     text: string; note?: string; period: DiaryPeriod; visibility: TaskVisibility;
     hashtag?: string; dueDate?: string; isRecurring?: boolean; recurrence?: string;
@@ -112,7 +115,31 @@ export function DiaryProvider({ initial, children }: { initial: DiaryBundle; chi
         break;
       }
     }
-    if (!task || !taskPeriod || task.done) return;
+    if (!task || !taskPeriod) return;
+
+    if (task.done) {
+      setTasks((prev) => ({
+        ...prev,
+        [taskPeriod]: prev[taskPeriod].map((t) => (t.id === id ? { ...t, done: false } : t)),
+      }));
+      void uncompleteDiaryTaskAction(id).then((res) => {
+        if (!res) return;
+        if (res.xpLoss > 0) {
+          setXp((x) => Math.max(0, x - res.xpLoss));
+          if (res.levelDown && res.newLevel) {
+            setLevel(res.newLevel);
+            toast.message(`XP отозван · уровень ${res.newLevel}`);
+          }
+        }
+      }).catch(() => {
+        setTasks((prev) => ({
+          ...prev,
+          [taskPeriod]: prev[taskPeriod].map((t) => (t.id === id ? { ...t, done: true } : t)),
+        }));
+        toast.error("Не удалось отменить выполнение");
+      });
+      return;
+    }
 
     const gain = PERIODS[taskPeriod].xp;
     const beforeLevel = levelInfo(xp).level;
@@ -131,13 +158,15 @@ export function DiaryProvider({ initial, children }: { initial: DiaryBundle; chi
         toast.error("Не удалось сохранить задачу");
         return;
       }
-      const actualGain = res.xpGain || gain;
-      setXp((x) => x + actualGain);
-      if (res.levelUp && res.newLevel) {
-        setLevel(res.newLevel);
-        toast.success(`🎉 Новый уровень ${res.newLevel} — «${rankFromLib(res.newLevel)}»`);
-      } else if (levelInfo(xp + gain).level > beforeLevel) {
-        toast.success(`🎉 Новый уровень — «${rankName(levelInfo(xp + gain).level)}»`);
+      const actualGain = res.xpGain || 0;
+      if (actualGain > 0) {
+        setXp((x) => x + actualGain);
+        if (res.levelUp && res.newLevel) {
+          setLevel(res.newLevel);
+          toast.success(`🎉 Новый уровень ${res.newLevel} — «${rankFromLib(res.newLevel)}»`);
+        } else if (levelInfo(xp + actualGain).level > beforeLevel) {
+          toast.success(`🎉 Новый уровень — «${rankName(levelInfo(xp + actualGain).level)}»`);
+        }
       }
       if (TASK_ACHIEVEMENTS[id]) queueAchievement(TASK_ACHIEVEMENTS[id]);
       for (const slug of res.achievements ?? []) {
@@ -152,6 +181,87 @@ export function DiaryProvider({ initial, children }: { initial: DiaryBundle; chi
       toast.error("Не удалось сохранить задачу");
     });
   }, [xp, tasks, queueAchievement]);
+
+  const deleteTask = useCallback((id: string) => {
+    let taskPeriod: DiaryPeriod | null = null;
+    let task: DiaryTask | undefined;
+    for (const p of Object.keys(tasks) as DiaryPeriod[]) {
+      const found = tasks[p].find((t) => t.id === id);
+      if (found) {
+        task = found;
+        taskPeriod = p;
+        break;
+      }
+    }
+    if (!task || !taskPeriod) return;
+
+    const snapshot = { task: { ...task }, period: taskPeriod };
+    setTasks((prev) => ({
+      ...prev,
+      [taskPeriod]: prev[taskPeriod].filter((t) => t.id !== id),
+    }));
+
+    void deleteDiaryTaskAction(id).then((deleted) => {
+      if (!deleted) {
+        setTasks((prev) => ({
+          ...prev,
+          [taskPeriod]: [...prev[taskPeriod], snapshot.task],
+        }));
+        toast.error("Не удалось удалить дело");
+        return;
+      }
+      toast("Дело удалено", {
+        duration: 5000,
+        action: {
+          label: "Вернуть",
+          onClick: () => {
+            void createDiaryTaskAction({
+              text: snapshot.task.text,
+              note: snapshot.task.note,
+              period: snapshot.period,
+              visibility: snapshot.task.visibility ?? "private",
+              hashtag: snapshot.task.tag,
+              dueDate: snapshot.task.dueDate,
+              isRecurring: snapshot.task.isRecurring,
+              priority: snapshot.task.priority,
+              askProof: snapshot.task.askProof,
+            }).then((created) => {
+              if (!created?.length) {
+                toast.error("Не удалось вернуть дело");
+                return;
+              }
+              setTasks((prev) => ({
+                ...prev,
+                [snapshot.period]: [
+                  ...created.map((t) => ({
+                    id: t.id,
+                    text: t.text,
+                    note: t.note,
+                    tag: t.tag,
+                    visibility: t.visibility,
+                    done: false,
+                    dueDate: t.dueDate,
+                    isRecurring: t.isRecurring,
+                    checklist: t.checklist,
+                    priority: t.priority,
+                    askProof: t.askProof,
+                  })),
+                  ...(prev[snapshot.period] ?? []),
+                ],
+              }));
+              toast.success("Дело восстановлено");
+            });
+          },
+        },
+      });
+    }).catch(() => {
+      setTasks((prev) => ({
+        ...prev,
+        [taskPeriod]: [...prev[taskPeriod], snapshot.task],
+      }));
+      toast.error("Не удалось удалить дело");
+    });
+  }, [tasks]);
 
   const addTask = useCallback((input: Parameters<DiaryContextValue["addTask"]>[0]) => {
     void createDiaryTaskAction({
@@ -217,13 +327,13 @@ export function DiaryProvider({ initial, children }: { initial: DiaryBundle; chi
     calendar,
     xp, level, period, setPeriod, tasks, diaryView, setDiaryView,
     periodFrames, diaryDay,
-    sheetOpen, openSheet, closeSheet, toggleTask, addTask, reorderTasks, loadCalendar,
+    sheetOpen, openSheet, closeSheet, toggleTask, deleteTask, addTask, reorderTasks, loadCalendar,
     achievementQueue, dismissAchievement,
     plannerDayKey, effectivePlannerDayKey, plannerDay, plannerIsToday, selectPlannerDay,
   }), [
     initial, calendar, xp, level, period, tasks, diaryView, sheetOpen,
     periodFrames, diaryDay,
-    openSheet, closeSheet, toggleTask, addTask, reorderTasks, loadCalendar,
+    openSheet, closeSheet, toggleTask, deleteTask, addTask, reorderTasks, loadCalendar,
     achievementQueue, dismissAchievement,
     plannerDayKey, effectivePlannerDayKey, plannerDay, plannerIsToday, selectPlannerDay,
   ]);

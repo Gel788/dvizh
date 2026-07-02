@@ -469,6 +469,7 @@ model DiaryTask {
   proofUrl     String?
   checklistJson String      @default("[]")
   streak       Int          @default(0)
+  lastXpDay    String?
   copyCount    Int          @default(0)
   sourceTaskId String?
   createdAt    DateTime     @default(now())

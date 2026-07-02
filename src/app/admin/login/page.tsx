@@ -29,7 +29,7 @@ export default async function AdminLoginPage({
             </div>
             <CardTitle className="font-heading text-3xl text-lime">АДМИН</CardTitle>
             <CardDescription className="text-[11px] uppercase tracking-[0.2em]">
-              центр управления · ДВИЖ
+              центр управления · ДВЖ
             </CardDescription>
           </CardHeader>
 

@@ -26,7 +26,7 @@ export default async function LoginPage({
         <div className="rounded-2xl border border-white/[0.09] bg-card/90 backdrop-blur-xl p-8">
           {/* Logo */}
           <div className="mb-8 text-center">
-            <p className="font-heading text-5xl text-neon-lime -skew-x-3 leading-none">ДВИЖ</p>
+            <p className="font-heading text-5xl text-neon-lime -skew-x-3 leading-none">ДВЖ</p>
             <p className="mt-2 text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
               город / движение
             </p>

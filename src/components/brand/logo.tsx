@@ -14,11 +14,11 @@ export function Logo({ size = "md", className, showTagline = false }: {
   return (
     <div className={cn("flex flex-col", className)}>
       <span className={cn("font-heading text-neon-lime -skew-x-3 leading-none", sizes[size])}>
-        ДВИЖ
+        ДВЖ
       </span>
       {showTagline && (
-        <span className="mt-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-          город / движение
+        <span className="mt-2 text-[10px] font-semibold tracking-wide text-muted-foreground">
+          Твой ритм — твоя жизнь
         </span>
       )}
     </div>

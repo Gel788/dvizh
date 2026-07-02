@@ -34,7 +34,7 @@ export function Sidebar({ user, unreadCount = 0 }: { user: SessionUser | null; u
             <span className="font-heading text-[18px] text-lime-foreground leading-none -skew-x-6">Д</span>
           </div>
           <div>
-            <span className="font-heading text-[20px] text-neon-lime -skew-x-3 leading-none">ДВИЖ</span>
+            <span className="font-heading text-[20px] text-neon-lime -skew-x-3 leading-none">ДВЖ</span>
             <p className="text-[9px] text-sidebar-foreground/30 tracking-[0.18em] uppercase font-semibold mt-0.5">
               реальные действия
             </p>

@@ -215,8 +215,11 @@ export function AddTaskSheet() {
               <span className="text-sm font-bold">Приоритет</span>
               <Switch checked={priority} onCheckedChange={setPriority} />
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-bold">Спросить про фото-пруф</span>
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <span className="text-sm font-bold block">Буду прикреплять фото</span>
+                <p className="text-xs text-muted-foreground mt-0.5">После выполнения предложим добавить фото — только если включено</p>
+              </div>
               <Switch checked={askProof} onCheckedChange={setAskProof} />
             </div>
             <div className="flex items-center justify-between">

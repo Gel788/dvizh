@@ -145,7 +145,7 @@ export function DiarySection({ mode = "profile" }: DiarySectionProps) {
           <div className="space-y-2 pt-2">
             <p className="text-xs font-bold text-muted-foreground px-1">Выполнено · {daySplit.done.length}</p>
             {daySplit.done.map((task) => (
-              <TaskRowDone key={task.id} task={task} />
+              <TaskRowDone key={task.id} task={task} onToggle={handleToggle} />
             ))}
           </div>
         )}
