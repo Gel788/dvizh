@@ -2,19 +2,22 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { Plus } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { DiaryProvider, useDiary } from "@/components/profile/diary-context";
 import { DiarySection } from "@/components/profile/diary-section";
-import { DiaryCalendar } from "@/components/profile/diary-calendar";
+import { DiaryPlannerHeader } from "@/components/profile/diary-planner-header";
 import { AddTaskSheet } from "@/components/profile/add-task-sheet";
 import { PersonalEventSheet } from "@/components/profile/personal-event-sheet";
 import { AchievementPopup } from "@/components/profile/achievement-popup";
-import { RefSurface } from "@/components/surface/ref-surface";
-import { TodayRefHeader } from "@/components/today/today-ref-header";
+import { CreateMenuModal } from "@/components/layout/create-menu";
 import type { DiaryBundle } from "@/lib/diary-actions";
+import type { DiaryPeriod } from "@/components/profile/profile-data";
 
-function TodayContent({ userName, username }: { userName?: string; username?: string }) {
+function TodayContent() {
   const searchParams = useSearchParams();
-  const { openSheet, setDiaryView, loadCalendar, diaryView } = useDiary();
+  const { openSheet, setDiaryView, setPeriod, loadCalendar } = useDiary();
+  const [createOpen, setCreateOpen] = useState(false);
   const [eventOpen, setEventOpen] = useState(false);
 
   useEffect(() => {
@@ -30,43 +33,35 @@ function TodayContent({ userName, username }: { userName?: string; username?: st
   }, [searchParams, openSheet, setDiaryView, loadCalendar]);
 
   return (
-    <RefSurface className="max-w-lg mx-auto">
-      <TodayRefHeader />
-
-      <div className="mt-4">
-        {diaryView === "calendar" ? (
-          <>
-            <button
-              type="button"
-              onClick={() => setDiaryView("list")}
-              className="ref-card rounded-full px-4 py-2 text-xs font-extrabold ref-muted mb-3 cursor-pointer"
-            >
-              ← К списку
-            </button>
-            <DiaryCalendar />
-          </>
-        ) : (
-          <DiarySection mode="today" userName={userName} username={username} />
-        )}
-      </div>
-
+    <div className="p-4 lg:p-6 max-w-2xl mx-auto pb-28 relative space-y-4">
+      <DiaryPlannerHeader
+        onCreate={() => setCreateOpen(true)}
+        onViewChanged={setDiaryView}
+        onPeriodChanged={(p: DiaryPeriod) => setPeriod(p)}
+      />
+      <DiarySection mode="today" />
+      <CreateMenuModal open={createOpen} onClose={() => setCreateOpen(false)} />
       <PersonalEventSheet open={eventOpen} onClose={() => setEventOpen(false)} onCreated={() => setEventOpen(false)} />
-    </RefSurface>
+      <button
+        type="button"
+        onClick={() => setCreateOpen(true)}
+        className={cn(
+          "lg:hidden fixed right-5 bottom-[72px] z-40 flex h-14 w-14 items-center justify-center",
+          "rounded-[20px] bg-lime text-lime-foreground shadow-[0_12px_26px_rgba(200,255,87,0.35)]",
+          "hover:-translate-y-0.5 active:scale-95 transition-transform cursor-pointer",
+        )}
+        aria-label="Создать"
+      >
+        <Plus className="h-7 w-7" />
+      </button>
+    </div>
   );
 }
 
-export function TodayView({
-  bundle,
-  userName,
-  username,
-}: {
-  bundle: DiaryBundle;
-  userName?: string;
-  username?: string;
-}) {
+export function TodayView({ bundle }: { bundle: DiaryBundle }) {
   return (
     <DiaryProvider initial={bundle}>
-      <TodayContent userName={userName} username={username} />
+      <TodayContent />
       <AddTaskSheet />
       <AchievementPopup />
     </DiaryProvider>

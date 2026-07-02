@@ -7,11 +7,14 @@ import { PERIODS, type DiaryPeriod, type DiaryTask } from "./profile-data";
 
 const VIS_TEXT = { private: "Только я", friends: "Друзья", all: "Все" } as const;
 
-function formatTime(iso?: string) {
-  if (!iso) return null;
-  const d = new Date(iso);
-  if (d.getHours() === 0 && d.getMinutes() === 0) return null;
-  return d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+function taskMeta(task: DiaryTask) {
+  return [
+    task.tag ? `#${task.tag}` : null,
+    task.visibility ? VIS_TEXT[task.visibility] : "Только я",
+    task.streak && task.streak >= 2 ? `🔥 ${task.streak}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 }
 
 function isTodayIso(iso?: string) {
@@ -40,74 +43,40 @@ export function splitTodayTasks(all: DiaryTask[]) {
   return { priority, timed, regular, done };
 }
 
-function TaskMetaLine({ task }: { task: DiaryTask }) {
-  const parts = [
-    task.tag ? `#${task.tag}` : null,
-    VIS_TEXT[task.visibility ?? "private"],
-    task.streak != null && task.streak >= 2 ? `🔥 ${task.streak}` : null,
-    task.askProof ? "фото-пруф" : null,
-    formatTime(task.scheduledAt ?? task.reminderAt ?? task.dueDate),
-  ].filter(Boolean);
-
-  return (
-    <p className="text-[12px] font-semibold ref-muted mt-1 truncate">
-      {parts.join(" · ")}
-    </p>
-  );
-}
-
 type TaskRowProps = {
   task: DiaryTask;
   index: number;
   period: DiaryPeriod;
   xpPopId: string | null;
   onToggle: (id: string) => void;
-  showIndex?: boolean;
 };
 
-export function TaskRowV24({ task, index, period, xpPopId, onToggle, showIndex = true }: TaskRowProps) {
-  const periodXp = PERIODS[period].xp;
-
+export function TaskRowV24({ task, index, period, xpPopId, onToggle }: TaskRowProps) {
+  const meta = taskMeta(task);
   return (
-    <div className={cn("ref-card flex items-center gap-0 p-3 my-1 relative", task.done && "opacity-60")}>
+    <div className="card-surface flex items-start gap-2 p-3 relative">
       <button
         type="button"
         onClick={() => onToggle(task.id)}
-        className={cn(
-          "w-7 h-7 shrink-0 rounded-[10px] border-[3px] transition-all cursor-pointer",
-          task.done
-            ? "bg-[var(--ref-success,#78d39e)] border-[var(--ref-success,#78d39e)] grid place-items-center"
-            : "bg-white border-[#dfd3c4] hover:border-[var(--ref-green,#98c84a)]",
-        )}
-        aria-label={task.done ? "Отменить выполнение" : "Выполнить"}
-      >
-        {task.done && <Check className="h-4 w-4 text-white" strokeWidth={3} />}
-      </button>
-      <span className="w-3 shrink-0" aria-hidden />
-      {showIndex && (
-        <>
-          <span className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-[10px] bg-[#e9f8d4] text-[13px] font-extrabold text-[var(--ref-green-dark,#5f8d2b)]">
-            {index + 1}
-          </span>
-          <span className="w-[9px] shrink-0" aria-hidden />
-        </>
-      )}
-      <div className="flex-1 min-w-0">
-        <p className={cn("font-bold text-[14.5px] leading-snug text-[var(--ref-ink,#33251f)]", task.done && "line-through")}>
-          {task.text}
-        </p>
-        <TaskMetaLine task={task} />
+        className="w-8 h-8 mt-0.5 rounded-full border-2 border-white/[0.12] shrink-0 hover:border-lime/40 active:scale-95 transition-all cursor-pointer"
+        aria-label="Выполнить"
+      />
+      <div className="w-2 shrink-0" aria-hidden />
+      <div className="flex-1 min-w-0 py-0.5">
+        <p className="font-semibold text-[15px] leading-snug">{task.text}</p>
+        {meta && <p className="text-xs font-semibold text-muted-foreground mt-1">{meta}</p>}
       </div>
-      <span className="ref-xp shrink-0">{periodXp} XP</span>
+      <span className="text-sm font-extrabold text-[#FFB020] shrink-0 pt-1">+{PERIODS[period].xp}</span>
+      <span className="w-[22px] text-center text-[11px] font-extrabold text-muted-foreground shrink-0 pt-1.5">{index + 1}</span>
       <AnimatePresence>
         {xpPopId === task.id && (
           <motion.span
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: -18 }}
             exit={{ opacity: 0, y: -36 }}
-            className="absolute right-12 top-1 ref-xp text-lg pointer-events-none"
+            className="absolute right-10 top-1 font-heading text-lg text-[#FFB020] pointer-events-none"
           >
-            +{periodXp} XP
+            +{PERIODS[period].xp} XP
           </motion.span>
         )}
       </AnimatePresence>
@@ -116,14 +85,21 @@ export function TaskRowV24({ task, index, period, xpPopId, onToggle, showIndex =
 }
 
 export function TaskRowDone({ task, onToggle }: { task: DiaryTask; onToggle?: (id: string) => void }) {
+  const meta = taskMeta(task);
   return (
-    <TaskRowV24
-      task={task}
-      index={0}
-      period="today"
-      xpPopId={null}
-      onToggle={onToggle ?? (() => {})}
-      showIndex={false}
-    />
+    <div className="card-surface flex items-center gap-3 p-3 opacity-70">
+      <button
+        type="button"
+        onClick={() => onToggle?.(task.id)}
+        className="w-[22px] h-[22px] rounded-full bg-good grid place-items-center shrink-0 hover:opacity-80 active:scale-95 transition-all cursor-pointer"
+        aria-label="Отменить выполнение"
+      >
+        <Check className="h-3.5 w-3.5 text-white" strokeWidth={3} />
+      </button>
+      <div className="flex-1 min-w-0">
+        <p className="font-semibold text-[15px] line-through text-muted-foreground">{task.text}</p>
+        {meta && <p className="text-[11px] text-muted-foreground/80">{meta}</p>}
+      </div>
+    </div>
   );
 }

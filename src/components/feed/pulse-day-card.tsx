@@ -2,53 +2,48 @@
 
 import Link from "next/link";
 import { motion } from "motion/react";
-import { RefPulseMetricTile } from "@/components/surface/ref-ui";
 
 type PulseMetric = { icon: string; value: string; label: string };
 
 export function PulseDayCard({
   metrics,
+  city,
 }: {
   metrics: PulseMetric[];
-  city?: string;
+  city: string;
 }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-[27px] border border-[#d8ecc0] p-[15px] mt-3.5"
-      style={{
-        background: "linear-gradient(135deg, #fffef8 0%, #f2ffe3 52%, #fff4ca 100%)",
-        boxShadow: "0 18px 36px rgba(116, 148, 48, 0.14)",
-      }}
+      className="relative overflow-hidden rounded-[22px] p-4 text-white"
+      style={{ background: "linear-gradient(135deg, #1a1528 0%, #2d4a3e 55%, #1a2838 100%)" }}
     >
-      <div className="flex items-start gap-3 mb-3">
-        <div className="flex-1 min-w-0">
-          <h2 className="text-[22px] font-extrabold leading-[1.08] text-[var(--ref-ink)]">Пульс дня</h2>
-          <p className="text-[12px] font-semibold ref-muted mt-1">друзья, район и город сегодня</p>
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <div>
+          <span className="inline-block text-[10px] font-extrabold uppercase tracking-widest bg-white/15 px-2 py-0.5 rounded-full mb-2">
+            сегодня
+          </span>
+          <h2 className="font-heading text-xl leading-tight">Пульс дня</h2>
+          <p className="text-xs text-white/70 mt-1">{city} · друзья, район и город</p>
         </div>
-        <div className="ref-card inline-flex items-center gap-1.5 rounded-full px-2 py-[5px]">
-          <span className="h-[7px] w-[7px] rounded-full bg-[var(--ref-success)] animate-pulse" />
-          <span className="text-[10.5px] font-bold ref-muted">live</span>
-        </div>
+        <span className="text-2xl" aria-hidden>💫</span>
       </div>
-
       <div className="grid grid-cols-2 gap-2">
         {metrics.slice(0, 4).map((m) => (
-          <RefPulseMetricTile key={m.label} emoji={m.icon} value={m.value} label={m.label} />
+          <div key={m.label} className="rounded-xl bg-white/10 px-3 py-2.5 border border-white/10">
+            <p className="text-lg font-heading leading-none">
+              {m.icon} {m.value}
+            </p>
+            <p className="text-[10px] text-white/65 font-semibold mt-1">{m.label}</p>
+          </div>
         ))}
       </div>
-
       <Link
         href="/pulse"
-        className="ref-card mt-2.5 flex items-center gap-2 rounded-[18px] border-[#e7d9ca] px-[11px] py-2.5"
+        className="mt-3 inline-flex text-xs font-bold text-lime hover:underline cursor-pointer"
       >
-        <span className="text-base" aria-hidden>🌆</span>
-        <div className="flex-1 min-w-0">
-          <p className="text-[14.5px] font-bold text-[var(--ref-ink)]">Вечером район оживает</p>
-          <p className="text-[10.5px] font-bold ref-muted mt-0.5">больше всего движухи обычно с 18:00 до 21:00</p>
-        </div>
-        <span className="text-[20px] text-[#bab0a7]" aria-hidden>›</span>
+        Подробнее →
       </Link>
     </motion.div>
   );

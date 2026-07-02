@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Bell, CalendarDays, ChevronLeft, ChevronRight, Plus, Search } from "lucide-react";
+import { Bell, CalendarDays, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDiary } from "./diary-context";
 import { PERIODS, levelInfo, type DiaryPeriod } from "./profile-data";
@@ -90,14 +90,6 @@ export function DiaryPlannerHeader({ onCreate, onViewChanged, onPeriodChanged }:
           </div>
 
           <Link
-            href="/search"
-            className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.04] text-muted-foreground hover:text-foreground transition-colors"
-            aria-label="Поиск"
-          >
-            <Search className="h-[18px] w-[18px]" />
-          </Link>
-
-          <Link
             href="/notifications"
             className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.04] text-muted-foreground hover:text-foreground transition-colors"
             aria-label="Уведомления"
@@ -109,7 +101,6 @@ export function DiaryPlannerHeader({ onCreate, onViewChanged, onPeriodChanged }:
             <span className="rounded-full border border-lime/25 bg-lime/10 px-2.5 py-1 text-[10px] font-extrabold text-lime">
               LVL {li.level}
             </span>
-            <span className="text-[10px] font-bold text-muted-foreground">{xp} XP</span>
             <div className="relative h-12 w-12">
               <svg className="h-12 w-12 -rotate-90" viewBox="0 0 48 48" aria-hidden>
                 <circle cx="24" cy="24" r="20" fill="none" stroke="currentColor" strokeWidth="3.5" className="text-white/[0.08]" />
@@ -250,28 +241,16 @@ export function DiarySectionHeader({
   title,
   actionLabel,
   onAction,
-  refStyle = false,
 }: {
   title: string;
   actionLabel?: string;
   onAction?: () => void;
-  refStyle?: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between px-1 pt-2">
-      <h3 className={refStyle
-        ? "text-[22px] font-extrabold text-[var(--ref-ink,#33251f)]"
-        : "font-heading text-lg"}>
-        {title}
-      </h3>
+    <div className="flex items-center justify-between px-1">
+      <h3 className="font-heading text-lg">{title}</h3>
       {actionLabel && onAction && (
-        <button
-          type="button"
-          onClick={onAction}
-          className={refStyle
-            ? "ref-card rounded-full px-3 py-1 text-xs font-extrabold ref-muted cursor-pointer"
-            : "text-xs font-bold text-lime cursor-pointer"}
-        >
+        <button type="button" onClick={onAction} className="text-xs font-bold text-lime cursor-pointer">
           {actionLabel}
         </button>
       )}

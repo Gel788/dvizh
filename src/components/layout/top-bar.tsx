@@ -17,7 +17,7 @@ export function TopBar({ user, unreadCount = 0 }: { user: SessionUser | null; un
   const router = useRouter();
 
   return (
-    <header className="app-top-bar sticky top-0 z-40 bg-background/90 backdrop-blur-xl border-b border-white/[0.06]">
+    <header className="sticky top-0 z-40 bg-background/90 backdrop-blur-xl border-b border-white/[0.06]">
       <div className="flex h-14 items-center gap-3 px-4 lg:px-6">
         <Link href="/" className="lg:hidden flex items-center gap-2 cursor-pointer shrink-0">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-lime">

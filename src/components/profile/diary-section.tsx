@@ -4,11 +4,10 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Check, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Mascot } from "./mascot";
 import { DiaryCalendar } from "./diary-calendar";
 import { useDiary } from "./diary-context";
 import { AiAssistantButton, AiAssistantSheet } from "./ai-assistant-sheet";
-import { TodayGreetingCard } from "@/components/today/today-greeting-card";
-import { RefSectionHeader, RefTipCard, RefQuickCard, RefEventTile, RefChip } from "@/components/surface/ref-ui";
 import { PERIODS, levelInfo, rankName, tagColor, type DiaryPeriod } from "./profile-data";
 import { TaskRowV24, TaskRowDone } from "./diary-task-card";
 import { DiarySectionHeader } from "./diary-planner-header";
@@ -41,11 +40,9 @@ function checklistProgress(raw?: string) {
 
 type DiarySectionProps = {
   mode?: "profile" | "today";
-  userName?: string;
-  username?: string;
 };
 
-export function DiarySection({ mode = "profile", userName, username }: DiarySectionProps) {
+export function DiarySection({ mode = "profile" }: DiarySectionProps) {
   const {
     xp, period, setPeriod, tasks, toggleTask, diaryView, setDiaryView,
     reorderTasks, periodFrames, effectivePlannerDayKey, plannerDay, plannerIsToday,
@@ -66,13 +63,11 @@ export function DiarySection({ mode = "profile", userName, username }: DiarySect
   const dayLabel = formatPlannerDayLabel(plannerDay);
 
   function handleToggle(id: string) {
-    const task = [...list, ...plannerTasks, ...daySplit.done].find((t) => t.id === id);
-    if (!task) return;
-    if (!task.done) {
-      const xpPeriod = isTodayPage && period === "today" ? period : period;
-      setXpPop({ id, amount: PERIODS[xpPeriod].xp });
-      setTimeout(() => setXpPop(null), 1000);
-    }
+    const task = [...list, ...plannerTasks].find((t) => t.id === id);
+    if (!task || task.done) return;
+    const xpPeriod = isTodayPage && period === "today" ? period : period;
+    setXpPop({ id, amount: PERIODS[xpPeriod].xp });
+    setTimeout(() => setXpPop(null), 1000);
     toggleTask(id);
   }
 
@@ -92,80 +87,63 @@ export function DiarySection({ mode = "profile", userName, username }: DiarySect
     const pending = daySplit.priority.length + daySplit.timed.length + daySplit.regular.length;
     if (pending === 0) {
       return plannerIsToday
-        ? "Добавь дело кнопкой «+» — начни с простого действия."
+        ? "Добавь дело кнопкой «Создать» — начни с простого действия."
         : `На ${dayLabel} дел пока нет.`;
     }
     if (plannerIsToday && daySplit.priority.length > 0) {
-      const n = daySplit.priority.length;
-      return `Сегодня в приоритете ${n} ${n === 1 ? "дело" : n < 5 ? "дела" : "дел"}. Дела с точным временем живут ниже, в блоке «Сегодня ещё».`;
+      return `Сегодня в приоритете ${daySplit.priority.length} дел.`;
     }
     return `${pending} дел на ${dayLabel}.`;
   })();
 
-  function formatTaskTime(iso?: string) {
-    if (!iso) return null;
-    return new Date(iso).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
-  }
-
-  const profileBase = username ? `/profile/${username}` : "/login";
-
   function renderDaySections() {
     return (
-      <div>
-        {isTodayPage && plannerIsToday && (
-          <TodayGreetingCard xp={xp} name={userName} />
-        )}
+      <div className="space-y-4">
+        <p className="text-sm text-muted-foreground px-1">{hint}</p>
 
-        <RefTipCard>{hint}</RefTipCard>
-
-        <RefSectionHeader title="Приоритет" emoji="🎯" action="Все задачи ›" />
-
+        <DiarySectionHeader title="Приоритет" />
         {daySplit.priority.length === 0 ? (
-          <p className="text-[13px] ref-body px-1 pb-2">Нет приоритетных дел.</p>
+          <p className="text-sm text-muted-foreground px-1">Нет приоритетных дел.</p>
         ) : (
-          daySplit.priority.map((task, i) => (
-            <TaskRowV24 key={task.id} task={task} index={i} period="today" xpPopId={xpPop?.id ?? null} onToggle={handleToggle} />
-          ))
-        )}
-
-        {isTodayPage && username && (
-          <div className="grid grid-cols-2 gap-2 mt-[17px]">
-            <RefQuickCard emoji="📅" title="Календарь" subtitle="даты, повторы" href="/today?view=calendar" />
-            <RefQuickCard emoji="🎬" title="Медиалист" subtitle="фильмы, книги, игры" href={`${profileBase}?tab=media`} />
-            <RefQuickCard emoji="🎁" title="Вишлист" subtitle="подарки для друзей" href={`${profileBase}?tab=wishlists`} />
-            <RefQuickCard emoji="🤝" title="Спор" subtitle="соревнование с друзьями" href="/friends?view=duels" />
-            <RefQuickCard emoji="🧺" title="Вместе" subtitle="общий список дел" href="/friends?view=together" />
+          <div className="space-y-2">
+            {daySplit.priority.map((task, i) => (
+              <TaskRowV24 key={task.id} task={task} index={i} period="today" xpPopId={xpPop?.id ?? null} onToggle={handleToggle} />
+            ))}
           </div>
         )}
 
-        {(daySplit.timed.length > 0 || daySplit.regular.length > 0) && (
+        {daySplit.timed.length > 0 && (
           <>
-            <RefSectionHeader title="Сегодня ещё" emoji="🕒" />
-            {daySplit.timed.map((task) => (
-              <RefEventTile
-                key={task.id}
-                leading={task.askProof ? "📸" : "⏰"}
-                title={task.text}
-                subtitle={[task.note, task.tag ? `#${task.tag}` : null].filter(Boolean).join(" · ") || "Запланировано на сегодня"}
-                trailing={<RefChip label={formatTaskTime(task.scheduledAt ?? task.reminderAt ?? task.dueDate) ?? "сегодня"} tone="green" />}
-              />
-            ))}
-            {daySplit.regular.map((task, i) => (
-              <TaskRowV24 key={task.id} task={task} index={i} period="today" xpPopId={xpPop?.id ?? null} onToggle={handleToggle} showIndex={false} />
-            ))}
+            <DiarySectionHeader title="Сегодня ещё" />
+            <div className="space-y-2">
+              {daySplit.timed.map((task, i) => (
+                <TaskRowV24 key={task.id} task={task} index={i} period="today" xpPopId={xpPop?.id ?? null} onToggle={handleToggle} />
+              ))}
+            </div>
+          </>
+        )}
+
+        {daySplit.regular.length > 0 && (
+          <>
+            <DiarySectionHeader title="Задачи" />
+            <div className="space-y-2">
+              {daySplit.regular.map((task, i) => (
+                <TaskRowV24 key={task.id} task={task} index={i} period="today" xpPopId={xpPop?.id ?? null} onToggle={handleToggle} />
+              ))}
+            </div>
           </>
         )}
 
         {daySplit.priority.length === 0 && daySplit.timed.length === 0 && daySplit.regular.length === 0 && (
-          <div className="text-center py-14 ref-muted">
+          <div className="text-center py-14 text-muted-foreground">
             <p className="text-4xl mb-3">📝</p>
-            <p className="text-[17px] font-bold text-[var(--ref-ink)]">Пока пусто</p>
+            <p className="font-heading text-lg text-lime/80">Пока пусто</p>
           </div>
         )}
 
         {daySplit.done.length > 0 && (
-          <div className="pt-3">
-            <p className="text-[12px] font-bold ref-muted px-1 mb-2">Выполнено · {daySplit.done.length}</p>
+          <div className="space-y-2 pt-2">
+            <p className="text-xs font-bold text-muted-foreground px-1">Выполнено · {daySplit.done.length}</p>
             {daySplit.done.map((task) => (
               <TaskRowDone key={task.id} task={task} onToggle={handleToggle} />
             ))}
@@ -304,8 +282,9 @@ export function DiarySection({ mode = "profile", userName, username }: DiarySect
       <AiAssistantSheet open={aiOpen} onClose={() => setAiOpen(false)} />
 
       {!isTodayPage && (
-        <div className="relative overflow-hidden rounded-[20px] p-4 text-white border border-white/[0.08]"
-          style={{ background: "linear-gradient(120deg, rgba(200,255,87,0.12), rgba(17,17,22,0.98))" }}>
+        <div className="relative overflow-hidden rounded-[20px] p-4 text-white"
+          style={{ background: "linear-gradient(120deg, #1a1528, #2d2248)" }}>
+          <Mascot className="absolute right-2 bottom-0 w-[88px] h-[88px] opacity-90" />
           <p className="text-xs font-bold opacity-80">Уровень</p>
           <p className="font-heading text-[38px] leading-none flex items-baseline gap-2">
             {li.level}
