@@ -8,6 +8,7 @@ import {
 import { buildNearbyItems } from "@/lib/nearby-data";
 import type { SessionUser } from "@/lib/auth";
 import { normalizePostImages } from "@/lib/media-url";
+import { resolveContentCities } from "@/lib/feed-scope";
 
 const postSelect = {
   id: true,
@@ -43,6 +44,7 @@ export async function getNearbyPayload(
   options: NearbyOptions = {},
 ) {
   const resolvedCity = options.city ?? session?.city ?? "Москва";
+  const contentCities = resolveContentCities(resolvedCity);
   const origin = resolveOrigin(session, resolvedCity, {
     lat: options.lat,
     lng: options.lng,
@@ -53,17 +55,20 @@ export async function getNearbyPayload(
 
   const postWhere = district
     ? {
-        city: resolvedCity,
         hiddenFromFeed: false,
         OR: [
-          { district },
+          { city: { in: contentCities }, district },
           { tags: { contains: "sponsored" } },
           { featuredInFeed: true },
         ],
       }
     : {
-        city: resolvedCity,
         hiddenFromFeed: false,
+        OR: [
+          { city: { in: contentCities } },
+          { tags: { contains: "sponsored" } },
+          { featuredInFeed: true },
+        ],
       };
 
   const [postsRaw, sponsoredPosts, localChallenges, globalChallenges, events] = await Promise.all([
@@ -75,9 +80,12 @@ export async function getNearbyPayload(
     }),
     db.post.findMany({
       where: {
-        city: resolvedCity,
         hiddenFromFeed: false,
-        OR: [{ tags: { contains: "sponsored" } }, { featuredInFeed: true }],
+        OR: [
+          { tags: { contains: "sponsored" } },
+          { featuredInFeed: true },
+          { city: { in: contentCities } },
+        ],
       },
       select: postSelect,
       orderBy: [{ featuredBoost: "desc" }, { createdAt: "desc" }],
@@ -86,7 +94,11 @@ export async function getNearbyPayload(
     db.challenge.findMany({
       where: {
         isGlobal: false,
-        post: { city: resolvedCity, ...(district ? { district } : {}) },
+        OR: [
+          { post: { city: { in: contentCities }, ...(district ? { district } : {}) } },
+          { post: { tags: { contains: "sponsored" } } },
+          { post: { featuredInFeed: true } },
+        ],
       },
       include: {
         post: { select: { id: true, title: true, content: true, lat: true, lng: true, district: true } },
@@ -108,9 +120,10 @@ export async function getNearbyPayload(
     }),
     db.event.findMany({
       where: {
-        city: resolvedCity,
         startAt: { gte: new Date() },
-        ...(district ? { district } : {}),
+        OR: [
+          { city: { in: contentCities }, ...(district ? { district } : {}) },
+        ],
       },
       include: {
         _count: { select: { attendees: true } },

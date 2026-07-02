@@ -20,6 +20,8 @@ type CreateTaskBody = {
   dueDate?: string;
   reminderAt?: string;
   checklist?: string[] | string;
+  priority?: boolean;
+  askProof?: boolean;
 };
 
 export async function POST(request: Request) {
@@ -49,6 +51,8 @@ export async function POST(request: Request) {
       dueDate: body.dueDate,
       reminderAt: body.reminderAt,
       checklist,
+      priority: body.priority,
+      askProof: body.askProof,
     });
 
     return jsonOk({ tasks: created }, 201);

@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { parseTags } from "@/lib/geo";
 import {
-  toggleLikeAction, toggleGoingAction, repostAction, joinChallengeAction,
+  toggleLikeAction, toggleGoingAction, repostAction, joinChallengeAction, leaveChallengeAction,
 } from "@/lib/actions";
 import { copyPostToDiaryAction } from "@/lib/diary-actions";
 import { toast } from "sonner";
@@ -75,6 +75,8 @@ export function PostCard({ post, index = 0, showAddToDiary = false }: { post: Po
   const [likePop, setLikePop] = useState(false);
   const [going, setGoing] = useState((post.going?.length ?? 0) > 0);
   const [goingCount, setGoingCount] = useState(post._count.going);
+  const [challengeJoined, setChallengeJoined] = useState((post.challenge?.participants?.length ?? 0) > 0);
+  const [joinBusy, setJoinBusy] = useState(false);
   const tags = parseTags(post.tags ?? "");
   const isSponsored = tags.includes("sponsored") || post.featuredInFeed;
   const images = (post.images ?? "").split(",").map((s) => s.trim()).filter(Boolean);
@@ -88,6 +90,27 @@ export function PostCard({ post, index = 0, showAddToDiary = false }: { post: Po
       setTimeout(() => setLikePop(false), 400);
     }
     await toggleLikeAction(post.id);
+  }
+
+  async function handleChallengeJoin() {
+    if (!post.challenge || joinBusy) return;
+    setJoinBusy(true);
+    const next = !challengeJoined;
+    setChallengeJoined(next);
+    try {
+      if (next) {
+        await joinChallengeAction(post.challenge.id);
+        toast.success("Ты в челлендже");
+      } else {
+        await leaveChallengeAction(post.challenge.id);
+        toast.message("Участие отменено");
+      }
+    } catch {
+      setChallengeJoined(!next);
+      toast.error("Не удалось обновить участие");
+    } finally {
+      setJoinBusy(false);
+    }
   }
 
   async function handleGoing() {
@@ -217,14 +240,19 @@ export function PostCard({ post, index = 0, showAddToDiary = false }: { post: Po
                 className="h-full bg-gradient-to-r from-lime to-[#9AFF00] rounded-full"
               />
             </div>
-            <form action={joinChallengeAction.bind(null, post.challenge.id)}>
-              <button
-                type="submit"
-                className="btn-action btn-action-heat py-2 px-4 text-xs w-full"
-              >
-                Принять челлендж
-              </button>
-            </form>
+            <button
+              type="button"
+              disabled={joinBusy}
+              onClick={handleChallengeJoin}
+              className={cn(
+                "btn-action py-2 px-4 text-xs w-full transition-colors",
+                challengeJoined
+                  ? "border border-white/15 bg-white/[0.04] text-foreground hover:bg-white/[0.08]"
+                  : "btn-action-heat",
+              )}
+            >
+              {joinBusy ? "…" : challengeJoined ? "Отменить участие" : "Принять челлендж"}
+            </button>
           </div>
         )}
 

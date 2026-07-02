@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { Mascot } from "./mascot";
 import { DiaryCalendar } from "./diary-calendar";
 import { useDiary } from "./diary-context";
+import { AiAssistantButton, AiAssistantSheet } from "./ai-assistant-sheet";
 import { PERIODS, levelInfo, rankName, tagColor, type DiaryPeriod } from "./profile-data";
 
 const VIS_LABELS = { private: "🔒", friends: "👥", all: "🌍" } as const;
@@ -33,13 +34,16 @@ function checklistProgress(raw?: string) {
 }
 
 export function DiarySection() {
-  const { xp, period, setPeriod, tasks, toggleTask, diaryView, setDiaryView, reorderTasks } = useDiary();
+  const { xp, period, setPeriod, tasks, toggleTask, diaryView, setDiaryView, reorderTasks, periodFrames, diaryDay } = useDiary();
   const [xpPop, setXpPop] = useState<{ id: string; amount: number } | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
+  const [aiOpen, setAiOpen] = useState(false);
 
   const li = levelInfo(xp);
-  const list = tasks[period];
-  const allDone = list.length > 0 && list.every((t) => t.done);
+  const allList = tasks[period];
+  const list = allList.filter((t) => !t.done);
+  const doneList = allList.filter((t) => t.done);
+  const allDone = list.length === 0 && doneList.length > 0;
 
   function handleToggle(id: string) {
     const task = list.find((t) => t.id === id);
@@ -63,6 +67,7 @@ export function DiarySection() {
 
   return (
     <div className="space-y-4">
+      <AiAssistantSheet open={aiOpen} onClose={() => setAiOpen(false)} />
       <div className="relative overflow-hidden rounded-[20px] p-4 text-white"
         style={{ background: "linear-gradient(120deg, #1a1528, #2d2248)" }}>
         <Mascot className="absolute right-2 bottom-0 w-[88px] h-[88px] opacity-90" />
@@ -81,7 +86,12 @@ export function DiarySection() {
           />
         </div>
         <p className="text-[11px] opacity-75 mt-2">{li.into} / {li.need} XP · до уровня {li.level + 1}</p>
+        {periodFrames.today && (
+          <p className="text-[11px] opacity-70 mt-1">Сегодня · {periodFrames.today}</p>
+        )}
       </div>
+
+      {diaryView === "list" && <AiAssistantButton onClick={() => setAiOpen(true)} />}
 
       <div className="flex gap-2">
         {(["list", "calendar"] as const).map((v) => (
@@ -113,15 +123,22 @@ export function DiarySection() {
                   type="button"
                   onClick={() => setPeriod(key)}
                   className={cn(
-                    "shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-[14px] text-[13px] font-bold border transition-colors cursor-pointer",
+                    "shrink-0 flex flex-col items-start gap-0.5 px-3.5 py-2 rounded-[14px] text-left border transition-colors cursor-pointer min-w-[92px]",
                     on ? "text-lime-foreground border-transparent" : "bg-card border-white/[0.07] text-muted-foreground",
                   )}
                   style={on ? { background: PERIODS[key].color, color: key === "today" || key === "tomorrow" ? "#0A0A0F" : "#fff" } : undefined}
                 >
-                  {PERIODS[key].label}
-                  <span className={cn("text-[11px] min-w-[18px] h-[18px] px-1 rounded-full grid place-items-center font-extrabold", on ? "bg-black/20" : "bg-white/[0.06]")}>
-                    {cnt}
+                  <span className="flex items-center gap-2 text-[13px] font-bold">
+                    {PERIODS[key].label}
+                    <span className={cn("text-[11px] min-w-[18px] h-[18px] px-1 rounded-full grid place-items-center font-extrabold", on ? "bg-black/20" : "bg-white/[0.06]")}>
+                      {cnt}
+                    </span>
                   </span>
+                  {periodFrames[key] && (
+                    <span className={cn("text-[10px] font-semibold leading-tight", on ? "opacity-80" : "opacity-60")}>
+                      {periodFrames[key]}
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -197,6 +214,20 @@ export function DiarySection() {
                   </motion.div>
                 );
               })}
+            </div>
+          )}
+
+          {doneList.length > 0 && (
+            <div className="space-y-2 pt-2">
+              <p className="text-xs font-bold text-muted-foreground px-1">Выполнено · {doneList.length}</p>
+              {doneList.map((task) => (
+                <div key={task.id} className="card-surface flex items-center gap-3 p-3.5 opacity-60">
+                  <span className="w-[27px] h-[27px] rounded-full bg-good border-2 border-good flex items-center justify-center shrink-0">
+                    <Check className="h-3.5 w-3.5 text-white" strokeWidth={3} />
+                  </span>
+                  <p className="font-semibold text-[15px] line-through text-muted-foreground">{task.text}</p>
+                </div>
+              ))}
             </div>
           )}
         </>

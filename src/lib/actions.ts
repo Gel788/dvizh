@@ -236,6 +236,18 @@ export async function joinChallengeAction(challengeId: string) {
   revalidatePath("/");
 }
 
+export async function leaveChallengeAction(challengeId: string) {
+  const session = await getSession();
+  if (!session) redirect("/login");
+
+  await db.challengeParticipant.deleteMany({
+    where: { challengeId, userId: session.id },
+  });
+
+  revalidatePath("/challenges");
+  revalidatePath("/");
+}
+
 export async function submitChallengeReportAction(formData: FormData) {
   const session = await getSession();
   if (!session) redirect("/login");
@@ -582,8 +594,8 @@ export async function getFeedPosts(
       },
       challenge: {
         include: {
-          participants: { select: { id: true } },
-          _count: { select: { reports: true } },
+          participants: session ? { where: { userId: session.id }, select: { id: true } } : false,
+          _count: { select: { reports: true, participants: true } },
         },
       },
       _count: { select: { likes: true, comments: true, going: true, reposts: true } },
@@ -694,9 +706,9 @@ export async function getChallengeLeaderboard(
 
 export async function searchPlatform(q: string, city?: string, viewerId?: string) {
   const term = q.trim();
-  if (term.length < 2) return { users: [], posts: [] };
+  if (term.length < 2) return { users: [], posts: [], challenges: [], events: [], query: term };
 
-  const [users, posts] = await Promise.all([
+  const [users, posts, challenges, events] = await Promise.all([
     db.user.findMany({
       where: {
         OR: [
@@ -735,6 +747,50 @@ export async function searchPlatform(q: string, city?: string, viewerId?: string
         _count: { select: { likes: true, comments: true, going: true, reposts: true } },
       },
     }),
+    db.challenge.findMany({
+      where: {
+        post: {
+          hiddenFromFeed: false,
+          ...(city ? { city } : {}),
+          OR: [
+            { title: { contains: term, mode: "insensitive" } },
+            { content: { contains: term, mode: "insensitive" } },
+            { tags: { contains: term, mode: "insensitive" } },
+          ],
+        },
+      },
+      orderBy: { post: { createdAt: "desc" } },
+      take: 12,
+      include: {
+        post: {
+          select: {
+            id: true,
+            title: true,
+            content: true,
+            city: true,
+            district: true,
+            type: true,
+            author: { select: { id: true, name: true, username: true, avatar: true, verified: true } },
+          },
+        },
+        _count: { select: { participants: true } },
+      },
+    }),
+    db.event.findMany({
+      where: {
+        ...(city ? { city } : {}),
+        OR: [
+          { title: { contains: term, mode: "insensitive" } },
+          { description: { contains: term, mode: "insensitive" } },
+        ],
+      },
+      orderBy: { startAt: "asc" },
+      take: 12,
+      include: {
+        organizer: { select: { id: true, name: true, username: true, avatar: true } },
+        _count: { select: { attendees: true } },
+      },
+    }),
   ]);
 
   if (viewerId && users.length > 0) {
@@ -751,11 +807,13 @@ export async function searchPlatform(q: string, city?: string, viewerId?: string
         friendshipId: social[u.id]?.friendshipId ?? null,
       })),
       posts,
+      challenges,
+      events,
       query: term,
     };
   }
 
-  return { users, posts, query: term };
+  return { users, posts, challenges, events, query: term };
 }
 
 export async function getStats() {

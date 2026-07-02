@@ -8,8 +8,8 @@ const postInclude = (userId?: string) => ({
   },
   challenge: {
     include: {
-      participants: { select: { id: true } },
-      _count: { select: { reports: true } },
+      participants: userId ? { where: { userId }, select: { id: true } } : false,
+      _count: { select: { reports: true, participants: true } },
     },
   },
   _count: { select: { likes: true, comments: true, going: true, reposts: true } },
@@ -223,7 +223,16 @@ export async function joinChallenge(challengeId: string, session: SessionUser) {
     create: { challengeId, userId: session.id },
     update: {},
   });
-  return { joined: true };
+  const participantsCount = await db.challengeParticipant.count({ where: { challengeId } });
+  return { joined: true, participantsCount };
+}
+
+export async function leaveChallenge(challengeId: string, session: SessionUser) {
+  await db.challengeParticipant.deleteMany({
+    where: { challengeId, userId: session.id },
+  });
+  const participantsCount = await db.challengeParticipant.count({ where: { challengeId } });
+  return { joined: false, participantsCount };
 }
 
 export async function joinEvent(eventId: string, session: SessionUser) {

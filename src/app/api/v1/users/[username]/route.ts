@@ -10,6 +10,7 @@ const userSelect = {
   name: true,
   username: true,
   avatar: true,
+  coverImage: true,
   bio: true,
   city: true,
   district: true,

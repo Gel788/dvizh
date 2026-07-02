@@ -134,7 +134,19 @@ function ProfileHeader({
   const daysInApp = user.createdAt
     ? Math.max(1, Math.floor((Date.now() - new Date(user.createdAt).getTime()) / 86400000))
     : 1;
-  const achievementCount = user.badges.length || 34;
+  const stats = isOwn
+    ? [
+        { v: daysInApp, l: "дней в ДВИЖ" },
+        { v: user._count.following, l: "друга" },
+        { v: user._count.followers, l: "подписчика" },
+        { v: user.badges.length || 0, l: "из 500 ачивок" },
+      ]
+    : [
+        { v: daysInApp, l: "дней в ДВИЖ" },
+        { v: user._count.following, l: "друга" },
+        { v: user._count.followers, l: "подписчика" },
+        { v: user._count.posts, l: "публикаций" },
+      ];
 
   return (
     <div className="space-y-5">
@@ -186,12 +198,7 @@ function ProfileHeader({
       </div>
 
       <div className="grid grid-cols-4 gap-2">
-        {[
-          { v: daysInApp, l: "дней в ДВИЖ" },
-          { v: user._count.following, l: "друга" },
-          { v: user._count.followers, l: "подписчика" },
-          { v: achievementCount, l: "из 500 ачивок" },
-        ].map((s) => (
+        {stats.map((s) => (
           <div key={s.l} className="card-surface p-3 text-center">
             <b className="font-heading text-lg text-lime block leading-none">{s.v}</b>
             <small className="text-[10px] text-muted-foreground leading-tight block mt-1">{s.l}</small>

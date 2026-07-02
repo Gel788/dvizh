@@ -10,6 +10,22 @@ import { ACHIEVEMENT_DEFS, PERIOD_XP, effectiveLevel, streakXpMultiplier } from 
 import { THEMES } from "@/lib/achievements-generator";
 import { getSharedGoalsForUser } from "@/lib/social-actions";
 import { normalizePostImages } from "@/lib/media-url";
+import { resolveContentCities } from "@/lib/feed-scope";
+import {
+  canViewerSeeActivity,
+  diaryActivityVisibility,
+  loadPrivacyByUserIds,
+  sanitizeActivityForViewer,
+} from "@/lib/privacy-access";
+import {
+  DEFAULT_TZ_OFFSET_MINUTES,
+  addUserLocalDays,
+  diaryPeriodFrames,
+  parseTzOffset,
+  startOfUserDay,
+  userDayKey,
+  userLocalParts,
+} from "@/lib/diary-time";
 
 const PERIOD_MAP: Record<string, DiaryPeriod> = {
   today: "TODAY", tomorrow: "TOMORROW", week: "WEEK", month: "MONTH", year: "YEAR", dream: "DREAM",
@@ -34,11 +50,16 @@ export type DiaryTaskDto = {
   checklistItems?: ChecklistItem[];
   reminderAt?: string;
   hashtagColor?: string;
+  priority?: boolean;
+  askProof?: boolean;
 };
 
 export type DiaryBundle = {
   xp: number;
   level: number;
+  diaryDay: string;
+  tzOffsetMinutes: number;
+  periodFrames: Record<string, string>;
   tasks: Record<string, DiaryTaskDto[]>;
   achievements: { slug: string; name: string; description: string; icon: string; color: string; unlocked: boolean; progress: number; threshold: number; category: string }[];
   duels: Awaited<ReturnType<typeof getDuelsForUser>>;
@@ -85,6 +106,41 @@ function parseChecklistJson(raw: string): ChecklistItem[] {
   }
 }
 
+/** Смена календарного дня: завтра → сегодня, сброс рекуррентных, скрытие вчерашних done. */
+async function rolloverDiaryTasksForUser(
+  userId: string,
+  now = new Date(),
+  tzOffsetMinutes = DEFAULT_TZ_OFFSET_MINUTES,
+) {
+  const todayStart = startOfUserDay(now, tzOffsetMinutes);
+
+  await db.diaryTask.updateMany({
+    where: { userId, period: "TOMORROW", done: false },
+    data: { period: "TODAY" },
+  });
+
+  const recurring = await db.diaryTask.findMany({
+    where: {
+      userId,
+      isRecurring: true,
+      recurrence: "DAILY",
+      done: true,
+      doneAt: { lt: todayStart },
+    },
+  });
+  for (const task of recurring) {
+    const items = parseChecklistJson(task.checklistJson).map((i) => ({ ...i, done: false }));
+    await db.diaryTask.update({
+      where: { id: task.id },
+      data: {
+        done: false,
+        doneAt: null,
+        checklistJson: JSON.stringify(items),
+      },
+    });
+  }
+}
+
 function privacyToClient(p: Awaited<ReturnType<typeof getPrivacyForUser>>) {
   return {
     defaultDiary: toClientVis(p.defaultDiary),
@@ -111,6 +167,7 @@ async function checkAchievements(userId: string, profile: { tasksCompleted: numb
   const defs = await db.achievementDef.findMany();
   const existing = await db.userAchievement.findMany({ where: { userId } });
   const unlockedSlugs: string[] = [];
+  const achVisibility = await diaryActivityVisibility(userId);
 
   const [friendCount, challengeJoins, challengeCreates, duelCount, wishlistCount, mediaReviews, maxStreak, doneTasks] = await Promise.all([
     db.friendship.count({ where: { status: "ACCEPTED", OR: [{ requesterId: userId }, { addresseeId: userId }] } }),
@@ -163,23 +220,32 @@ async function checkAchievements(userId: string, profile: { tasksCompleted: numb
 
     if (hit && !row?.unlockedAt) {
       unlockedSlugs.push(def.slug);
-      await db.activity.create({
-        data: {
-          userId,
-          type: "ACHIEVEMENT_UNLOCKED",
-          visibility: "PUBLIC",
-          title: `Ачивка: ${def.name}`,
-          body: def.description,
-        },
-      });
+      if (achVisibility !== "PRIVATE") {
+        await db.activity.create({
+          data: {
+            userId,
+            type: "ACHIEVEMENT_UNLOCKED",
+            visibility: achVisibility,
+            title: `Ачивка: ${def.name}`,
+            body: def.description,
+          },
+        });
+      }
     }
   }
   return unlockedSlugs;
 }
 
-export async function getDiaryBundle(userId: string): Promise<DiaryBundle> {
+export async function getDiaryBundle(
+  userId: string,
+  tzOffsetMinutes = DEFAULT_TZ_OFFSET_MINUTES,
+): Promise<DiaryBundle> {
   const profile = await ensureProfile(userId);
   const level = effectiveLevel(profile.xp, profile.level, profile.levelUnlockedAt);
+  const now = new Date();
+  const todayStart = startOfUserDay(now, tzOffsetMinutes);
+
+  await rolloverDiaryTasksForUser(userId, now, tzOffsetMinutes);
 
   const tasks = await db.diaryTask.findMany({
     where: { userId },
@@ -190,6 +256,9 @@ export async function getDiaryBundle(userId: string): Promise<DiaryBundle> {
     today: [], tomorrow: [], week: [], month: [], year: [], dream: [],
   };
   for (const t of tasks) {
+    if (t.period === "TODAY" && t.done && t.doneAt && t.doneAt < todayStart) {
+      continue;
+    }
     const key = toClientPeriod(t.period);
     if (!grouped[key]) grouped[key] = [];
     grouped[key].push({
@@ -207,6 +276,8 @@ export async function getDiaryBundle(userId: string): Promise<DiaryBundle> {
       checklistItems: parseChecklistJson(t.checklistJson),
       reminderAt: t.reminderAt?.toISOString(),
       hashtagColor: t.hashtagColor ?? undefined,
+      priority: t.priority || undefined,
+      askProof: t.askProof || undefined,
     });
   }
 
@@ -227,7 +298,7 @@ export async function getDiaryBundle(userId: string): Promise<DiaryBundle> {
     };
   });
 
-  const now = new Date();
+  const local = userLocalParts(now, tzOffsetMinutes);
   const [duels, sharedGoals, wishlists, media, privacyRow, districtFollows] = await Promise.all([
     getDuelsForUser(userId),
     getSharedGoalsForUser(userId),
@@ -241,6 +312,9 @@ export async function getDiaryBundle(userId: string): Promise<DiaryBundle> {
   return {
     xp: profile.xp,
     level,
+    diaryDay: userDayKey(now, tzOffsetMinutes),
+    tzOffsetMinutes,
+    periodFrames: diaryPeriodFrames(now, tzOffsetMinutes),
     tasks: grouped,
     achievements,
     duels,
@@ -249,7 +323,7 @@ export async function getDiaryBundle(userId: string): Promise<DiaryBundle> {
     media,
     privacy,
     districtFollows,
-    calendar: { year: now.getFullYear(), month: now.getMonth(), days: {} },
+    calendar: { year: local.year, month: local.month, days: {} },
     health: {
       connected: profile.healthConnected,
       steps: profile.healthSteps,
@@ -349,6 +423,8 @@ export async function createDiaryTaskForUser(
     checklist?: string[];
     multiLine?: boolean;
     hashtagColor?: string;
+    priority?: boolean;
+    askProof?: boolean;
   },
 ) {
   const lines = input.multiLine
@@ -381,6 +457,8 @@ export async function createDiaryTaskForUser(
         isRecurring: input.isRecurring ?? false,
         recurrence: input.isRecurring ? recurrenceMap[input.recurrence ?? "daily"] : null,
         trackStreak: input.trackStreak ?? false,
+        priority: input.priority ?? false,
+        askProof: input.askProof ?? false,
         reminderAt: input.reminderAt ? new Date(input.reminderAt) : null,
         checklistJson: JSON.stringify(
           (input.checklist ?? []).map((text) => ({ text, done: false })),
@@ -399,6 +477,8 @@ export async function createDiaryTaskForUser(
       checklist: row.checklistJson !== "[]" ? row.checklistJson : undefined,
       reminderAt: row.reminderAt?.toISOString(),
       hashtagColor: row.hashtagColor ?? undefined,
+      priority: row.priority || undefined,
+      askProof: row.askProof || undefined,
     });
   }
 
@@ -429,6 +509,71 @@ export async function createDiaryTaskForUser(
   }
 
   return created;
+}
+
+export async function updateDiaryTaskForUser(
+  userId: string,
+  taskId: string,
+  input: {
+    text?: string;
+    note?: string;
+    period?: string;
+    visibility?: string;
+    hashtag?: string;
+    hashtagColor?: string;
+    trackStreak?: boolean;
+    isRecurring?: boolean;
+    recurrence?: string;
+    dueDate?: string | null;
+    reminderAt?: string | null;
+    priority?: boolean;
+    askProof?: boolean;
+  },
+) {
+  const task = await db.diaryTask.findFirst({ where: { id: taskId, userId } });
+  if (!task) return null;
+
+  const recurrenceMap: Record<string, "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY"> = {
+    daily: "DAILY", weekly: "WEEKLY", monthly: "MONTHLY", yearly: "YEARLY",
+  };
+
+  const row = await db.diaryTask.update({
+    where: { id: taskId },
+    data: {
+      ...(input.text != null ? { title: input.text.trim() } : {}),
+      ...(input.note !== undefined ? { note: input.note?.trim() || null } : {}),
+      ...(input.period != null ? { period: PERIOD_MAP[input.period] ?? task.period } : {}),
+      ...(input.visibility != null ? { visibility: VIS_MAP[input.visibility] ?? task.visibility } : {}),
+      ...(input.hashtag !== undefined ? { hashtag: input.hashtag?.trim() || null } : {}),
+      ...(input.hashtagColor !== undefined ? { hashtagColor: input.hashtagColor?.trim() || null } : {}),
+      ...(input.trackStreak !== undefined ? { trackStreak: input.trackStreak } : {}),
+      ...(input.priority !== undefined ? { priority: input.priority } : {}),
+      ...(input.askProof !== undefined ? { askProof: input.askProof } : {}),
+      ...(input.dueDate !== undefined ? { dueDate: input.dueDate ? new Date(input.dueDate) : null } : {}),
+      ...(input.reminderAt !== undefined ? { reminderAt: input.reminderAt ? new Date(input.reminderAt) : null } : {}),
+      ...(input.isRecurring !== undefined
+        ? {
+            isRecurring: input.isRecurring,
+            recurrence: input.isRecurring ? recurrenceMap[input.recurrence ?? "daily"] ?? "DAILY" : null,
+          }
+        : {}),
+    },
+  });
+
+  return {
+    id: row.id,
+    text: row.title,
+    note: row.note ?? undefined,
+    tag: row.hashtag ?? undefined,
+    visibility: toClientVis(row.visibility),
+    done: row.done,
+    dueDate: row.dueDate?.toISOString(),
+    isRecurring: row.isRecurring,
+    reminderAt: row.reminderAt?.toISOString(),
+    hashtagColor: row.hashtagColor ?? undefined,
+    priority: row.priority || undefined,
+    askProof: row.askProof || undefined,
+  } satisfies DiaryTaskDto;
 }
 
 export async function createDiaryTaskAction(input: {
@@ -477,30 +622,34 @@ export async function reorderTasksAction(period: string, orderedIds: string[]) {
   revalidatePath(`/profile/${session.username}`);
 }
 
-export async function getCalendarData(userId: string, year?: number, month?: number) {
+export async function getCalendarData(
+  userId: string,
+  year?: number,
+  month?: number,
+  tzOffsetMinutes = DEFAULT_TZ_OFFSET_MINUTES,
+) {
   const now = new Date();
-  const y = year ?? now.getFullYear();
-  const m = month ?? now.getMonth();
-  const start = new Date(y, m, 1);
-  const end = new Date(y, m + 1, 0, 23, 59, 59);
+  const local = userLocalParts(now, tzOffsetMinutes);
+  const y = year ?? local.year;
+  const m = month ?? local.month;
+  const start = new Date(Date.UTC(y, m, 1) - tzOffsetMinutes * 60_000);
+  const end = new Date(Date.UTC(y, m + 1, 0, 23, 59, 59) - tzOffsetMinutes * 60_000);
 
   const tasks = await db.diaryTask.findMany({
     where: { userId },
     orderBy: [{ dueDate: "asc" }, { sortOrder: "asc" }, { createdAt: "asc" }],
   });
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
+  const todayKey = userDayKey(now, tzOffsetMinutes);
+  const tomorrowKey = userDayKey(addUserLocalDays(now, tzOffsetMinutes, 1), tzOffsetMinutes);
 
   function resolveTaskDate(task: (typeof tasks)[0]): string {
-    if (task.doneAt) return task.doneAt.toISOString().slice(0, 10);
+    if (task.doneAt) return userDayKey(task.doneAt, tzOffsetMinutes);
     if (task.dueDate) return task.dueDate.toISOString().slice(0, 10);
-    if (task.period === "TODAY") return today.toISOString().slice(0, 10);
-    if (task.period === "TOMORROW") return tomorrow.toISOString().slice(0, 10);
-    if (task.period === "WEEK" || task.period === "MONTH" || task.period === "YEAR") return today.toISOString().slice(0, 10);
-    return task.createdAt.toISOString().slice(0, 10);
+    if (task.period === "TODAY") return todayKey;
+    if (task.period === "TOMORROW") return tomorrowKey;
+    if (task.period === "WEEK" || task.period === "MONTH" || task.period === "YEAR") return todayKey;
+    return userDayKey(task.createdAt, tzOffsetMinutes);
   }
 
   const days: Record<string, { tasks: typeof tasks; hasDone: boolean; tags: string[]; birthdays: string[] }> = {};
@@ -528,10 +677,10 @@ export async function getCalendarData(userId: string, year?: number, month?: num
   return { year: y, month: m, days };
 }
 
-export async function fetchCalendarAction(year: number, month: number) {
+export async function fetchCalendarAction(year: number, month: number, tzOffset?: number) {
   const session = await getSession();
   if (!session) return null;
-  return getCalendarData(session.id, year, month);
+  return getCalendarData(session.id, year, month, tzOffset ?? DEFAULT_TZ_OFFSET_MINUTES);
 }
 
 export async function createChallengeFromTaskAction(taskId: string, input: {
@@ -671,7 +820,7 @@ export async function getWishlistsForUser(userId: string) {
 export async function getMediaForUser(userId: string) {
   return db.mediaItem.findMany({
     where: { userId },
-    orderBy: { createdAt: "desc" },
+    orderBy: [{ pinned: "desc" }, { createdAt: "desc" }],
   });
 }
 
@@ -839,19 +988,20 @@ export async function getFriendsFeed(
         ? (["CHALLENGE_CREATED", "TASK_COMPLETED", "EVENT_ATTENDED"] as const)
         : null;
 
-  const [activities, posts] = await Promise.all([
+  const friendIdSet = new Set(friendIds);
+
+  const [activitiesRaw, posts] = await Promise.all([
     authorIds.length
       ? db.activity.findMany({
           where: {
             userId: { in: authorIds },
-            visibility: { in: ["FRIENDS", "PUBLIC"] },
             ...(activityTypes ? { type: { in: [...activityTypes] } } : {}),
           },
           include: {
             user: { select: { id: true, name: true, username: true, avatar: true, verified: true } },
           },
           orderBy: { createdAt: "desc" },
-          take: 40,
+          take: 120,
         })
       : [],
     authorIds.length
@@ -882,15 +1032,38 @@ export async function getFriendsFeed(
       : [],
   ]);
 
+  const privacyMap = await loadPrivacyByUserIds(activitiesRaw.map((a) => a.userId));
+  const activities = activitiesRaw
+    .filter((a) =>
+      canViewerSeeActivity(
+        userId,
+        a.userId,
+        a.visibility,
+        a.type,
+        friendIdSet.has(a.userId),
+        privacyMap.get(a.userId),
+      ),
+    )
+    .slice(0, 40)
+    .map(sanitizeActivityForViewer);
+
   return { activities, posts };
 }
 
 export async function getCuratedFeed(city: string, userId?: string) {
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const cities = resolveContentCities(city);
 
   const [featuredPosts, hotChallenges, recentAchievements, localEvents, businessChallenges, followingChallenges] = await Promise.all([
     db.post.findMany({
-      where: { city, featuredInFeed: true, hiddenFromFeed: false },
+      where: {
+        hiddenFromFeed: false,
+        OR: [
+          { featuredInFeed: true },
+          { tags: { contains: "sponsored" } },
+          { city: { in: cities }, featuredInFeed: true },
+        ],
+      },
       include: {
         author: { select: { id: true, name: true, username: true, avatar: true, verified: true, city: true, district: true } },
         challenge: { include: { _count: { select: { participants: true } } } },
@@ -899,14 +1072,21 @@ export async function getCuratedFeed(city: string, userId?: string) {
         going: userId ? { where: { userId }, select: { id: true } } : false,
       },
       orderBy: [{ featuredBoost: "desc" }, { createdAt: "desc" }],
-      take: 6,
+      take: 8,
     }),
     db.challenge.findMany({
-      where: { post: { city, hiddenFromFeed: false }, participants: { some: {} } },
+      where: {
+        participants: { some: {} },
+        OR: [
+          { post: { city: { in: cities }, hiddenFromFeed: false } },
+          { isGlobal: true, post: { hiddenFromFeed: false } },
+          { post: { tags: { contains: "sponsored" }, hiddenFromFeed: false } },
+        ],
+      },
       include: {
         post: {
           select: {
-            id: true, title: true, content: true, city: true, district: true, type: true, tags: true, createdAt: true,
+            id: true, title: true, content: true, city: true, district: true, type: true, tags: true, createdAt: true, images: true, featuredInFeed: true, contactInfo: true,
             author: { select: { id: true, name: true, username: true, avatar: true, verified: true, city: true, district: true } },
           },
         },
@@ -922,7 +1102,16 @@ export async function getCuratedFeed(city: string, userId?: string) {
       take: 5,
     }),
     db.post.findMany({
-      where: { city, type: "ANNOUNCEMENT", hiddenFromFeed: false, createdAt: { gte: weekAgo } },
+      where: {
+        type: "ANNOUNCEMENT",
+        hiddenFromFeed: false,
+        createdAt: { gte: weekAgo },
+        OR: [
+          { city: { in: cities } },
+          { tags: { contains: "sponsored" } },
+          { featuredInFeed: true },
+        ],
+      },
       include: {
         author: { select: { id: true, name: true, username: true, avatar: true, verified: true, city: true, district: true } },
         _count: { select: { likes: true, comments: true, going: true, reposts: true } },
@@ -933,7 +1122,14 @@ export async function getCuratedFeed(city: string, userId?: string) {
       take: 5,
     }),
     db.challenge.findMany({
-      where: { isBusiness: true, post: { city } },
+      where: {
+        isBusiness: true,
+        OR: [
+          { post: { city: { in: cities } } },
+          { post: { tags: { contains: "sponsored" } } },
+          { post: { featuredInFeed: true } },
+        ],
+      },
       include: {
         post: {
           select: {
@@ -943,7 +1139,7 @@ export async function getCuratedFeed(city: string, userId?: string) {
         },
         _count: { select: { participants: true } },
       },
-      take: 3,
+      take: 5,
     }),
     userId
       ? db.post.findMany({
@@ -1026,8 +1222,8 @@ export async function getCuratedFeed(city: string, userId?: string) {
   mergedItems.sort((a, b) => b.score - a.score);
 
   const [cityUsers, districtUsers, friendActivity, activeDuels, topLevel] = await Promise.all([
-    db.user.count({ where: { city } }),
-    db.user.count({ where: { city, district: { not: null } } }),
+    db.user.count({ where: { city: { in: cities } } }),
+    db.user.count({ where: { city: { in: cities }, district: { not: null } } }),
     userId
       ? db.activity.count({
           where: {

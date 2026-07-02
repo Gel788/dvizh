@@ -1,7 +1,8 @@
-import { db } from "@/lib/db";
+import { sanitizeProfileCity } from "@/lib/feed-scope";
 import { ensureProfile } from "@/lib/diary-actions";
 import { requireSessionFromRequest } from "@/lib/auth";
 import { jsonError, jsonOk, readJson } from "@/lib/api/http";
+import { db } from "@/lib/db";
 
 export async function GET(request: Request) {
   try {
@@ -18,6 +19,7 @@ export async function GET(request: Request) {
           name: true,
           username: true,
           avatar: true,
+          coverImage: true,
           bio: true,
           city: true,
           district: true,
@@ -63,6 +65,7 @@ type PatchBody = {
   lat?: number;
   lng?: number;
   avatar?: string;
+  coverImage?: string;
 };
 
 export async function PATCH(request: Request) {
@@ -76,11 +79,14 @@ export async function PATCH(request: Request) {
       data: {
         ...(body.name != null ? { name: body.name.trim() } : {}),
         ...(body.bio != null ? { bio: body.bio.trim() || null } : {}),
-        ...(body.city != null ? { city: body.city.trim() || session.city } : {}),
+        ...(body.city != null
+          ? { city: sanitizeProfileCity(body.city, session.city) ?? session.city }
+          : {}),
         ...(body.district != null ? { district: body.district.trim() || null } : {}),
         ...(body.lat != null && Number.isFinite(body.lat) ? { lat: body.lat } : {}),
         ...(body.lng != null && Number.isFinite(body.lng) ? { lng: body.lng } : {}),
         ...(body.avatar != null ? { avatar: body.avatar.trim() || null } : {}),
+        ...(body.coverImage != null ? { coverImage: body.coverImage.trim() || null } : {}),
       },
       select: {
         id: true,
@@ -88,6 +94,7 @@ export async function PATCH(request: Request) {
         name: true,
         username: true,
         avatar: true,
+        coverImage: true,
         bio: true,
         city: true,
         district: true,

@@ -108,6 +108,7 @@ model User {
   name        String
   username    String   @unique
   avatar      String?
+  coverImage  String?
   bio         String?
   city        String   @default("Москва")
   district    String?
@@ -149,6 +150,7 @@ model User {
   mediaItems         MediaItem[]
   privacySettings    PrivacySettings?
   userAchievements   UserAchievement[]
+  aiUsage            AiUsage[]
 }
 
 model Follow {
@@ -441,6 +443,8 @@ model DiaryTask {
   recurrence   RecurrenceFreq?
   reminderAt   DateTime?
   trackStreak  Boolean      @default(false)
+  priority     Boolean      @default(false)
+  askProof     Boolean      @default(false)
   checklistJson String      @default("[]")
   streak       Int          @default(0)
   copyCount    Int          @default(0)
@@ -484,7 +488,7 @@ model Activity {
   id         String       @id @default(cuid())
   userId     String
   type       ActivityType
-  visibility Visibility   @default(FRIENDS)
+  visibility Visibility   @default(PRIVATE)
   title      String
   body       String?
   xpGained   Int?
@@ -631,12 +635,15 @@ model MediaItem {
   status     MediaStatus @default(WANT)
   rating     Int?
   review     String?
+  coverUrl   String?
+  pinned     Boolean     @default(false)
   visibility Visibility  @default(PUBLIC)
   createdAt  DateTime    @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, type])
+  @@index([userId, pinned])
 }
 
 model PrivacySettings {
@@ -652,4 +659,15 @@ model PrivacySettings {
   locationPrecision   String     @default("district")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AiUsage {
+  userId    String
+  day       String
+  count     Int      @default(0)
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, day])
 }

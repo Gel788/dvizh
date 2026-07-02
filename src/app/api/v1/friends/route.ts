@@ -44,6 +44,12 @@ export async function GET(request: Request) {
     return jsonOk({ friends });
   }
 
+  if (view === "picker") {
+    const { listFriendsForPicker } = await import("@/lib/api/social-create-service");
+    const friends = await listFriendsForPicker(session.id);
+    return jsonOk({ friends });
+  }
+
   if (view === "duels") {
     const duels = await getDuelsForUser(session.id);
     return jsonOk({ duels });

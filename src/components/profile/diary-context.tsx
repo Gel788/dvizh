@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  createContext, useCallback, useContext, useMemo, useState, type ReactNode,
+  createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode,
 } from "react";
 import { toast } from "sonner";
 import {
@@ -61,8 +61,26 @@ export function DiaryProvider({ initial, children }: { initial: DiaryBundle; chi
   const [diaryView, setDiaryView] = useState<"list" | "calendar">("list");
   const [tasks, setTasks] = useState<TasksState>(() => initial.tasks as TasksState);
   const [calendar, setCalendar] = useState(initial.calendar);
+  const [periodFrames, setPeriodFrames] = useState(initial.periodFrames ?? {});
+  const [diaryDay, setDiaryDay] = useState(initial.diaryDay ?? "");
   const [sheetOpen, setSheetOpen] = useState(false);
   const [achievementQueue, setAchievementQueue] = useState<AchievementPop[]>([]);
+
+  useEffect(() => {
+    const tz = -new Date().getTimezoneOffset();
+    void fetch(`/api/v1/profile/diary?tzOffset=${tz}`, { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { diary?: DiaryBundle } | null) => {
+        const diary = data?.diary;
+        if (!diary?.tasks) return;
+        setTasks(diary.tasks as TasksState);
+        setXp(diary.xp);
+        setLevel(diary.level);
+        setPeriodFrames(diary.periodFrames ?? {});
+        setDiaryDay(diary.diaryDay ?? "");
+      })
+      .catch(() => {});
+  }, []);
 
   const openSheet = useCallback(() => setSheetOpen(true), []);
   const closeSheet = useCallback(() => setSheetOpen(false), []);
@@ -152,7 +170,8 @@ export function DiaryProvider({ initial, children }: { initial: DiaryBundle; chi
   }, []);
 
   const loadCalendar = useCallback(async (year: number, month: number) => {
-    const data = await fetchCalendarAction(year, month);
+    const tz = -new Date().getTimezoneOffset();
+    const data = await fetchCalendarAction(year, month, tz);
     if (data) setCalendar(data);
   }, []);
 
@@ -168,10 +187,12 @@ export function DiaryProvider({ initial, children }: { initial: DiaryBundle; chi
     ...initial,
     calendar,
     xp, level, period, setPeriod, tasks, diaryView, setDiaryView,
+    periodFrames, diaryDay,
     sheetOpen, openSheet, closeSheet, toggleTask, addTask, reorderTasks, loadCalendar,
     achievementQueue, dismissAchievement,
   }), [
     initial, calendar, xp, level, period, tasks, diaryView, sheetOpen,
+    periodFrames, diaryDay,
     openSheet, closeSheet, toggleTask, addTask, reorderTasks, loadCalendar,
     achievementQueue, dismissAchievement,
   ]);

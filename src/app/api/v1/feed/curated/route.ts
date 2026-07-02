@@ -7,7 +7,7 @@ export async function GET(request: Request) {
   const session = await getSessionFromRequest(request);
   const { searchParams } = new URL(request.url);
   const city = searchParams.get("city") ?? session?.city ?? "Москва";
-  const cacheKey = `curated:${city}:${session?.id ?? "anon"}`;
+  const cacheKey = `curated:v2:${city}:${session?.id ?? "anon"}`;
 
   const cached = getCached<Awaited<ReturnType<typeof getCuratedFeed>>>(cacheKey);
   if (cached) return jsonOk(cached);
