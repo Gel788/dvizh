@@ -26,22 +26,19 @@ export function TodayGreetingCard({
     <motion.div
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
-      className="ref-card rounded-[24px] p-4 border-[#dfecc9]"
-      style={{
-        background: "linear-gradient(135deg, #fffdf8 0%, #f0fbdf 100%)",
-      }}
+      className="ref-card flex gap-[13px] rounded-[24px] border-[#dfecc9] p-[13px] mt-4"
+      style={{ background: "linear-gradient(135deg, #fffdf8 0%, #f0fbdf 100%)" }}
     >
-      <div className="space-y-3">
-        <div>
-          <p className="text-[22px] font-extrabold leading-tight text-[var(--ref-ink,#33251f)]">
-            {greeting()}, {who} ☀️
-          </p>
-          <p className="text-[13px] font-medium ref-body mt-2 leading-relaxed max-w-md">
-            {subtitle ?? "Дела с точным временем — в блоке «Сегодня ещё». Закрывай приоритет первым."}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-[13px] font-extrabold text-[var(--ref-ink,#33251f)]">{li.into} XP</span>
+      <div className="ref-hero-avatar" aria-hidden>☀️</div>
+      <div className="flex-1 min-w-0 space-y-2">
+        <p className="text-[22px] font-extrabold leading-[1.08] text-[var(--ref-ink)]">
+          {greeting()}, {who} ☀️
+        </p>
+        <p className="text-[13px] font-medium ref-body leading-[1.35]">
+          {subtitle ?? "Дела с точным временем — в блоке «Сегодня ещё». Закрывай приоритет первым."}
+        </p>
+        <div className="flex items-center gap-2 pt-1">
+          <span className="text-[13px] font-extrabold text-[var(--ref-ink)]">{li.into} XP</span>
           <span className="text-[12px] font-semibold ref-muted">до {li.level + 1} уровня</span>
           <div className="ref-progress-track flex-1">
             <motion.div

@@ -99,7 +99,7 @@ export function MobileCreateFab({ user }: { user: SessionUser | null }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="lg:hidden fixed bottom-[72px] right-5 z-40 h-14 w-14 rounded-[20px] bg-lime text-lime-foreground shadow-lg flex items-center justify-center cursor-pointer"
+        className="mobile-create-fab lg:hidden fixed bottom-[72px] right-5 z-40 h-14 w-14 rounded-[20px] bg-lime text-lime-foreground shadow-lg flex items-center justify-center cursor-pointer"
         aria-label="Создать"
       >
         <Plus className="h-7 w-7" strokeWidth={2.5} />

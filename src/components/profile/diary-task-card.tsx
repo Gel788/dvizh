@@ -69,7 +69,7 @@ export function TaskRowV24({ task, index, period, xpPopId, onToggle, showIndex =
   const periodXp = PERIODS[period].xp;
 
   return (
-    <div className={cn("ref-card flex items-center gap-2.5 p-3 my-1 relative", task.done && "opacity-60")}>
+    <div className={cn("ref-card flex items-center gap-0 p-3 my-1 relative", task.done && "opacity-60")}>
       <button
         type="button"
         onClick={() => onToggle(task.id)}
@@ -83,10 +83,14 @@ export function TaskRowV24({ task, index, period, xpPopId, onToggle, showIndex =
       >
         {task.done && <Check className="h-4 w-4 text-white" strokeWidth={3} />}
       </button>
+      <span className="w-3 shrink-0" aria-hidden />
       {showIndex && (
-        <span className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-[10px] bg-[#e9f8d4] text-[13px] font-extrabold text-[var(--ref-green-dark,#5f8d2b)]">
-          {index + 1}
-        </span>
+        <>
+          <span className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-[10px] bg-[#e9f8d4] text-[13px] font-extrabold text-[var(--ref-green-dark,#5f8d2b)]">
+            {index + 1}
+          </span>
+          <span className="w-[9px] shrink-0" aria-hidden />
+        </>
       )}
       <div className="flex-1 min-w-0">
         <p className={cn("font-bold text-[14.5px] leading-snug text-[var(--ref-ink,#33251f)]", task.done && "line-through")}>

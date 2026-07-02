@@ -1,10 +1,9 @@
-import Link from "next/link";
-import { Suspense } from "react";
 import { FeedHero } from "@/components/feed/feed-hero";
 import { PulseDayCard } from "@/components/feed/pulse-day-card";
-import { FeedTipsCard } from "@/components/feed/feed-tips-card";
+import { FeedTipsSection } from "@/components/feed/feed-tips-card";
 import { FeedPostEventTile } from "@/components/feed/feed-post-event-tile";
 import { RefSurface } from "@/components/surface/ref-surface";
+import { RefSectionHeader } from "@/components/surface/ref-ui";
 import { getFeedPosts } from "@/lib/actions";
 import { getCuratedFeed } from "@/lib/diary-actions";
 import { getPulseDay } from "@/lib/pulse-service";
@@ -82,52 +81,33 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
   const tipHighlight = curated?.highlights?.[0];
 
   return (
-    <RefSurface className="max-w-2xl mx-auto xl:max-w-3xl pb-32">
+    <RefSurface className="max-w-lg mx-auto">
       <FeedHero />
 
-      {pulse?.metrics && (
-        <div className="mt-1">
-          <PulseDayCard metrics={pulse.metrics} city={pulse.city} />
+      {pulse?.metrics && <PulseDayCard metrics={pulse.metrics} />}
+
+      <FeedTipsSection
+        tip={tipHighlight ? {
+          title: tipHighlight.title,
+          subtitle: highlightSubtitle(tipHighlight),
+        } : undefined}
+      />
+
+      <RefSectionHeader
+        title="Лента событий"
+        action={displayPosts.length > 0 ? `${displayPosts.length} карточек` : undefined}
+      />
+
+      {displayPosts.length === 0 ? (
+        <div className="ref-card text-center py-14 px-4">
+          <p className="text-[22px] font-extrabold text-[var(--ref-ink)]">Пока тихо</p>
+          <p className="text-[13px] ref-body mt-2">Запиши действие или зайди в «Рядом»</p>
         </div>
+      ) : (
+        displayPosts.map((post) => (
+          <FeedPostEventTile key={post.id} post={post} />
+        ))
       )}
-
-      {tipHighlight && (
-        <FeedTipsCard
-          tips={[{
-            title: tipHighlight.title,
-            subtitle: highlightSubtitle(tipHighlight),
-          }]}
-        />
-      )}
-
-      <section className="pt-4">
-        {displayPosts.length > 0 && (
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-[22px] font-extrabold text-[var(--ref-ink,#33251f)]">Лента событий</h2>
-            <span className="ref-card rounded-full px-3 py-1 text-[11px] font-extrabold ref-muted">
-              {displayPosts.length} карточек
-            </span>
-          </div>
-        )}
-
-        {displayPosts.length === 0 ? (
-          <div className="ref-card text-center py-16 px-6 mt-2">
-            <p className="text-[22px] font-extrabold text-[var(--ref-ink,#33251f)]">Пока тихо</p>
-            <p className="text-sm ref-muted mt-2">Запиши действие или зайди в «Рядом»</p>
-            <Link
-              href="/nearby"
-              className="inline-flex mt-5 rounded-full px-5 py-2.5 text-sm font-extrabold text-[var(--ref-ink,#33251f)]"
-              style={{ background: "linear-gradient(135deg, #f0cf2c, #98c84a)" }}
-            >
-              Смотреть рядом
-            </Link>
-          </div>
-        ) : (
-          displayPosts.map((post) => (
-            <FeedPostEventTile key={post.id} post={post} />
-          ))
-        )}
-      </section>
     </RefSurface>
   );
 }

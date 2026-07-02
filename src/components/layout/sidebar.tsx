@@ -27,7 +27,7 @@ export function Sidebar({ user, unreadCount = 0 }: { user: SessionUser | null; u
   const nav = buildNav(user?.username);
 
   return (
-    <aside className="hidden lg:flex w-[248px] xl:w-[260px] shrink-0 flex-col bg-sidebar border-r border-sidebar-border fixed inset-y-0 left-0 z-30">
+    <aside className="app-sidebar hidden lg:flex w-[248px] xl:w-[260px] shrink-0 flex-col bg-sidebar border-r border-sidebar-border fixed inset-y-0 left-0 z-30">
       <div className="px-5 py-5 border-b border-sidebar-border">
         <Link href="/" className="group flex items-center gap-3 cursor-pointer">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-lime shrink-0">

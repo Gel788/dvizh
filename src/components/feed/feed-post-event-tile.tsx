@@ -1,7 +1,7 @@
 "use client";
 
 import type { PostType } from "@prisma/client";
-import { FeedEventTile } from "./feed-event-tile";
+import { RefEventTile } from "@/components/surface/ref-ui";
 
 type PostData = {
   id: string;
@@ -21,16 +21,22 @@ const TYPE_ACT: Record<PostType, string> = {
   ANNOUNCEMENT: "опубликовал объявление",
 };
 
+const TYPE_EMOJI: Record<PostType, string> = {
+  ACTIVITY: "🏃",
+  CHALLENGE: "🏆",
+  ANNOUNCEMENT: "📣",
+};
+
 export function FeedPostEventTile({ post }: { post: PostData }) {
   const act = TYPE_ACT[post.type];
-  const title = post.title?.trim() || `${post.author.name.split(" ")[0]} ${act}`;
-  const subtitle = post.content.replace(/\s+/g, " ").trim().slice(0, 96);
+  const firstName = post.author.name.split(" ")[0];
+  const title = post.title?.trim() || `${firstName} ${act}`;
+  const subtitle = post.content.replace(/\s+/g, " ").trim().slice(0, 120);
 
   return (
-    <FeedEventTile
+    <RefEventTile
       href={`/post/${post.id}`}
-      avatarUrl={post.author.avatar}
-      avatarFallback={post.author.name}
+      leading={TYPE_EMOJI[post.type]}
       title={title}
       subtitle={subtitle || "Открыть карточку"}
       chips={["поддержать"]}

@@ -8,7 +8,7 @@ export function RefSurface({
   className?: string;
 }) {
   return (
-    <div className={cn("surface-ref min-h-full px-4 py-4 lg:px-6 lg:py-5 pb-28", className)}>
+    <div className={cn("surface-ref min-h-full px-4 pt-3 pb-[150px] lg:pb-[150px]", className)}>
       {children}
     </div>
   );
