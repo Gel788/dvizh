@@ -21,7 +21,7 @@ run_remote() {
   local cmd="$1"
   if [ -n "${SSHPASS:-}" ] && command -v sshpass >/dev/null 2>&1; then
     sshpass -e ssh -o StrictHostKeyChecking=accept-new -p "$PORT" \
-      ${SSH_KEY:+-i "$SSH_KEY" -o IdentitiesOnly=yes} \
+      -o PreferredAuthentications=password -o PubkeyAuthentication=no \
       "${USER}@${HOST}" "$cmd"
   else
     "${SSH_BASE[@]}" "${USER}@${HOST}" "$cmd"

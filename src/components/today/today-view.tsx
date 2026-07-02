@@ -14,7 +14,7 @@ import { CreateMenuModal } from "@/components/layout/create-menu";
 import type { DiaryBundle } from "@/lib/diary-actions";
 import type { DiaryPeriod } from "@/components/profile/profile-data";
 
-function TodayContent() {
+function TodayContent({ userName }: { userName?: string }) {
   const searchParams = useSearchParams();
   const { openSheet, setDiaryView, setPeriod, loadCalendar } = useDiary();
   const [createOpen, setCreateOpen] = useState(false);
@@ -39,7 +39,7 @@ function TodayContent() {
         onViewChanged={setDiaryView}
         onPeriodChanged={(p: DiaryPeriod) => setPeriod(p)}
       />
-      <DiarySection mode="today" />
+      <DiarySection mode="today" userName={userName} />
       <CreateMenuModal open={createOpen} onClose={() => setCreateOpen(false)} />
       <PersonalEventSheet open={eventOpen} onClose={() => setEventOpen(false)} onCreated={() => setEventOpen(false)} />
       <button
@@ -58,10 +58,10 @@ function TodayContent() {
   );
 }
 
-export function TodayView({ bundle }: { bundle: DiaryBundle }) {
+export function TodayView({ bundle, userName }: { bundle: DiaryBundle; userName?: string }) {
   return (
     <DiaryProvider initial={bundle}>
-      <TodayContent />
+      <TodayContent userName={userName} />
       <AddTaskSheet />
       <AchievementPopup />
     </DiaryProvider>

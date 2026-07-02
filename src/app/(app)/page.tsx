@@ -7,6 +7,7 @@ import { FeedDigest } from "@/components/feed/feed-digest";
 import { FeedHighlightCard } from "@/components/feed/feed-highlight-card";
 import { FeedHero } from "@/components/feed/feed-hero";
 import { PulseDayCard } from "@/components/feed/pulse-day-card";
+import { FeedTipsCard } from "@/components/feed/feed-tips-card";
 import { AppContent } from "@/components/layout/app-content";
 import { DesktopRail } from "@/components/layout/desktop-rail";
 import { getFeedPosts } from "@/lib/actions";
@@ -15,6 +16,22 @@ import { getPulseDay } from "@/lib/pulse-service";
 import { getSession } from "@/lib/auth";
 import { CITY_COORDS } from "@/lib/geo";
 import type { PostType } from "@prisma/client";
+import type { FeedHighlight } from "@/components/feed/feed-highlight-card";
+
+function highlightSubtitle(h: FeedHighlight): string | undefined {
+  switch (h.kind) {
+    case "challenge_stat":
+      return h.label;
+    case "sponsor":
+      return h.reward;
+    case "duel":
+      return h.participants.join(" · ");
+    case "milestone":
+      return `Уровень ${h.level}`;
+    default:
+      return undefined;
+  }
+}
 
 export const dynamic = "force-dynamic";
 
@@ -95,12 +112,23 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
         <FeedHero city={city} />
 
         {pulse?.metrics && (
-          <div className="mt-4">
+          <div className="mt-2">
             <PulseDayCard metrics={pulse.metrics} city={pulse.city} />
           </div>
         )}
 
-        <Suspense fallback={<div className="h-12 animate-pulse bg-muted/50 rounded-full" />}>
+        {curated?.highlights?.[0] && (
+          <div className="mt-4">
+            <FeedTipsCard
+              tips={[{
+                title: curated.highlights[0].title,
+                subtitle: highlightSubtitle(curated.highlights[0]),
+              }]}
+            />
+          </div>
+        )}
+
+        <Suspense fallback={<div className="h-12 animate-pulse bg-muted/50 rounded-full mt-4" />}>
           <FeedFilters />
         </Suspense>
 
@@ -110,7 +138,7 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
               <FeedDigest city={city} scopes={curated.digest.scopes} />
             )}
             <div className="space-y-3 min-w-0">
-              {curated?.highlights?.slice(0, 2).map((h, i) => (
+              {curated?.highlights?.slice(curated?.highlights?.[0] ? 1 : 0, 3).map((h, i) => (
                 <FeedHighlightCard key={`${h.kind}-${i}`} item={h} index={i} />
               ))}
               {curatedAchievements.slice(0, 1).map((a) => (
@@ -121,6 +149,12 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
         )}
 
         <div className="space-y-3 mt-4">
+          {displayPosts.length > 0 && (
+            <div className="flex items-center justify-between px-0.5">
+              <h2 className="text-sm font-extrabold">Лента событий</h2>
+              <span className="text-xs font-bold text-muted-foreground">{displayPosts.length} карточек</span>
+            </div>
+          )}
           {curated?.highlights && curated.highlights.length > 2 && (
             <div className="xl:hidden space-y-3">
               {curated.highlights.slice(2).map((h, i) => (

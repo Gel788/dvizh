@@ -14,7 +14,7 @@ export default async function TodayPage() {
 
   return (
     <Suspense fallback={<div className="p-8 text-center text-muted-foreground">Загрузка дневника…</div>}>
-      <TodayView bundle={bundle} />
+      <TodayView bundle={bundle} userName={session.name} />
     </Suspense>
   );
 }

@@ -4,10 +4,10 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Check, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Mascot } from "./mascot";
 import { DiaryCalendar } from "./diary-calendar";
 import { useDiary } from "./diary-context";
 import { AiAssistantButton, AiAssistantSheet } from "./ai-assistant-sheet";
+import { TodayGreetingCard } from "@/components/today/today-greeting-card";
 import { PERIODS, levelInfo, rankName, tagColor, type DiaryPeriod } from "./profile-data";
 import { TaskRowV24, TaskRowDone } from "./diary-task-card";
 import { DiarySectionHeader } from "./diary-planner-header";
@@ -40,9 +40,10 @@ function checklistProgress(raw?: string) {
 
 type DiarySectionProps = {
   mode?: "profile" | "today";
+  userName?: string;
 };
 
-export function DiarySection({ mode = "profile" }: DiarySectionProps) {
+export function DiarySection({ mode = "profile", userName }: DiarySectionProps) {
   const {
     xp, period, setPeriod, tasks, toggleTask, diaryView, setDiaryView,
     reorderTasks, periodFrames, effectivePlannerDayKey, plannerDay, plannerIsToday,
@@ -63,11 +64,13 @@ export function DiarySection({ mode = "profile" }: DiarySectionProps) {
   const dayLabel = formatPlannerDayLabel(plannerDay);
 
   function handleToggle(id: string) {
-    const task = [...list, ...plannerTasks].find((t) => t.id === id);
-    if (!task || task.done) return;
-    const xpPeriod = isTodayPage && period === "today" ? period : period;
-    setXpPop({ id, amount: PERIODS[xpPeriod].xp });
-    setTimeout(() => setXpPop(null), 1000);
+    const task = [...list, ...plannerTasks, ...daySplit.done].find((t) => t.id === id);
+    if (!task) return;
+    if (!task.done) {
+      const xpPeriod = isTodayPage && period === "today" ? period : period;
+      setXpPop({ id, amount: PERIODS[xpPeriod].xp });
+      setTimeout(() => setXpPop(null), 1000);
+    }
     toggleTask(id);
   }
 
@@ -99,9 +102,22 @@ export function DiarySection({ mode = "profile" }: DiarySectionProps) {
   function renderDaySections() {
     return (
       <div className="space-y-4">
-        <p className="text-sm text-muted-foreground px-1">{hint}</p>
+        {isTodayPage && plannerIsToday && (
+          <TodayGreetingCard xp={xp} name={userName} />
+        )}
 
-        <DiarySectionHeader title="Приоритет" />
+        <div className="rounded-2xl border border-lime/15 bg-lime/[0.06] px-3.5 py-2.5">
+          <p className="text-xs font-semibold text-muted-foreground leading-relaxed">{hint}</p>
+        </div>
+
+        <div className="flex items-center justify-between px-0.5">
+          <h2 className="text-sm font-extrabold flex items-center gap-1.5">
+            <span aria-hidden>🎯</span> Приоритет
+          </h2>
+          <span className="text-xs font-bold text-lime hover:underline cursor-pointer">
+            Все задачи →
+          </span>
+        </div>
         {daySplit.priority.length === 0 ? (
           <p className="text-sm text-muted-foreground px-1">Нет приоритетных дел.</p>
         ) : (
@@ -282,9 +298,8 @@ export function DiarySection({ mode = "profile" }: DiarySectionProps) {
       <AiAssistantSheet open={aiOpen} onClose={() => setAiOpen(false)} />
 
       {!isTodayPage && (
-        <div className="relative overflow-hidden rounded-[20px] p-4 text-white"
-          style={{ background: "linear-gradient(120deg, #1a1528, #2d2248)" }}>
-          <Mascot className="absolute right-2 bottom-0 w-[88px] h-[88px] opacity-90" />
+        <div className="relative overflow-hidden rounded-[20px] p-4 text-white border border-white/[0.08]"
+          style={{ background: "linear-gradient(120deg, rgba(200,255,87,0.12), rgba(17,17,22,0.98))" }}>
           <p className="text-xs font-bold opacity-80">Уровень</p>
           <p className="font-heading text-[38px] leading-none flex items-baseline gap-2">
             {li.level}
