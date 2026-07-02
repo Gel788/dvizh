@@ -12,12 +12,11 @@ import type { ElementType } from "react";
 import { CreateMenuButton } from "./create-menu";
 
 function buildNav(username?: string) {
-  const todayHref = username ? `/profile/${username}?tab=diary` : "/login";
   const profileHref = username ? `/profile/${username}` : "/login";
   return [
     { href: "/", label: "Лента", icon: Home, exact: true as const },
     { href: "/nearby", label: "Движ", icon: Compass, exact: false as const },
-    { href: todayHref, label: "Сегодня", icon: Sun, exact: false as const },
+    { href: username ? "/today" : "/login", label: "Сегодня", icon: Sun, exact: false as const },
     { href: "/challenges", label: "Вызовы", icon: Trophy, exact: false as const },
     { href: profileHref, label: "Профиль", icon: Zap, exact: false as const },
   ];

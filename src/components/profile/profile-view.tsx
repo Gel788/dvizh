@@ -1,15 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
-import { Settings, Plus } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { useSearchParams, useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { Settings } from "lucide-react";
 import { ProfileAvatarPicker } from "./profile-avatar-picker";
 import { PostCard } from "@/components/feed/post-card";
 import { Mascot } from "./mascot";
 import { ProfileTabs } from "./profile-tabs";
-import { DiarySection } from "./diary-section";
 import { AchievementsSection } from "./achievements-section";
 import { DuelsSection } from "./duels-section";
 import { WishlistsSection } from "./wishlists-section";
@@ -19,7 +17,6 @@ import { MediaSection } from "./media-section";
 import { PrivacySection } from "./privacy-section";
 import { DiaryProvider, useDiary } from "./diary-context";
 import { AddTaskSheet } from "./add-task-sheet";
-import { PersonalEventSheet } from "./personal-event-sheet";
 import { AchievementPopup } from "./achievement-popup";
 import { levelInfo, rankName } from "./profile-data";
 import { VerifiedBadge } from "@/components/ui/verified-badge";
@@ -77,53 +74,34 @@ export function ProfileView(props: ProfileProps) {
 
 function OwnProfile({ user }: ProfileProps) {
   const searchParams = useSearchParams();
-  const tab = (searchParams.get("tab") as ProfileTab) || "diary";
-  const { xp, level, openSheet, setDiaryView, loadCalendar } = useDiary();
-  const [eventOpen, setEventOpen] = useState(false);
+  const router = useRouter();
+  const tab = (searchParams.get("tab") as ProfileTab) || "achievements";
+  const { xp, level } = useDiary();
 
   useEffect(() => {
-    if (searchParams.get("openTask") === "1") {
-      openSheet();
+    const legacyTab = searchParams.get("tab");
+    if (
+      legacyTab === "diary"
+      || searchParams.get("openTask")
+      || searchParams.get("openEvent")
+      || searchParams.get("view") === "calendar"
+    ) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("tab");
+      const q = params.toString();
+      router.replace(q ? `/today?${q}` : "/today");
     }
-    if (searchParams.get("view") === "calendar") {
-      setDiaryView("calendar");
-      void loadCalendar(new Date().getFullYear(), new Date().getMonth());
-    }
-    if (searchParams.get("openEvent") === "1") {
-      setDiaryView("calendar");
-      setEventOpen(true);
-    }
-  }, [searchParams, openSheet, setDiaryView, loadCalendar]);
+  }, [searchParams, router]);
 
   return (
     <div className="p-4 lg:p-8 max-w-2xl mx-auto pb-28 relative space-y-5">
       <ProfileHeader user={user} isOwn xp={xp} level={level} />
       <ProfileTabs username={user.username} activeTab={tab} />
-      {tab === "diary" && <DiarySection />}
       {tab === "achievements" && <AchievementsSection />}
       {tab === "duels" && <DuelsSection />}
       {tab === "wishlists" && <WishlistsSection autoOpen={searchParams.get("create") === "1"} />}
       {tab === "media" && <MediaSection autoOpen={searchParams.get("create") === "1"} />}
       {tab === "privacy" && <PrivacySection />}
-      {tab === "diary" && (
-        <button
-          type="button"
-          onClick={openSheet}
-          className={cn(
-            "fixed right-5 bottom-28 lg:bottom-8 z-40 flex h-14 w-14 items-center justify-center",
-            "rounded-[20px] bg-lime text-lime-foreground shadow-[0_12px_26px_rgba(200,255,87,0.35)]",
-            "hover:-translate-y-0.5 active:scale-95 transition-transform cursor-pointer",
-          )}
-          aria-label="Новая задача"
-        >
-          <Plus className="h-7 w-7" />
-        </button>
-      )}
-      <PersonalEventSheet
-        open={eventOpen}
-        onClose={() => setEventOpen(false)}
-        onCreated={() => loadCalendar(new Date().getFullYear(), new Date().getMonth())}
-      />
     </div>
   );
 }

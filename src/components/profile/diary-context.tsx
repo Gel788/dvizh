@@ -8,6 +8,7 @@ import {
   PERIODS, TASK_ACHIEVEMENTS, levelInfo, rankName,
   type DiaryPeriod, type DiaryTask, type TaskVisibility, type AchievementPop,
 } from "./profile-data";
+import { parseDayKey, todayKey } from "@/lib/diary-day-utils";
 import {
   completeDiaryTaskAction,
   createDiaryTaskAction,
@@ -40,6 +41,11 @@ type DiaryContextValue = DiaryBundle & {
   loadCalendar: (year: number, month: number) => Promise<void>;
   achievementQueue: AchievementPop[];
   dismissAchievement: () => void;
+  plannerDayKey: string;
+  effectivePlannerDayKey: string;
+  plannerDay: Date;
+  plannerIsToday: boolean;
+  selectPlannerDay: (dayKey: string) => Promise<void>;
 };
 
 const DiaryContext = createContext<DiaryContextValue | null>(null);
@@ -66,6 +72,7 @@ export function DiaryProvider({ initial, children }: { initial: DiaryBundle; chi
   const [diaryDay, setDiaryDay] = useState(initial.diaryDay ?? "");
   const [sheetOpen, setSheetOpen] = useState(false);
   const [achievementQueue, setAchievementQueue] = useState<AchievementPop[]>([]);
+  const [plannerDayKey, setPlannerDayKey] = useState("");
 
   useEffect(() => {
     const tz = -new Date().getTimezoneOffset();
@@ -95,22 +102,31 @@ export function DiaryProvider({ initial, children }: { initial: DiaryBundle; chi
   }, []);
 
   const toggleTask = useCallback((id: string) => {
-    const task = tasks[period].find((t) => t.id === id);
-    if (!task || task.done) return;
+    let taskPeriod: DiaryPeriod | null = null;
+    let task: DiaryTask | undefined;
+    for (const p of Object.keys(tasks) as DiaryPeriod[]) {
+      const found = tasks[p].find((t) => t.id === id);
+      if (found) {
+        task = found;
+        taskPeriod = p;
+        break;
+      }
+    }
+    if (!task || !taskPeriod || task.done) return;
 
-    const gain = PERIODS[period].xp;
+    const gain = PERIODS[taskPeriod].xp;
     const beforeLevel = levelInfo(xp).level;
 
     setTasks((prev) => ({
       ...prev,
-      [period]: prev[period].map((t) => (t.id === id ? { ...t, done: true } : t)),
+      [taskPeriod]: prev[taskPeriod].map((t) => (t.id === id ? { ...t, done: true } : t)),
     }));
 
     void completeDiaryTaskAction(id).then((res) => {
       if (!res) {
         setTasks((prev) => ({
           ...prev,
-          [period]: prev[period].map((t) => (t.id === id ? { ...t, done: false } : t)),
+          [taskPeriod]: prev[taskPeriod].map((t) => (t.id === id ? { ...t, done: false } : t)),
         }));
         toast.error("Не удалось сохранить задачу");
         return;
@@ -131,11 +147,11 @@ export function DiaryProvider({ initial, children }: { initial: DiaryBundle; chi
     }).catch(() => {
       setTasks((prev) => ({
         ...prev,
-        [period]: prev[period].map((t) => (t.id === id ? { ...t, done: false } : t)),
+        [taskPeriod]: prev[taskPeriod].map((t) => (t.id === id ? { ...t, done: false } : t)),
       }));
       toast.error("Не удалось сохранить задачу");
     });
-  }, [xp, period, tasks, queueAchievement]);
+  }, [xp, tasks, queueAchievement]);
 
   const addTask = useCallback((input: Parameters<DiaryContextValue["addTask"]>[0]) => {
     void createDiaryTaskAction({
@@ -176,6 +192,18 @@ export function DiaryProvider({ initial, children }: { initial: DiaryBundle; chi
     if (data) setCalendar(data);
   }, []);
 
+  const effectivePlannerDayKey = plannerDayKey || todayKey();
+  const plannerDay = parseDayKey(effectivePlannerDayKey);
+  const plannerIsToday = effectivePlannerDayKey === todayKey();
+
+  const selectPlannerDay = useCallback(async (key: string) => {
+    setPlannerDayKey(key);
+    const d = parseDayKey(key);
+    if (calendar.year !== d.getFullYear() || calendar.month !== d.getMonth()) {
+      await loadCalendar(d.getFullYear(), d.getMonth());
+    }
+  }, [calendar, loadCalendar]);
+
   const reorderTasks = useCallback((p: DiaryPeriod, ids: string[]) => {
     setTasks((prev) => {
       const map = new Map(prev[p].map((t) => [t.id, t]));
@@ -191,11 +219,13 @@ export function DiaryProvider({ initial, children }: { initial: DiaryBundle; chi
     periodFrames, diaryDay,
     sheetOpen, openSheet, closeSheet, toggleTask, addTask, reorderTasks, loadCalendar,
     achievementQueue, dismissAchievement,
+    plannerDayKey, effectivePlannerDayKey, plannerDay, plannerIsToday, selectPlannerDay,
   }), [
     initial, calendar, xp, level, period, tasks, diaryView, sheetOpen,
     periodFrames, diaryDay,
     openSheet, closeSheet, toggleTask, addTask, reorderTasks, loadCalendar,
     achievementQueue, dismissAchievement,
+    plannerDayKey, effectivePlannerDayKey, plannerDay, plannerIsToday, selectPlannerDay,
   ]);
 
   return <DiaryContext.Provider value={value}>{children}</DiaryContext.Provider>;

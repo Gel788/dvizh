@@ -54,6 +54,7 @@ export type DiaryTaskDto = {
   askProof?: boolean;
   hasTime?: boolean;
   scheduledAt?: string;
+  period?: string;
 };
 
 export type PersonalEventDto = {
@@ -119,6 +120,56 @@ function parseChecklistJson(raw: string): ChecklistItem[] {
   } catch {
     return [];
   }
+}
+
+function diaryTaskRowToClientDto(row: {
+  id: string;
+  title: string;
+  hashtag: string | null;
+  note: string | null;
+  streak: number;
+  visibility: Visibility;
+  done: boolean;
+  copyCount: number;
+  dueDate: Date | null;
+  hasTime: boolean;
+  scheduledAt: Date | null;
+  isRecurring: boolean;
+  checklistJson: string;
+  reminderAt: Date | null;
+  hashtagColor: string | null;
+  priority: boolean;
+  askProof: boolean;
+  period: DiaryPeriod;
+  trackStreak?: boolean;
+}): DiaryTaskDto {
+  return {
+    id: row.id,
+    text: row.title,
+    period: toClientPeriod(row.period),
+    tag: row.hashtag ?? undefined,
+    note: row.note ?? undefined,
+    streak: row.streak || undefined,
+    visibility: toClientVis(row.visibility),
+    done: row.done,
+    copyCount: row.copyCount || undefined,
+    dueDate: row.dueDate?.toISOString(),
+    hasTime: row.hasTime || undefined,
+    scheduledAt: row.scheduledAt?.toISOString(),
+    isRecurring: row.isRecurring,
+    checklist: row.checklistJson !== "[]" ? row.checklistJson : undefined,
+    checklistItems: parseChecklistJson(row.checklistJson),
+    reminderAt: row.reminderAt?.toISOString(),
+    hashtagColor: row.hashtagColor ?? undefined,
+    priority: row.priority || undefined,
+    askProof: row.askProof || undefined,
+  };
+}
+
+export async function getDiaryTaskForUser(userId: string, taskId: string) {
+  const row = await db.diaryTask.findFirst({ where: { id: taskId, userId } });
+  if (!row) return null;
+  return diaryTaskRowToClientDto(row);
 }
 
 /** Смена календарного дня: завтра → сегодня, сброс рекуррентных, скрытие вчерашних done. */
@@ -276,26 +327,7 @@ export async function getDiaryBundle(
     }
     const key = toClientPeriod(t.period);
     if (!grouped[key]) grouped[key] = [];
-    grouped[key].push({
-      id: t.id,
-      text: t.title,
-      tag: t.hashtag ?? undefined,
-      note: t.note ?? undefined,
-      streak: t.streak || undefined,
-      visibility: toClientVis(t.visibility),
-      done: t.done,
-      copyCount: t.copyCount || undefined,
-      dueDate: t.dueDate?.toISOString(),
-      hasTime: t.hasTime || undefined,
-      scheduledAt: t.scheduledAt?.toISOString(),
-      isRecurring: t.isRecurring,
-      checklist: t.checklistJson !== "[]" ? t.checklistJson : undefined,
-      checklistItems: parseChecklistJson(t.checklistJson),
-      reminderAt: t.reminderAt?.toISOString(),
-      hashtagColor: t.hashtagColor ?? undefined,
-      priority: t.priority || undefined,
-      askProof: t.askProof || undefined,
-    });
+    grouped[key].push(diaryTaskRowToClientDto(t));
   }
 
   const defs = await db.achievementDef.findMany();
@@ -553,6 +585,7 @@ export async function updateDiaryTaskForUser(
     askProof?: boolean;
     hasTime?: boolean;
     scheduledAt?: string | null;
+    checklist?: string[];
   },
 ) {
   const task = await db.diaryTask.findFirst({ where: { id: taskId, userId } });
@@ -584,25 +617,21 @@ export async function updateDiaryTaskForUser(
             recurrence: input.isRecurring ? recurrenceMap[input.recurrence ?? "daily"] ?? "DAILY" : null,
           }
         : {}),
+      ...(input.checklist !== undefined
+        ? {
+            checklistJson: JSON.stringify(
+              input.checklist.map((text) => {
+                const existing = parseChecklistJson(task.checklistJson);
+                const prev = existing.find((i) => i.text === text);
+                return { text, done: prev?.done ?? false };
+              }),
+            ),
+          }
+        : {}),
     },
   });
 
-  return {
-    id: row.id,
-    text: row.title,
-    note: row.note ?? undefined,
-    tag: row.hashtag ?? undefined,
-    visibility: toClientVis(row.visibility),
-    done: row.done,
-    dueDate: row.dueDate?.toISOString(),
-    hasTime: row.hasTime || undefined,
-    scheduledAt: row.scheduledAt?.toISOString(),
-    isRecurring: row.isRecurring,
-    reminderAt: row.reminderAt?.toISOString(),
-    hashtagColor: row.hashtagColor ?? undefined,
-    priority: row.priority || undefined,
-    askProof: row.askProof || undefined,
-  } satisfies DiaryTaskDto;
+  return diaryTaskRowToClientDto(row);
 }
 
 export async function createDiaryTaskAction(input: {
