@@ -158,23 +158,27 @@ export async function markDuelForUser(userId: string, duelId: string) {
     }),
   ]);
 
+  const duel = await db.duel.findUnique({ where: { id: duelId }, select: { title: true, visibility: true, emoji: true } });
+  if (duel && duel.visibility !== "PRIVATE") {
+    await db.activity.create({
+      data: {
+        userId,
+        type: "DUEL_MARKED",
+        visibility: duel.visibility,
+        title: duel.title,
+        body: duel.emoji ?? "⚔️",
+        metadata: JSON.stringify({ duelId }),
+      },
+    });
+  }
+
   return { marked: true };
 }
 
-export async function completeSharedGoalItem(userId: string, itemId: string) {
-  const item = await db.sharedGoalItem.findUnique({
-    where: { id: itemId },
-    include: { goal: { include: { members: true } } },
-  });
-  if (!item) return { error: "NOT_FOUND" };
-  const isMember = item.goal.members.some((m) => m.userId === userId);
-  if (!isMember) return { error: "FORBIDDEN" };
+import { completeSharedGoalItemRecord } from "@/lib/shared-goal-service";
 
-  await db.sharedGoalItem.update({
-    where: { id: itemId },
-    data: { done: true, assigneeId: userId },
-  });
-  return { done: true };
+export async function completeSharedGoalItem(userId: string, itemId: string) {
+  return completeSharedGoalItemRecord(userId, itemId);
 }
 
 export async function toggleLike(postId: string, session: SessionUser) {
@@ -218,11 +222,33 @@ export async function toggleGoing(postId: string, session: SessionUser) {
 }
 
 export async function joinChallenge(challengeId: string, session: SessionUser) {
+  const challenge = await db.challenge.findUnique({
+    where: { id: challengeId },
+    include: { post: { select: { id: true, title: true } } },
+  });
+  if (!challenge) return { joined: false, participantsCount: 0 };
+
   await db.challengeParticipant.upsert({
     where: { challengeId_userId: { challengeId, userId: session.id } },
     create: { challengeId, userId: session.id },
     update: {},
   });
+
+  const existing = await db.activity.findFirst({
+    where: { userId: session.id, type: "CHALLENGE_JOINED", postId: challenge.post.id },
+  });
+  if (!existing) {
+    await db.activity.create({
+      data: {
+        userId: session.id,
+        type: "CHALLENGE_JOINED",
+        visibility: "FRIENDS",
+        title: challenge.post.title ?? "Вызов",
+        postId: challenge.post.id,
+      },
+    });
+  }
+
   const participantsCount = await db.challengeParticipant.count({ where: { challengeId } });
   return { joined: true, participantsCount };
 }

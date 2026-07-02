@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { getDiaryBundle } from "@/lib/diary-actions";
 import { getFriendshipState } from "@/lib/api/friendship-service";
+import { listWishlistsForViewer } from "@/lib/wishlist-service";
 
 export default async function ProfilePage({
   params,
@@ -59,6 +60,11 @@ export default async function ProfilePage({
 
   const diaryBundle = isOwn ? await getDiaryBundle(user.id) : undefined;
 
+  const friendWishlists =
+    session && !isOwn && friendship.state === "friends"
+      ? await listWishlistsForViewer(user.id, session.id, session.username)
+      : undefined;
+
   return (
     <Suspense fallback={<div className="p-8 text-center text-muted-foreground">Загрузка профиля…</div>}>
       <ProfileView
@@ -68,8 +74,10 @@ export default async function ProfilePage({
         friendshipState={friendship.state}
         friendshipId={friendship.friendshipId}
         sessionId={session?.id}
+        viewerUsername={session?.username}
         posts={posts}
         diaryBundle={diaryBundle}
+        friendWishlists={friendWishlists}
       />
     </Suspense>
   );

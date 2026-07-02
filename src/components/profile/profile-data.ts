@@ -63,6 +63,10 @@ export type DiaryTask = {
   dueDate?: string;
   reminderAt?: string;
   hashtagColor?: string;
+  priority?: boolean;
+  askProof?: boolean;
+  hasTime?: boolean;
+  scheduledAt?: string;
 };
 
 export type TaskVisibility = "private" | "friends" | "all";

@@ -12,7 +12,7 @@ import { listPendingFriendRequests } from "@/lib/api/friendship-service";
 
 export const dynamic = "force-dynamic";
 
-type SearchParams = Promise<{ view?: string }>;
+type SearchParams = Promise<{ view?: string; create?: string }>;
 
 export default async function FriendsPage({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
@@ -35,8 +35,8 @@ export default async function FriendsPage({ searchParams }: { searchParams: Sear
       </Suspense>
       {view === "feed" && <FriendsPendingPanel pending={pending} />}
       {view === "feed" && <FriendsFeed data={data} />}
-      {view === "duels" && <FriendsDuelsPanel duels={duels} />}
-      {view === "together" && <FriendsTogetherPanel goals={goals} />}
+      {view === "duels" && <FriendsDuelsPanel duels={duels} autoCreate={params.create === "1"} />}
+      {view === "together" && <FriendsTogetherPanel goals={goals} autoCreate={params.create === "1"} />}
     </FriendsPageShell>
   );
 }

@@ -1,4 +1,5 @@
 import { Sidebar, MobileNav } from "@/components/layout/sidebar";
+import { MobileCreateFab } from "@/components/layout/create-menu";
 import { TopBar } from "@/components/layout/top-bar";
 import { TrendMarquee } from "@/components/brand/marquee";
 import { LocationSync } from "@/components/location/location-sync";
@@ -24,6 +25,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <TrendMarquee />
         </div>
         <main className="flex-1 pb-24 lg:pb-0">{children}</main>
+        <MobileCreateFab user={user} />
         <MobileNav user={user} />
       </div>
     </div>

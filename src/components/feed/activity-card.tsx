@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { motion } from "motion/react";
-import { BookOpen, Target, Trophy, Zap } from "lucide-react";
+import { BookOpen, Clapperboard, Gift, Heart, Target, Trophy, Users, Zap } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { ru } from "date-fns/locale";
 import { FeedReactions } from "./feed-reactions";
 import { tagColor } from "@/components/profile/profile-data";
+import { CopyMediaButton } from "./copy-media-button";
 
 type Activity = {
   id: string;
@@ -17,18 +18,24 @@ type Activity = {
   body: string | null;
   xpGained: number | null;
   taskId: string | null;
+  metadata: string | null;
   createdAt: Date;
   user: { id: string; name: string; username: string; avatar: string | null; verified: boolean };
 };
 
 const TYPE_META: Record<string, { label: string; act: string; icon: typeof Zap; className: string }> = {
   TASK_COMPLETED: { label: "Дневник", act: "выполнил задачу", icon: BookOpen, className: "text-lime bg-lime/10" },
+  TASK_PROOF: { label: "Пруф", act: "добавил фото-пруф", icon: BookOpen, className: "text-lime bg-lime/10" },
   TASK_CREATED: { label: "Задача", act: "создал задачу", icon: BookOpen, className: "text-ice bg-ice/10" },
   CHALLENGE_JOINED: { label: "Челлендж", act: "присоединился к челленджу", icon: Target, className: "text-heat bg-heat/10" },
   CHALLENGE_CREATED: { label: "Челлендж", act: "запустил челлендж", icon: Target, className: "text-heat bg-heat/10" },
   ACHIEVEMENT_UNLOCKED: { label: "Ачивка", act: "получил ачивку", icon: Trophy, className: "text-good bg-good/10" },
   EVENT_ATTENDED: { label: "Событие", act: "посетил событие", icon: Zap, className: "text-ice bg-ice/10" },
   DUEL_MARKED: { label: "Спор", act: "отметился в споре", icon: Target, className: "text-heat bg-heat/10" },
+  DUEL_STARTED: { label: "Спор", act: "запустил спор", icon: Target, className: "text-heat bg-heat/10" },
+  MEDIA_ADDED: { label: "Медиалист", act: "добавил в медиалист", icon: Clapperboard, className: "text-ice bg-ice/10" },
+  WISHLIST_ADDED: { label: "Вишлист", act: "обновил вишлист", icon: Gift, className: "text-good bg-good/10" },
+  SHARED_GOAL_UPDATED: { label: "Вместе", act: "отметил пункт в списке", icon: Users, className: "text-lime bg-lime/10" },
 };
 
 function parseTag(body: string | null) {
@@ -90,16 +97,72 @@ export function ActivityCard({ activity, index = 0, onCopyTask }: { activity: Ac
               <span className="font-bold text-[#FFB020]">⚡ +{activity.xpGained} XP</span>
             )}
           </div>
-          {activity.type === "TASK_COMPLETED" && activity.taskId && onCopyTask && (
+          {(activity.type === "TASK_COMPLETED" || activity.type === "TASK_PROOF") && activity.taskId && onCopyTask && (
             <button
               type="button"
               onClick={() => onCopyTask(activity.taskId!)}
               className="mt-3 w-full rounded-[13px] px-3 py-2.5 text-xs font-bold text-foreground bg-white/[0.04] border border-white/[0.08] hover:border-lime/30 transition-colors cursor-pointer"
             >
-              + Добавить себе
+              + Забрать себе
             </button>
           )}
-          <FeedReactions likes={0} comments={0} />
+          {activity.type.includes("CHALLENGE") && (
+            <Link
+              href="/challenges"
+              className="mt-3 inline-flex w-full items-center justify-center rounded-[13px] px-3 py-2.5 text-xs font-bold text-heat bg-heat/10 border border-heat/20 hover:bg-heat/15 transition-colors"
+            >
+              Вступить
+            </Link>
+          )}
+          {(activity.type === "DUEL_MARKED" || activity.type === "DUEL_STARTED") && (
+            <Link
+              href="/friends?view=duels"
+              className="mt-3 inline-flex w-full items-center justify-center rounded-[13px] px-3 py-2.5 text-xs font-bold text-foreground bg-white/[0.04] border border-white/[0.08] hover:border-heat/30 transition-colors"
+            >
+              Открыть спор
+            </Link>
+          )}
+          {activity.type === "EVENT_ATTENDED" && (
+            <Link
+              href="/nearby"
+              className="mt-3 inline-flex w-full items-center justify-center rounded-[13px] px-3 py-2.5 text-xs font-bold text-ice bg-ice/10 border border-ice/20 hover:bg-ice/15 transition-colors"
+            >
+              Пойти
+            </Link>
+          )}
+          {activity.type === "MEDIA_ADDED" && (
+            <CopyMediaButton activity={activity} />
+          )}
+          {activity.type === "WISHLIST_ADDED" && (
+            <Link
+              href={`/profile/${activity.user.username}?view=wishlist`}
+              className="mt-3 inline-flex w-full items-center justify-center rounded-[13px] px-3 py-2.5 text-xs font-bold text-good bg-good/10 border border-good/20 hover:bg-good/15 transition-colors"
+            >
+              Открыть вишлист
+            </Link>
+          )}
+          {activity.type === "SHARED_GOAL_UPDATED" && (
+            <Link
+              href="/friends?view=together"
+              className="mt-3 inline-flex w-full items-center justify-center rounded-[13px] px-3 py-2.5 text-xs font-bold text-lime bg-lime/10 border border-lime/20 hover:bg-lime/15 transition-colors"
+            >
+              Открыть список
+            </Link>
+          )}
+          {activity.type === "ACHIEVEMENT_UNLOCKED" && (
+            <Link
+              href={`/profile/${activity.user.username}?view=achievements`}
+              className="mt-3 inline-flex w-full items-center justify-center rounded-[13px] px-3 py-2.5 text-xs font-bold text-good bg-good/10 border border-good/20 hover:bg-good/15 transition-colors"
+            >
+              Открыть ачивку
+            </Link>
+          )}
+          <div className="flex items-center gap-2 mt-3 pt-3 border-t border-white/[0.06]">
+            <button type="button" className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-lime transition-colors cursor-pointer">
+              <Heart className="h-4 w-4" /> Поддержать
+            </button>
+            <FeedReactions likes={0} comments={0} className="border-0 pt-0 mt-0 flex-1 justify-end" />
+          </div>
         </div>
       </div>
     </motion.article>

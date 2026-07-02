@@ -1,6 +1,8 @@
 import type { DuelPeriod, MediaStatus, MediaType, Visibility } from "@prisma/client";
 import { db } from "@/lib/db";
 import type { SessionUser } from "@/lib/auth";
+import { createDuelRecord } from "@/lib/duel-service";
+import { createSharedGoalRecord } from "@/lib/shared-goal-service";
 
 const VIS: Record<string, Visibility> = {
   private: "PRIVATE",
@@ -37,49 +39,39 @@ export async function createDuel(
     period?: string;
     visibility?: string;
     friendIds: string[];
+    remindersOn?: boolean;
   },
 ) {
-  const ids = [...new Set([session.id, ...input.friendIds])];
-  const duel = await db.duel.create({
-    data: {
-      creatorId: session.id,
-      title: input.title.trim(),
-      description: input.description?.trim() || null,
-      emoji: input.emoji || "⚔️",
-      period: DUEL_PERIOD[input.period ?? "daily"] ?? "DAILY",
-      visibility: VIS[input.visibility ?? "friends"] ?? "FRIENDS",
-      participants: { create: ids.map((userId) => ({ userId })) },
-    },
-    include: {
-      participants: { include: { user: { select: { id: true, name: true, username: true } } } },
-    },
-  });
-  return { duel };
+  try {
+    const duel = await createDuelRecord(session.id, input);
+    return { duel };
+  } catch (e) {
+    if (e instanceof Error && e.message === "MIN_PARTICIPANTS") {
+      return { error: "MIN_PARTICIPANTS" as const };
+    }
+    if (e instanceof Error && e.message === "MAX_PARTICIPANTS") {
+      return { error: "MAX_PARTICIPANTS" as const };
+    }
+    throw e;
+  }
 }
 
 export async function createSharedGoal(
   session: SessionUser,
-  input: { title: string; items: string[]; friendIds: string[] },
+  input: { title: string; items: string[]; friendIds: string[]; eventAt?: string | null },
 ) {
-  const memberIds = [...new Set([session.id, ...input.friendIds])];
-  const goal = await db.sharedGoal.create({
-    data: {
-      creatorId: session.id,
-      title: input.title.trim(),
-      members: { create: memberIds.map((userId) => ({ userId })) },
-      items: {
-        create: input.items.filter(Boolean).map((title, sortOrder) => ({
-          title: title.trim(),
-          sortOrder,
-        })),
-      },
-    },
-    include: {
-      items: { orderBy: { sortOrder: "asc" } },
-      members: { include: { user: { select: { name: true, username: true } } } },
-    },
-  });
-  return { goal };
+  try {
+    const goal = await createSharedGoalRecord(session.id, input);
+    return { goal };
+  } catch (e) {
+    if (e instanceof Error && e.message === "MIN_MEMBERS") {
+      return { error: "MIN_MEMBERS" as const };
+    }
+    if (e instanceof Error && e.message === "MIN_ITEMS") {
+      return { error: "MIN_ITEMS" as const };
+    }
+    throw e;
+  }
 }
 
 export async function addMediaItem(

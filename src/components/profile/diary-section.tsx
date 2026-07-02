@@ -9,6 +9,7 @@ import { DiaryCalendar } from "./diary-calendar";
 import { useDiary } from "./diary-context";
 import { AiAssistantButton, AiAssistantSheet } from "./ai-assistant-sheet";
 import { PERIODS, levelInfo, rankName, tagColor, type DiaryPeriod } from "./profile-data";
+import { splitTodayTasks, TaskRowV24, TaskRowDone } from "./diary-task-card";
 
 const VIS_LABELS = { private: "🔒", friends: "👥", all: "🌍" } as const;
 
@@ -44,6 +45,7 @@ export function DiarySection() {
   const list = allList.filter((t) => !t.done);
   const doneList = allList.filter((t) => t.done);
   const allDone = list.length === 0 && doneList.length > 0;
+  const todaySplit = period === "today" ? splitTodayTasks(allList) : null;
 
   function handleToggle(id: string) {
     const task = list.find((t) => t.id === id);
@@ -111,6 +113,80 @@ export function DiarySection() {
 
       {diaryView === "calendar" ? (
         <DiaryCalendar />
+      ) : period === "today" && todaySplit ? (
+        <div className="space-y-4">
+          <div className="flex gap-2 overflow-x-auto scrollbar-none pb-1">
+            {(Object.keys(PERIODS) as DiaryPeriod[]).map((key) => {
+              const cnt = tasks[key].filter((t) => !t.done).length;
+              const on = period === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setPeriod(key)}
+                  className={cn(
+                    "shrink-0 px-3 py-2 rounded-[14px] text-[13px] font-bold border transition-colors cursor-pointer",
+                    on ? "text-lime-foreground border-transparent" : "bg-card border-white/[0.07] text-muted-foreground",
+                  )}
+                  style={on ? { background: PERIODS[key].color, color: "#0A0A0F" } : undefined}
+                >
+                  {PERIODS[key].label} · {cnt}
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-sm text-muted-foreground px-1">
+            {todaySplit.priority.length > 0
+              ? `Сегодня в приоритете ${todaySplit.priority.length} дел.`
+              : "Добавь дело кнопкой «+» — начни с простого действия."}
+          </p>
+          <div className="flex items-center justify-between px-1">
+            <h3 className="font-heading text-lg">Приоритет</h3>
+          </div>
+          {todaySplit.priority.length === 0 ? (
+            <p className="text-sm text-muted-foreground px-1">Нет приоритетных дел.</p>
+          ) : (
+            <div className="space-y-2">
+              {todaySplit.priority.map((task, i) => (
+                <TaskRowV24 key={task.id} task={task} index={i} period={period} xpPopId={xpPop?.id ?? null} onToggle={handleToggle} />
+              ))}
+            </div>
+          )}
+          {todaySplit.timed.length > 0 && (
+            <>
+              <h3 className="font-heading text-lg px-1">Сегодня ещё</h3>
+              <div className="space-y-2">
+                {todaySplit.timed.map((task, i) => (
+                  <TaskRowV24 key={task.id} task={task} index={i} period={period} xpPopId={xpPop?.id ?? null} onToggle={handleToggle} />
+                ))}
+              </div>
+            </>
+          )}
+          {todaySplit.regular.length > 0 && (
+            <>
+              <h3 className="font-heading text-lg px-1">Задачи</h3>
+              <div className="space-y-2">
+                {todaySplit.regular.map((task, i) => (
+                  <TaskRowV24 key={task.id} task={task} index={i} period={period} xpPopId={xpPop?.id ?? null} onToggle={handleToggle} />
+                ))}
+              </div>
+            </>
+          )}
+          {todaySplit.priority.length === 0 && todaySplit.timed.length === 0 && todaySplit.regular.length === 0 && (
+            <div className="text-center py-14 text-muted-foreground">
+              <p className="text-4xl mb-3">📝</p>
+              <p className="font-heading text-lg text-lime/80">Пока пусто</p>
+            </div>
+          )}
+          {todaySplit.done.length > 0 && (
+            <div className="space-y-2 pt-2">
+              <p className="text-xs font-bold text-muted-foreground px-1">Выполнено · {todaySplit.done.length}</p>
+              {todaySplit.done.map((task) => (
+                <TaskRowDone key={task.id} task={task} />
+              ))}
+            </div>
+          )}
+        </div>
       ) : (
         <>
           <div className="flex gap-2 overflow-x-auto scrollbar-none pb-1">

@@ -52,6 +52,21 @@ export type DiaryTaskDto = {
   hashtagColor?: string;
   priority?: boolean;
   askProof?: boolean;
+  hasTime?: boolean;
+  scheduledAt?: string;
+};
+
+export type PersonalEventDto = {
+  id: string;
+  title: string;
+  eventType: string;
+  eventDate: string;
+  hasTime?: boolean;
+  scheduledAt?: string;
+  isRecurring?: boolean;
+  reminderAt?: string;
+  visibility?: "private" | "friends" | "all";
+  note?: string;
 };
 
 export type DiaryBundle = {
@@ -271,6 +286,8 @@ export async function getDiaryBundle(
       done: t.done,
       copyCount: t.copyCount || undefined,
       dueDate: t.dueDate?.toISOString(),
+      hasTime: t.hasTime || undefined,
+      scheduledAt: t.scheduledAt?.toISOString(),
       isRecurring: t.isRecurring,
       checklist: t.checklistJson !== "[]" ? t.checklistJson : undefined,
       checklistItems: parseChecklistJson(t.checklistJson),
@@ -425,6 +442,8 @@ export async function createDiaryTaskForUser(
     hashtagColor?: string;
     priority?: boolean;
     askProof?: boolean;
+    hasTime?: boolean;
+    scheduledAt?: string;
   },
 ) {
   const lines = input.multiLine
@@ -453,7 +472,9 @@ export async function createDiaryTaskForUser(
         hashtag: input.hashtag?.trim() || null,
         hashtagColor: input.hashtagColor?.trim() || null,
         sortOrder: count + i,
-        dueDate: input.dueDate ? new Date(input.dueDate) : null,
+        dueDate: input.dueDate ? new Date(input.dueDate) : input.scheduledAt ? new Date(input.scheduledAt) : null,
+        hasTime: input.hasTime ?? false,
+        scheduledAt: input.scheduledAt ? new Date(input.scheduledAt) : null,
         isRecurring: input.isRecurring ?? false,
         recurrence: input.isRecurring ? recurrenceMap[input.recurrence ?? "daily"] : null,
         trackStreak: input.trackStreak ?? false,
@@ -473,6 +494,8 @@ export async function createDiaryTaskForUser(
       visibility: toClientVis(row.visibility),
       done: false,
       dueDate: row.dueDate?.toISOString(),
+      hasTime: row.hasTime || undefined,
+      scheduledAt: row.scheduledAt?.toISOString(),
       isRecurring: row.isRecurring,
       checklist: row.checklistJson !== "[]" ? row.checklistJson : undefined,
       reminderAt: row.reminderAt?.toISOString(),
@@ -528,6 +551,8 @@ export async function updateDiaryTaskForUser(
     reminderAt?: string | null;
     priority?: boolean;
     askProof?: boolean;
+    hasTime?: boolean;
+    scheduledAt?: string | null;
   },
 ) {
   const task = await db.diaryTask.findFirst({ where: { id: taskId, userId } });
@@ -550,6 +575,8 @@ export async function updateDiaryTaskForUser(
       ...(input.priority !== undefined ? { priority: input.priority } : {}),
       ...(input.askProof !== undefined ? { askProof: input.askProof } : {}),
       ...(input.dueDate !== undefined ? { dueDate: input.dueDate ? new Date(input.dueDate) : null } : {}),
+      ...(input.hasTime !== undefined ? { hasTime: input.hasTime } : {}),
+      ...(input.scheduledAt !== undefined ? { scheduledAt: input.scheduledAt ? new Date(input.scheduledAt) : null } : {}),
       ...(input.reminderAt !== undefined ? { reminderAt: input.reminderAt ? new Date(input.reminderAt) : null } : {}),
       ...(input.isRecurring !== undefined
         ? {
@@ -568,6 +595,8 @@ export async function updateDiaryTaskForUser(
     visibility: toClientVis(row.visibility),
     done: row.done,
     dueDate: row.dueDate?.toISOString(),
+    hasTime: row.hasTime || undefined,
+    scheduledAt: row.scheduledAt?.toISOString(),
     isRecurring: row.isRecurring,
     reminderAt: row.reminderAt?.toISOString(),
     hashtagColor: row.hashtagColor ?? undefined,
@@ -590,6 +619,10 @@ export async function createDiaryTaskAction(input: {
   checklist?: string[];
   multiLine?: boolean;
   hashtagColor?: string;
+  priority?: boolean;
+  askProof?: boolean;
+  hasTime?: boolean;
+  scheduledAt?: string;
 }) {
   const session = await getSession();
   if (!session) redirect("/login");
@@ -652,12 +685,18 @@ export async function getCalendarData(
     return userDayKey(task.createdAt, tzOffsetMinutes);
   }
 
-  const days: Record<string, { tasks: typeof tasks; hasDone: boolean; tags: string[]; birthdays: string[] }> = {};
+  const days: Record<string, {
+    tasks: typeof tasks;
+    hasDone: boolean;
+    tags: string[];
+    birthdays: string[];
+    events: PersonalEventDto[];
+  }> = {};
   for (const t of tasks) {
     const d = resolveTaskDate(t);
     const taskDate = new Date(`${d}T12:00:00`);
     if (taskDate < start || taskDate > end) continue;
-    if (!days[d]) days[d] = { tasks: [], hasDone: false, tags: [], birthdays: [] };
+    if (!days[d]) days[d] = { tasks: [], hasDone: false, tags: [], birthdays: [], events: [] };
     days[d].tasks.push(t);
     if (t.done) days[d].hasDone = true;
     if (t.hashtag) days[d].tags.push(t.hashtag);
@@ -670,8 +709,29 @@ export async function getCalendarData(
   for (const w of wishlists) {
     if (!w.eventAt) continue;
     const d = w.eventAt.toISOString().slice(0, 10);
-    if (!days[d]) days[d] = { tasks: [], hasDone: false, tags: [], birthdays: [] };
+    if (!days[d]) days[d] = { tasks: [], hasDone: false, tags: [], birthdays: [], events: [] };
     days[d].birthdays.push(w.occasion ? `${w.title} · ${w.occasion}` : w.title);
+  }
+
+  const personalEvents = await db.personalCalendarEvent.findMany({
+    where: { userId, eventDate: { gte: start, lte: end } },
+    orderBy: [{ eventDate: "asc" }, { scheduledAt: "asc" }],
+  });
+  for (const ev of personalEvents) {
+    const d = ev.eventDate.toISOString().slice(0, 10);
+    if (!days[d]) days[d] = { tasks: [], hasDone: false, tags: [], birthdays: [], events: [] };
+    days[d].events.push({
+      id: ev.id,
+      title: ev.title,
+      eventType: ev.eventType.toLowerCase(),
+      eventDate: d,
+      hasTime: ev.hasTime,
+      scheduledAt: ev.scheduledAt?.toISOString(),
+      isRecurring: ev.isRecurring,
+      reminderAt: ev.reminderAt?.toISOString(),
+      visibility: toClientVis(ev.visibility),
+      note: ev.note ?? undefined,
+    });
   }
 
   return { year: y, month: m, days };
@@ -681,6 +741,96 @@ export async function fetchCalendarAction(year: number, month: number, tzOffset?
   const session = await getSession();
   if (!session) return null;
   return getCalendarData(session.id, year, month, tzOffset ?? DEFAULT_TZ_OFFSET_MINUTES);
+}
+
+const EVENT_TYPE_MAP: Record<string, "BIRTHDAY" | "ANNIVERSARY" | "HOLIDAY" | "PAYMENT" | "MEETING" | "APPOINTMENT" | "HOUSEHOLD" | "CUSTOM"> = {
+  birthday: "BIRTHDAY",
+  anniversary: "ANNIVERSARY",
+  holiday: "HOLIDAY",
+  payment: "PAYMENT",
+  meeting: "MEETING",
+  appointment: "APPOINTMENT",
+  household: "HOUSEHOLD",
+  custom: "CUSTOM",
+};
+
+export async function createPersonalEventForUser(
+  userId: string,
+  input: {
+    title: string;
+    eventType?: string;
+    eventDate: string;
+    hasTime?: boolean;
+    scheduledAt?: string;
+    isRecurring?: boolean;
+    recurrence?: string;
+    reminderAt?: string;
+    visibility?: string;
+    note?: string;
+  },
+) {
+  const title = input.title.trim();
+  if (!title) return null;
+  const recurrenceMap: Record<string, "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY"> = {
+    daily: "DAILY", weekly: "WEEKLY", monthly: "MONTHLY", yearly: "YEARLY",
+  };
+  const eventType = EVENT_TYPE_MAP[input.eventType?.toLowerCase() ?? "custom"] ?? "CUSTOM";
+  const visibility = VIS_MAP[input.visibility ?? "private"] ?? "PRIVATE";
+  const eventDate = new Date(`${input.eventDate}T12:00:00`);
+
+  const row = await db.personalCalendarEvent.create({
+    data: {
+      userId,
+      title,
+      eventType,
+      eventDate,
+      hasTime: input.hasTime ?? false,
+      scheduledAt: input.scheduledAt ? new Date(input.scheduledAt) : null,
+      isRecurring: input.isRecurring ?? false,
+      recurrence: input.isRecurring ? recurrenceMap[input.recurrence ?? "yearly"] : null,
+      reminderAt: input.reminderAt ? new Date(input.reminderAt) : null,
+      visibility,
+      note: input.note?.trim() || null,
+    },
+  });
+
+  return {
+    id: row.id,
+    title: row.title,
+    eventType: row.eventType.toLowerCase(),
+    eventDate: input.eventDate,
+    hasTime: row.hasTime,
+    scheduledAt: row.scheduledAt?.toISOString(),
+    visibility: toClientVis(row.visibility),
+    note: row.note ?? undefined,
+  } satisfies PersonalEventDto;
+}
+
+export async function createPersonalEventAction(input: {
+  title: string;
+  eventType?: string;
+  eventDate: string;
+  hasTime?: boolean;
+  scheduledAt?: string;
+  isRecurring?: boolean;
+  recurrence?: string;
+  reminderAt?: string;
+  visibility?: string;
+  note?: string;
+}) {
+  const session = await getSession();
+  if (!session) redirect("/login");
+  const created = await createPersonalEventForUser(session.id, input);
+  if (!created) return null;
+  revalidatePath(`/profile/${session.username}`);
+  return created;
+}
+
+export async function deletePersonalEventAction(eventId: string) {
+  const session = await getSession();
+  if (!session) redirect("/login");
+  await db.personalCalendarEvent.deleteMany({ where: { id: eventId, userId: session.id } });
+  revalidatePath(`/profile/${session.username}`);
 }
 
 export async function createChallengeFromTaskAction(taskId: string, input: {
@@ -791,30 +941,14 @@ export async function copyPostToDiaryAction(postId: string) {
 }
 
 export async function getDuelsForUser(userId: string) {
-  const parts = await db.duelParticipant.findMany({
-    where: { userId },
-    include: {
-      marks: { orderBy: { markedAt: "desc" }, take: 42 },
-      duel: {
-        include: {
-          creator: { select: { name: true, username: true } },
-          participants: {
-            include: { user: { select: { id: true, name: true, username: true, avatar: true } }, marks: { take: 1, orderBy: { markedAt: "desc" } } },
-            orderBy: { streak: "desc" },
-          },
-        },
-      },
-    },
-  });
-  return parts.map((p) => ({ ...p.duel, myParticipantId: p.id }));
+  const { listDuelsForUser } = await import("@/lib/duel-service");
+  return listDuelsForUser(userId);
 }
 
-export async function getWishlistsForUser(userId: string) {
-  return db.wishlist.findMany({
-    where: { userId },
-    include: { items: true },
-    orderBy: { createdAt: "desc" },
-  });
+export async function getWishlistsForUser(userId: string, viewerId?: string, viewerUsername?: string) {
+  const { listWishlistsForViewer } = await import("@/lib/wishlist-service");
+  const viewer = viewerId ?? userId;
+  return listWishlistsForViewer(userId, viewer, viewerUsername);
 }
 
 export async function getMediaForUser(userId: string) {

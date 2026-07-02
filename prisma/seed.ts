@@ -245,6 +245,47 @@ async function main() {
     include: { challenge: true },
   });
 
+  const districtChallengePost = await prisma.post.create({
+    data: {
+      type: PostType.CHALLENGE,
+      authorId: demo.id,
+      title: "10 000 шагов по Хамовникам",
+      content: "Каждый день фиксируем шаги в районе. Кто наберёт больше за неделю — получает бейдж района.",
+      city: "Москва",
+      district: "Хамовники",
+      lat: 55.73,
+      lng: 37.57,
+      tags: "шаги,район,здоровье",
+      challenge: {
+        create: {
+          goalCount: 10000,
+          deadline: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+          rules: "Шаги считаются только в радиусе района.",
+        },
+      },
+    },
+    include: { challenge: true },
+  });
+
+  const friendChallengePost = await prisma.post.create({
+    data: {
+      type: PostType.CHALLENGE,
+      authorId: max.id,
+      title: "Серия субботников",
+      content: "Каждую субботу — час волонтёрства. Отмечаемся фото с площадки.",
+      city: "Москва",
+      district: "Сокол",
+      tags: "друзья,волонтёрство",
+      challenge: {
+        create: {
+          goalCount: 8,
+          deadline: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
+        },
+      },
+    },
+    include: { challenge: true },
+  });
+
   const businessChallengePost = await prisma.post.create({
     data: {
       type: PostType.CHALLENGE,
@@ -322,6 +363,11 @@ async function main() {
     data: [
       { challengeId: challengePost.challenge!.id, userId: demo.id, progress: 12, streak: 5 },
       { challengeId: challengePost.challenge!.id, userId: max.id, progress: 8, streak: 3 },
+      { challengeId: districtChallengePost.challenge!.id, userId: demo.id, progress: 4200, streak: 4 },
+      { challengeId: districtChallengePost.challenge!.id, userId: anna.id, progress: 6100, streak: 6 },
+      { challengeId: friendChallengePost.challenge!.id, userId: max.id, progress: 3, streak: 3 },
+      { challengeId: friendChallengePost.challenge!.id, userId: anna.id, progress: 2, streak: 2 },
+      { challengeId: friendChallengePost.challenge!.id, userId: demo.id, progress: 1, streak: 1 },
       { challengeId: businessChallengePost.challenge!.id, userId: demo.id, progress: 2, streak: 2 },
       { challengeId: businessChallengePost.challenge!.id, userId: daria.id, progress: 5, streak: 5 },
     ],
@@ -547,7 +593,7 @@ async function main() {
         type: "TASK_COMPLETED",
         visibility: "FRIENDS",
         title: "Утренняя пробежка 8 км",
-        body: "#бег",
+        body: "серия 21 день · #бег",
         xpGained: 10,
         taskId: demoTasks[6].id,
       },
@@ -565,6 +611,48 @@ async function main() {
         visibility: "FRIENDS",
         title: "Вступила в «30 дней без лифта»",
         postId: challengePost.id,
+      },
+      {
+        userId: daria.id,
+        type: "MEDIA_ADDED",
+        visibility: "PUBLIC",
+        title: "Оппенгеймер",
+        body: "FILM · рецензия: сильный финал",
+      },
+      {
+        userId: demo.id,
+        type: "WISHLIST_ADDED",
+        visibility: "FRIENDS",
+        title: "Мой день рождения",
+        body: "Kindle Paperwhite",
+      },
+      {
+        userId: anna.id,
+        type: "SHARED_GOAL_UPDATED",
+        visibility: "FRIENDS",
+        title: "Купить свечи",
+        body: "Подготовка к ДР Маши",
+      },
+      {
+        userId: demo.id,
+        type: "DUEL_STARTED",
+        visibility: "FRIENDS",
+        title: "10 000 шагов каждый день",
+        body: "⚔️",
+      },
+      {
+        userId: max.id,
+        type: "EVENT_ATTENDED",
+        visibility: "PUBLIC",
+        title: "Субботник в парке Сокольники",
+        postId: volunteerPost.id,
+      },
+      {
+        userId: max.id,
+        type: "CHALLENGE_CREATED",
+        visibility: "FRIENDS",
+        title: "Серия субботников",
+        postId: friendChallengePost.id,
       },
     ],
   });
@@ -603,6 +691,7 @@ async function main() {
     data: {
       creatorId: demo.id,
       title: "Подготовка к ДР Маши",
+      eventAt: new Date(Date.now() + 14 * 86400000),
       members: { create: [{ userId: demo.id }, { userId: anna.id }, { userId: max.id }] },
       items: {
         create: [

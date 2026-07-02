@@ -1,13 +1,19 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { useDiary } from "./diary-context";
-import { createWishlistAction, reserveWishlistItemAction } from "@/lib/social-actions";
+import { addWishlistItemAction, createWishlistAction } from "@/lib/social-actions";
 
 const VIS_LABEL: Record<string, string> = {
   PRIVATE: "🔒 приватно", FRIENDS: "👥 друзьям", PUBLIC: "🌍 всем",
 };
+
+const VIS_OPTIONS = [
+  { v: "private", l: "🔒 Приватно" },
+  { v: "friends", l: "👥 Друзьям" },
+  { v: "all", l: "🌍 Всем" },
+];
 
 function daysUntil(iso: string | Date | null | undefined) {
   if (!iso) return null;
@@ -21,11 +27,23 @@ function daysUntil(iso: string | Date | null | undefined) {
   return `через ${diff} ${diff === 1 ? "день" : diff < 5 ? "дня" : "дней"}`;
 }
 
-export function WishlistsSection() {
+export function WishlistsSection({ autoOpen }: { autoOpen?: boolean }) {
   const { wishlists } = useDiary();
   const [pending, startTransition] = useTransition();
   const [title, setTitle] = useState("");
+  const [occasion, setOccasion] = useState("");
+  const [eventAt, setEventAt] = useState("");
+  const [visibility, setVisibility] = useState("friends");
+  const [itemTitle, setItemTitle] = useState("");
+  const [itemPrice, setItemPrice] = useState("");
+  const [itemLink, setItemLink] = useState("");
+  const [itemComment, setItemComment] = useState("");
   const [showForm, setShowForm] = useState(false);
+  const [addingToList, setAddingToList] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (autoOpen) setShowForm(true);
+  }, [autoOpen]);
 
   return (
     <div className="space-y-4">
@@ -37,13 +55,44 @@ export function WishlistsSection() {
       {showForm && (
         <div className="card-surface p-4 space-y-3">
           <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Название списка" className="w-full h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 text-sm" />
+          <input value={occasion} onChange={(e) => setOccasion(e.target.value)} placeholder="Праздник (ДР, Новый год…)" className="w-full h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 text-sm" />
+          <input type="date" value={eventAt} onChange={(e) => setEventAt(e.target.value)} className="w-full h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 text-sm" />
+          <select value={visibility} onChange={(e) => setVisibility(e.target.value)} className="w-full h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 text-sm">
+            {VIS_OPTIONS.map((o) => <option key={o.v} value={o.v}>{o.l}</option>)}
+          </select>
+          <p className="text-[11px] text-muted-foreground">Первый подарок (опционально)</p>
+          <input value={itemTitle} onChange={(e) => setItemTitle(e.target.value)} placeholder="Название подарка" className="w-full h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 text-sm" />
+          <div className="grid grid-cols-2 gap-2">
+            <input value={itemPrice} onChange={(e) => setItemPrice(e.target.value)} placeholder="Цена" className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 text-sm" />
+            <input value={itemLink} onChange={(e) => setItemLink(e.target.value)} placeholder="Ссылка" className="h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 text-sm" />
+          </div>
+          <input value={itemComment} onChange={(e) => setItemComment(e.target.value)} placeholder="Комментарий" className="w-full h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 text-sm" />
           <button
             type="button"
-            disabled={pending}
+            disabled={pending || !title.trim()}
             onClick={() => startTransition(async () => {
-              await createWishlistAction({ title, visibility: "friends" });
-              setShowForm(false);
-              toast.success("Вишлист создан");
+              try {
+                await createWishlistAction({
+                  title,
+                  occasion: occasion.trim() || undefined,
+                  eventAt: eventAt || null,
+                  visibility,
+                  items: itemTitle.trim()
+                    ? [{ title: itemTitle, price: itemPrice, link: itemLink, comment: itemComment }]
+                    : undefined,
+                });
+                setTitle("");
+                setOccasion("");
+                setEventAt("");
+                setItemTitle("");
+                setItemPrice("");
+                setItemLink("");
+                setItemComment("");
+                setShowForm(false);
+                toast.success("Вишлист создан");
+              } catch {
+                toast.error("Не удалось создать");
+              }
             })}
             className="btn-action w-full text-sm py-2"
           >Создать</button>
@@ -73,21 +122,35 @@ export function WishlistsSection() {
                   <div className="flex-1 min-w-0">
                     <p className="font-bold text-sm">{w.title}</p>
                     {w.price ? <p className="font-heading text-xs font-bold mt-0.5">{w.price}</p> : <p className="text-xs text-muted-foreground">без цены</p>}
+                    {w.link && <a href={w.link} target="_blank" rel="noreferrer" className="text-[11px] text-lime mt-0.5 block truncate">ссылка</a>}
+                    {w.comment && <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">{w.comment}</p>}
                   </div>
                   {w.reserved ? (
-                    <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-good/15 text-good">забронировано</span>
+                    <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-good/15 text-good shrink-0">забронировано</span>
                   ) : (
-                    <button
-                      type="button"
-                      onClick={() => startTransition(async () => {
-                        await reserveWishlistItemAction(w.id);
-                        toast.success("Подарок забронирован");
-                      })}
-                      className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-white/[0.06] text-muted-foreground hover:text-lime cursor-pointer"
-                    >Забронировать</button>
+                    <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-white/[0.06] text-muted-foreground shrink-0">свободно</span>
                   )}
                 </div>
               ))}
+              {addingToList === list.id ? (
+                <div className="card-surface p-3 space-y-2">
+                  <input id={`item-${list.id}`} placeholder="Название" className="w-full h-9 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 text-sm" onKeyDown={(e) => {
+                    if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                  }} />
+                  <button type="button" onClick={() => {
+                    const el = document.getElementById(`item-${list.id}`) as HTMLInputElement | null;
+                    const t = el?.value?.trim();
+                    if (!t) return;
+                    startTransition(async () => {
+                      await addWishlistItemAction(list.id, { title: t });
+                      setAddingToList(null);
+                      toast.success("Подарок добавлен");
+                    });
+                  }} className="text-xs font-bold text-lime cursor-pointer">Добавить</button>
+                </div>
+              ) : (
+                <button type="button" onClick={() => setAddingToList(list.id)} className="text-xs font-bold text-muted-foreground hover:text-lime px-1 cursor-pointer">+ Подарок</button>
+              )}
             </div>
           );
         })

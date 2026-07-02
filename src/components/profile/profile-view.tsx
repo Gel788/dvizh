@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { Settings, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ProfileAvatarPicker } from "./profile-avatar-picker";
@@ -12,10 +13,12 @@ import { DiarySection } from "./diary-section";
 import { AchievementsSection } from "./achievements-section";
 import { DuelsSection } from "./duels-section";
 import { WishlistsSection } from "./wishlists-section";
+import { FriendWishlistsSection } from "./friend-wishlists-section";
 import { MediaSection } from "./media-section";
 import { PrivacySection } from "./privacy-section";
 import { DiaryProvider, useDiary } from "./diary-context";
 import { AddTaskSheet } from "./add-task-sheet";
+import { PersonalEventSheet } from "./personal-event-sheet";
 import { AchievementPopup } from "./achievement-popup";
 import { levelInfo, rankName } from "./profile-data";
 import { VerifiedBadge } from "@/components/ui/verified-badge";
@@ -52,6 +55,8 @@ type ProfileProps = {
   sessionId?: string;
   posts: PostItem[];
   diaryBundle?: DiaryBundle;
+  friendWishlists?: Awaited<ReturnType<typeof import("@/lib/wishlist-service").listWishlistsForViewer>>;
+  viewerUsername?: string;
 };
 
 export function ProfileView(props: ProfileProps) {
@@ -70,7 +75,22 @@ export function ProfileView(props: ProfileProps) {
 function OwnProfile({ user }: ProfileProps) {
   const searchParams = useSearchParams();
   const tab = (searchParams.get("tab") as ProfileTab) || "diary";
-  const { xp, level, openSheet } = useDiary();
+  const { xp, level, openSheet, setDiaryView, loadCalendar } = useDiary();
+  const [eventOpen, setEventOpen] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get("openTask") === "1") {
+      openSheet();
+    }
+    if (searchParams.get("view") === "calendar") {
+      setDiaryView("calendar");
+      void loadCalendar(new Date().getFullYear(), new Date().getMonth());
+    }
+    if (searchParams.get("openEvent") === "1") {
+      setDiaryView("calendar");
+      setEventOpen(true);
+    }
+  }, [searchParams, openSheet, setDiaryView, loadCalendar]);
 
   return (
     <div className="p-4 lg:p-8 max-w-2xl mx-auto pb-28 relative space-y-5">
@@ -79,8 +99,8 @@ function OwnProfile({ user }: ProfileProps) {
       {tab === "diary" && <DiarySection />}
       {tab === "achievements" && <AchievementsSection />}
       {tab === "duels" && <DuelsSection />}
-      {tab === "wishlists" && <WishlistsSection />}
-      {tab === "media" && <MediaSection />}
+      {tab === "wishlists" && <WishlistsSection autoOpen={searchParams.get("create") === "1"} />}
+      {tab === "media" && <MediaSection autoOpen={searchParams.get("create") === "1"} />}
       {tab === "privacy" && <PrivacySection />}
       {tab === "diary" && (
         <button
@@ -96,11 +116,16 @@ function OwnProfile({ user }: ProfileProps) {
           <Plus className="h-7 w-7" />
         </button>
       )}
+      <PersonalEventSheet
+        open={eventOpen}
+        onClose={() => setEventOpen(false)}
+        onCreated={() => loadCalendar(new Date().getFullYear(), new Date().getMonth())}
+      />
     </div>
   );
 }
 
-function GuestProfile({ user, isFollowing, friendshipState, friendshipId, sessionId, posts }: ProfileProps) {
+function GuestProfile({ user, isFollowing, friendshipState, friendshipId, sessionId, posts, friendWishlists, viewerUsername }: ProfileProps) {
   return (
     <div className="p-4 lg:p-8 max-w-2xl mx-auto pb-28 relative space-y-5">
       <ProfileHeader
@@ -111,6 +136,9 @@ function GuestProfile({ user, isFollowing, friendshipState, friendshipId, sessio
         friendshipId={friendshipId}
         sessionId={sessionId}
       />
+      {friendWishlists && friendWishlists.length > 0 && (
+        <FriendWishlistsSection wishlists={friendWishlists} viewerUsername={viewerUsername} />
+      )}
       <div className="space-y-3">
         <h2 className="font-heading font-bold text-lg">Публичные действия</h2>
         {posts.length === 0 ? (

@@ -1,4 +1,5 @@
 import { addMediaItem } from "@/lib/api/social-create-service";
+import { listMediaForUser } from "@/lib/media-service";
 import { requireSessionFromRequest } from "@/lib/auth";
 import { jsonError, jsonOk, readJson } from "@/lib/api/http";
 
@@ -12,6 +13,18 @@ type Body = {
   pinned?: boolean;
   visibility?: string;
 };
+
+export async function GET(request: Request) {
+  try {
+    const session = await requireSessionFromRequest(request);
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get("userId") ?? session.id;
+    const data = await listMediaForUser(userId);
+    return jsonOk(data);
+  } catch {
+    return jsonError("Требуется авторизация", 401, "UNAUTHORIZED");
+  }
+}
 
 export async function POST(request: Request) {
   try {

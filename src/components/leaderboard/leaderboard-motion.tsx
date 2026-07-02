@@ -2,29 +2,16 @@
 
 import Link from "next/link";
 import { motion } from "motion/react";
-import { Crown, Target, Users } from "lucide-react";
+import { Crown, Users } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Progress } from "@/components/ui/progress";
 import { MotionEnter } from "@/components/ui/motion-surface";
 import { spring } from "@/lib/motion-spring";
 import { cn } from "@/lib/utils";
-
-type Challenge = {
-  id: string;
-  goalCount: number;
-  post: {
-    id: string;
-    title: string | null;
-    content: string;
-    author: { name: string; avatar: string | null };
-  };
-  participants: { progress: number }[];
-  _count: { participants: number };
-};
+import { ChallengeLeaderboardRow, type ChallengeLeaderboardItem } from "./challenge-leaderboard-row";
 
 type Props = {
-  challenges: Challenge[];
-  scope: "local" | "global";
+  challenges: ChallengeLeaderboardItem[];
+  scope: "local" | "global" | "friends" | "district";
 };
 
 export function LeaderboardMotion({ challenges, scope }: Props) {
@@ -78,39 +65,15 @@ export function LeaderboardMotion({ challenges, scope }: Props) {
       <div className="space-y-2">
         {(top3.length < 3 ? challenges : rest).map((ch, idx) => {
           const rank = top3.length >= 3 ? idx + 4 : idx + 1;
-          const leader = ch.participants[0];
-          const progress = leader?.progress ?? 0;
-          const goal = ch.goalCount || 100;
           return (
-            <MotionEnter key={ch.id} index={idx}>
-              <Link href={`/post/${ch.post.id}`} className="card-surface block p-4 cursor-pointer group t-card-press">
-                <div className="flex items-center gap-4">
-                  <span className="font-heading text-xl text-muted-foreground/40 w-8 text-center shrink-0">{rank}</span>
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-heat/10 text-heat">
-                    <Target className="h-4 w-4" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-bold text-sm truncate group-hover:text-lime transition-colors">
-                      {ch.post.title ?? ch.post.content.slice(0, 80)}
-                    </p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">
-                      {ch.post.author.name} · {ch._count.participants} участников
-                    </p>
-                    {leader && (
-                      <div className="mt-2 flex items-center gap-2">
-                        <Progress value={Math.min(100, (progress / goal) * 100)} className="h-1.5 flex-1 progress-lime" />
-                        <span className="text-[10px] text-muted-foreground shrink-0">лидер {progress}/{goal}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </Link>
-            </MotionEnter>
+            <ChallengeLeaderboardRow key={ch.id} challenge={ch} rank={rank} index={idx} />
           );
         })}
         {challenges.length === 0 && (
           <div className="card-surface p-8 text-center text-muted-foreground text-sm t-reveal">
-            Пока нет челленджей — создай первый в разделе «Рядом»
+            {scope === "friends"
+              ? "Друзья ещё не запускали вызовы"
+              : "Пока нет челленджей — создай первый в разделе «Движ»"}
           </div>
         )}
       </div>

@@ -648,8 +648,9 @@ export async function getLeaderboard(city: string, district?: string) {
 
 export async function getChallengeLeaderboard(
   city?: string,
-  scope: "local" | "global" | "friends" = "local",
+  scope: "local" | "global" | "friends" | "district" = "local",
   userId?: string,
+  district?: string,
 ) {
   let authorIds: string[] | undefined;
   if (scope === "friends" && userId) {
@@ -675,6 +676,15 @@ export async function getChallengeLeaderboard(
   const challenges = await db.challenge.findMany({
     where: {
       ...(scope === "local" && city ? { post: { city, hiddenFromFeed: false } } : {}),
+      ...(scope === "district" && city
+        ? {
+            post: {
+              city,
+              hiddenFromFeed: false,
+              ...(district ? { district } : {}),
+            },
+          }
+        : {}),
       ...(scope === "global" ? { isGlobal: true, post: { hiddenFromFeed: false } } : {}),
       ...(scope === "friends" && authorIds ? { post: { authorId: { in: authorIds }, hiddenFromFeed: false } } : {}),
     },
@@ -701,7 +711,20 @@ export async function getChallengeLeaderboard(
     orderBy: { participants: { _count: "desc" } },
     take: 20,
   });
-  return challenges;
+
+  if (!userId) return challenges.map((c) => ({ ...c, viewerJoined: false, myProgress: 0 }));
+
+  const myParts = await db.challengeParticipant.findMany({
+    where: { userId, challengeId: { in: challenges.map((c) => c.id) } },
+    select: { challengeId: true, progress: true },
+  });
+  const myMap = new Map(myParts.map((p) => [p.challengeId, p.progress]));
+
+  return challenges.map((c) => ({
+    ...c,
+    viewerJoined: myMap.has(c.id),
+    myProgress: myMap.get(c.id) ?? 0,
+  }));
 }
 
 export async function searchPlatform(q: string, city?: string, viewerId?: string) {

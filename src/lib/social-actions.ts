@@ -5,6 +5,10 @@ import { redirect } from "next/navigation";
 import type { DuelPeriod, MediaStatus, MediaType, Visibility } from "@prisma/client";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
+import { createDuelRecord } from "@/lib/duel-service";
+import { claimSharedGoalItem, createSharedGoalRecord, listSharedGoalsForUser } from "@/lib/shared-goal-service";
+import { reserveWishlistItemRecord, createWishlistRecord, addWishlistItemRecord } from "@/lib/wishlist-service";
+import { updateMediaItem, copyMediaFromUser } from "@/lib/media-service";
 
 const VIS: Record<string, Visibility> = {
   private: "PRIVATE", friends: "FRIENDS", all: "PUBLIC",
@@ -35,23 +39,28 @@ export async function createDuelAction(input: {
   period: string;
   visibility: string;
   friendIds: string[];
+  remindersOn?: boolean;
 }) {
   const session = await me();
-  const ids = [...new Set([session.id, ...input.friendIds])];
-
-  await db.duel.create({
-    data: {
-      creatorId: session.id,
-      title: input.title.trim(),
-      description: input.description?.trim() || null,
-      emoji: input.emoji || "⚔️",
-      period: DUEL_PERIOD[input.period] ?? "DAILY",
-      visibility: VIS[input.visibility] ?? "PRIVATE",
-      participants: { create: ids.map((userId) => ({ userId })) },
-    },
-  });
+  try {
+    await createDuelRecord(session.id, {
+      title: input.title,
+      description: input.description,
+      emoji: input.emoji,
+      period: input.period,
+      visibility: input.visibility,
+      friendIds: input.friendIds,
+      remindersOn: input.remindersOn,
+    });
+  } catch (e) {
+    if (e instanceof Error && (e.message === "MIN_PARTICIPANTS" || e.message === "MAX_PARTICIPANTS")) {
+      return;
+    }
+    throw e;
+  }
 
   revalidatePath(`/profile/${session.username}`);
+  revalidatePath("/friends");
 }
 
 export async function markDuelAction(duelId: string) {
@@ -93,62 +102,56 @@ export async function sendDuelEmojiAction(duelId: string, emoji: string) {
   });
 }
 
-export async function createSharedGoalAction(input: { title: string; items: string[]; friendIds: string[] }) {
+export async function createSharedGoalAction(input: {
+  title: string;
+  items: string[];
+  friendIds: string[];
+  eventAt?: string | null;
+}) {
   const session = await me();
-  const memberIds = [...new Set([session.id, ...input.friendIds])];
-
-  await db.sharedGoal.create({
-    data: {
-      creatorId: session.id,
-      title: input.title.trim(),
-      members: { create: memberIds.map((userId) => ({ userId })) },
-      items: {
-        create: input.items.filter(Boolean).map((title, sortOrder) => ({ title: title.trim(), sortOrder })),
-      },
-    },
-  });
-
+  try {
+    await createSharedGoalRecord(session.id, input);
+  } catch (e) {
+    if (e instanceof Error && (e.message === "MIN_MEMBERS" || e.message === "MIN_ITEMS")) return;
+    throw e;
+  }
   revalidatePath(`/profile/${session.username}`);
+  revalidatePath("/friends");
 }
 
 export async function claimGoalItemAction(itemId: string) {
   const session = await me();
-  await db.sharedGoalItem.update({
-    where: { id: itemId },
-    data: { assigneeId: session.id },
-  });
+  await claimSharedGoalItem(session.id, itemId);
   revalidatePath(`/profile/${session.username}`);
+  revalidatePath("/friends");
 }
 
 export async function completeGoalItemAction(itemId: string) {
   const session = await me();
-  await db.sharedGoalItem.update({
-    where: { id: itemId },
-    data: { done: true, assigneeId: session.id },
-  });
+  const { completeSharedGoalItemRecord } = await import("@/lib/shared-goal-service");
+  await completeSharedGoalItemRecord(session.id, itemId);
   revalidatePath(`/profile/${session.username}`);
+  revalidatePath("/friends");
 }
 
-export async function createWishlistAction(input: { title: string; occasion?: string; visibility: string }) {
+export async function createWishlistAction(input: {
+  title: string;
+  occasion?: string;
+  eventAt?: string | null;
+  visibility: string;
+  items?: { title: string; price?: string; link?: string; comment?: string }[];
+}) {
   const session = await me();
-  await db.wishlist.create({
-    data: {
-      userId: session.id,
-      title: input.title.trim(),
-      occasion: input.occasion?.trim() || null,
-      visibility: VIS[input.visibility] ?? "FRIENDS",
-    },
-  });
+  await createWishlistRecord(session.id, input);
   revalidatePath(`/profile/${session.username}`);
 }
 
 export async function reserveWishlistItemAction(itemId: string) {
   const session = await me();
-  await db.wishlistItem.update({
-    where: { id: itemId },
-    data: { reserved: true, reservedBy: session.username },
-  });
+  const result = await reserveWishlistItemRecord(session.id, session.username, itemId);
+  if ("error" in result) throw new Error(result.error);
   revalidatePath(`/profile/${session.username}`);
+  revalidatePath("/friends");
 }
 
 export async function addMediaItemAction(input: {
@@ -160,7 +163,7 @@ export async function addMediaItemAction(input: {
   visibility: string;
 }) {
   const session = await me();
-  await db.mediaItem.create({
+  const item = await db.mediaItem.create({
     data: {
       userId: session.id,
       type: MEDIA_TYPE[input.type] ?? "FILM",
@@ -171,6 +174,50 @@ export async function addMediaItemAction(input: {
       visibility: VIS[input.visibility] ?? "PUBLIC",
     },
   });
+
+  if (VIS[input.visibility] !== "PRIVATE") {
+    await db.activity.create({
+      data: {
+        userId: session.id,
+        type: "MEDIA_ADDED",
+        visibility: VIS[input.visibility] ?? "PUBLIC",
+        title: input.title.trim(),
+        body: input.review?.trim() || input.type,
+        metadata: JSON.stringify({ mediaId: item.id }),
+      },
+    });
+  }
+
+  revalidatePath(`/profile/${session.username}`);
+}
+
+export async function updateMediaItemAction(
+  itemId: string,
+  input: {
+    status?: string;
+    rating?: number | null;
+    review?: string | null;
+    visibility?: string;
+    pinned?: boolean;
+  },
+) {
+  const session = await me();
+  await updateMediaItem(session.id, itemId, input);
+  revalidatePath(`/profile/${session.username}`);
+}
+
+export async function copyMediaItemAction(sourceItemId: string) {
+  const session = await me();
+  await copyMediaFromUser(session.id, sourceItemId);
+  revalidatePath(`/profile/${session.username}`);
+}
+
+export async function addWishlistItemAction(
+  listId: string,
+  input: { title: string; price?: string; link?: string; comment?: string },
+) {
+  const session = await me();
+  await addWishlistItemRecord(session.id, listId, input);
   revalidatePath(`/profile/${session.username}`);
 }
 
@@ -197,12 +244,5 @@ export async function getFriendsForPicker(userId: string) {
 }
 
 export async function getSharedGoalsForUser(userId: string) {
-  return db.sharedGoal.findMany({
-    where: { members: { some: { userId } } },
-    include: {
-      items: { orderBy: { sortOrder: "asc" } },
-      members: { include: { user: { select: { name: true, username: true } } } },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+  return listSharedGoalsForUser(userId);
 }

@@ -33,7 +33,8 @@ type DiaryContextValue = DiaryBundle & {
     text: string; note?: string; period: DiaryPeriod; visibility: TaskVisibility;
     hashtag?: string; dueDate?: string; isRecurring?: boolean; recurrence?: string;
     trackStreak?: boolean; reminderAt?: string; checklist?: string[]; multiLine?: boolean;
-    hashtagColor?: string;
+    hashtagColor?: string; priority?: boolean; askProof?: boolean;
+    hasTime?: boolean; scheduledAt?: string;
   }) => void;
   reorderTasks: (period: DiaryPeriod, ids: string[]) => void;
   loadCalendar: (year: number, month: number) => Promise<void>;

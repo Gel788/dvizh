@@ -7,18 +7,26 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const scopeParam = searchParams.get("scope");
   const scope =
-    scopeParam === "global" ? "global" : scopeParam === "friends" ? "friends" : "local";
+    scopeParam === "global"
+      ? "global"
+      : scopeParam === "friends"
+        ? "friends"
+        : scopeParam === "district"
+          ? "district"
+          : "local";
   const city = searchParams.get("city") ?? session?.city ?? "Москва";
+  const district = searchParams.get("district") ?? session?.district ?? undefined;
 
   if (scope === "friends" && !session?.id) {
-    return jsonOk({ scope, city, challenges: [] });
+    return jsonOk({ scope, city, district, challenges: [] });
   }
 
   const challenges = await getChallengeLeaderboard(
-    scope === "local" ? city : undefined,
+    scope === "local" || scope === "district" ? city : undefined,
     scope,
     session?.id,
+    district,
   );
 
-  return jsonOk({ scope, city, challenges });
+  return jsonOk({ scope, city, district, challenges });
 }

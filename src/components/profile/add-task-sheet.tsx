@@ -30,7 +30,12 @@ export function AddTaskSheet() {
   const [reminderOn, setReminderOn] = useState(false);
   const [checklist, setChecklist] = useState("");
   const [tagColor, setTagColor] = useState<string>(TAG_SWATCHES[0]);
+  const [priority, setPriority] = useState(false);
+  const [askProof, setAskProof] = useState(false);
   const [checklistOn, setChecklistOn] = useState(false);
+  const [timingOn, setTimingOn] = useState(false);
+  const [timeOn, setTimeOn] = useState(false);
+  const [scheduledTime, setScheduledTime] = useState("12:00");
 
   useEffect(() => {
     if (sheetOpen) {
@@ -38,7 +43,8 @@ export function AddTaskSheet() {
       setVisibility("private");
       setText(""); setNote(""); setHashtag(""); setChecklist("");
       setDueDate(""); setIsRecurring(false); setTrackStreak(false); setReminderAt(""); setReminderOn(false);
-      setTagColor(TAG_SWATCHES[0]); setChecklistOn(false);
+      setTagColor(TAG_SWATCHES[0]); setChecklistOn(false); setPriority(false); setAskProof(false);
+      setTimingOn(false); setTimeOn(false); setScheduledTime("12:00");
     }
   }, [sheetOpen, period]);
 
@@ -56,7 +62,9 @@ export function AddTaskSheet() {
       period: newPeriod,
       visibility,
       hashtag: hashtag.trim() || undefined,
-      dueDate: dueDate || undefined,
+      dueDate: timingOn ? dueDate || undefined : undefined,
+      hasTime: timingOn && timeOn,
+      scheduledAt: timingOn && timeOn && dueDate ? `${dueDate}T${scheduledTime}:00` : undefined,
       isRecurring,
       recurrence,
       trackStreak: isRecurring && trackStreak,
@@ -64,6 +72,8 @@ export function AddTaskSheet() {
       checklist: checklistOn ? checklist.split("\n").map((l) => l.trim()).filter(Boolean) : [],
       multiLine,
       hashtagColor: hashtag.trim() ? tagColor : undefined,
+      priority,
+      askProof,
     });
   }
 
@@ -110,7 +120,7 @@ export function AddTaskSheet() {
             </div>
             <div className="space-y-2">
               <Label className="text-xs font-bold text-muted-foreground">Срок</Label>
-              <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="h-10 rounded-xl border-white/[0.1] bg-white/[0.04] text-sm" />
+              <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="h-10 rounded-xl border-white/[0.1] bg-white/[0.04] text-sm" disabled={timingOn} />
             </div>
           </div>
 
@@ -152,6 +162,36 @@ export function AddTaskSheet() {
           </div>
 
           <div className="card-surface p-3 space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <span className="text-sm font-bold">Добавить дату или время</span>
+                <p className="text-[11px] text-muted-foreground">по умолчанию выкл.</p>
+              </div>
+              <Switch checked={timingOn} onCheckedChange={setTimingOn} />
+            </div>
+            {timingOn && (
+              <>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { label: "Сегодня", value: new Date().toISOString().slice(0, 10) },
+                    { label: "Завтра", value: new Date(Date.now() + 86400000).toISOString().slice(0, 10) },
+                  ].map((d) => (
+                    <button key={d.label} type="button" onClick={() => setDueDate(d.value)} className={cn("px-3 py-1.5 rounded-lg text-xs font-bold border cursor-pointer", dueDate === d.value ? "border-lime text-lime bg-lime/10" : "border-white/[0.08] text-muted-foreground")}>{d.label}</button>
+                  ))}
+                </div>
+                <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="h-10 rounded-xl border-white/[0.1] bg-white/[0.04] text-sm" />
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-bold">Добавить время</span>
+                  <Switch checked={timeOn} onCheckedChange={setTimeOn} />
+                </div>
+                {timeOn && (
+                  <Input type="time" value={scheduledTime} onChange={(e) => setScheduledTime(e.target.value)} className="h-10 rounded-xl border-white/[0.1] bg-white/[0.04] text-sm" />
+                )}
+              </>
+            )}
+          </div>
+
+          <div className="card-surface p-3 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-sm font-bold">Повторяемая</span>
               <Switch checked={isRecurring} onCheckedChange={setIsRecurring} />
@@ -171,6 +211,14 @@ export function AddTaskSheet() {
                 </div>
               </>
             )}
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-bold">Приоритет</span>
+              <Switch checked={priority} onCheckedChange={setPriority} />
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-bold">Спросить про фото-пруф</span>
+              <Switch checked={askProof} onCheckedChange={setAskProof} />
+            </div>
             <div className="flex items-center justify-between">
               <span className="text-sm font-bold">Напоминание</span>
               <Switch checked={reminderOn} onCheckedChange={setReminderOn} />

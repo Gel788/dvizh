@@ -57,11 +57,27 @@ enum DiaryPeriod {
 enum ActivityType {
   TASK_COMPLETED
   TASK_CREATED
+  TASK_PROOF
   EVENT_ATTENDED
   CHALLENGE_JOINED
   CHALLENGE_CREATED
   ACHIEVEMENT_UNLOCKED
   DUEL_MARKED
+  DUEL_STARTED
+  MEDIA_ADDED
+  WISHLIST_ADDED
+  SHARED_GOAL_UPDATED
+}
+
+enum PersonalEventType {
+  BIRTHDAY
+  ANNIVERSARY
+  HOLIDAY
+  PAYMENT
+  MEETING
+  APPOINTMENT
+  HOUSEHOLD
+  CUSTOM
 }
 
 enum MediaType {
@@ -138,6 +154,7 @@ model User {
   notifications      Notification[]
   profile            UserProfile?
   diaryTasks         DiaryTask[]
+  personalEvents     PersonalCalendarEvent[]
   taskCopies         TaskCopy[]
   activities         Activity[]
   friendshipsSent    Friendship[]         @relation("friendshipRequester")
@@ -146,6 +163,7 @@ model User {
   duelParticipants   DuelParticipant[]
   sharedGoalsCreated SharedGoal[]         @relation("goalCreator")
   sharedGoalMembers  SharedGoalMember[]
+  sharedGoalItemsAssigned SharedGoalItem[] @relation("sharedGoalAssignee")
   wishlists          Wishlist[]
   mediaItems         MediaItem[]
   privacySettings    PrivacySettings?
@@ -439,12 +457,15 @@ model DiaryTask {
   hashtag      String?
   hashtagColor String?
   dueDate      DateTime?
+  hasTime      Boolean      @default(false)
+  scheduledAt  DateTime?
   isRecurring  Boolean      @default(false)
   recurrence   RecurrenceFreq?
   reminderAt   DateTime?
   trackStreak  Boolean      @default(false)
   priority     Boolean      @default(false)
   askProof     Boolean      @default(false)
+  proofUrl     String?
   checklistJson String      @default("[]")
   streak       Int          @default(0)
   copyCount    Int          @default(0)
@@ -457,6 +478,26 @@ model DiaryTask {
   copiesMade TaskCopy[]
 
   @@index([userId, period, done])
+}
+
+model PersonalCalendarEvent {
+  id          String            @id @default(cuid())
+  userId      String
+  title       String
+  eventType   PersonalEventType @default(CUSTOM)
+  eventDate   DateTime
+  hasTime     Boolean           @default(false)
+  scheduledAt DateTime?
+  isRecurring Boolean           @default(false)
+  recurrence  RecurrenceFreq?
+  reminderAt  DateTime?
+  visibility  Visibility        @default(PRIVATE)
+  note        String?
+  createdAt   DateTime          @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, eventDate])
 }
 
 model TaskCopy {
@@ -537,6 +578,7 @@ model Duel {
   emoji       String?
   period      DuelPeriod @default(DAILY)
   visibility  Visibility @default(PRIVATE)
+  remindersOn Boolean    @default(true)
   createdAt   DateTime   @default(now())
 
   creator      User              @relation("duelCreator", fields: [creatorId], references: [id], onDelete: Cascade)
@@ -569,10 +611,11 @@ model DuelMark {
 }
 
 model SharedGoal {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   creatorId   String
   title       String
-  createdAt   DateTime @default(now())
+  eventAt     DateTime?
+  createdAt   DateTime  @default(now())
 
   creator User               @relation("goalCreator", fields: [creatorId], references: [id], onDelete: Cascade)
   members SharedGoalMember[]
@@ -598,7 +641,8 @@ model SharedGoalItem {
   done      Boolean @default(false)
   sortOrder Int     @default(0)
 
-  goal SharedGoal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  goal     SharedGoal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  assignee User?      @relation("sharedGoalAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
 }
 
 model Wishlist {
@@ -621,6 +665,7 @@ model WishlistItem {
   imageUrl  String?
   link      String?
   price     String?
+  comment   String?
   reserved  Boolean @default(false)
   reservedBy String?
 

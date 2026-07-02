@@ -3,21 +3,29 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "motion/react";
-import { Bell, Home, MapPin, Medal, Plus, Shield, Users, Zap } from "lucide-react";
+import {
+  Bell, Home, Compass, Sun, Trophy, Shield, Zap,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { SessionUser } from "@/lib/auth";
 import type { ElementType } from "react";
+import { CreateMenuButton } from "./create-menu";
 
-const nav = [
-  { href: "/",            label: "Лента",    icon: Home },
-  { href: "/friends",     label: "Друзья",   icon: Users },
-  { href: "/nearby",      label: "Рядом",    icon: MapPin },
-  { href: "/leaderboard", label: "Рейтинг", icon: Medal },
-];
+function buildNav(username?: string) {
+  const todayHref = username ? `/profile/${username}?tab=diary` : "/login";
+  const profileHref = username ? `/profile/${username}` : "/login";
+  return [
+    { href: "/", label: "Лента", icon: Home, exact: true as const },
+    { href: "/nearby", label: "Движ", icon: Compass, exact: false as const },
+    { href: todayHref, label: "Сегодня", icon: Sun, exact: false as const },
+    { href: "/challenges", label: "Вызовы", icon: Trophy, exact: false as const },
+    { href: profileHref, label: "Профиль", icon: Zap, exact: false as const },
+  ];
+}
 
 export function Sidebar({ user, unreadCount = 0 }: { user: SessionUser | null; unreadCount?: number }) {
   const pathname = usePathname();
-  const profileHref = user ? `/profile/${user.username}` : "/login";
+  const nav = buildNav(user?.username);
 
   return (
     <aside className="hidden lg:flex w-[248px] xl:w-[260px] shrink-0 flex-col bg-sidebar border-r border-sidebar-border fixed inset-y-0 left-0 z-30">
@@ -36,8 +44,10 @@ export function Sidebar({ user, unreadCount = 0 }: { user: SessionUser | null; u
       </div>
 
       <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
-        {nav.map(({ href, label, icon: Icon }) => {
-          const active = pathname === href || (href !== "/" && pathname.startsWith(href));
+        {nav.map(({ href, label, icon: Icon, exact }) => {
+          const active = exact
+            ? pathname === href
+            : pathname === href || (href !== "/" && pathname.startsWith(href.split("?")[0]));
           return (
             <Link key={href} href={href} className="relative block cursor-pointer group">
               {active && (
@@ -58,34 +68,12 @@ export function Sidebar({ user, unreadCount = 0 }: { user: SessionUser | null; u
             </Link>
           );
         })}
-        <Link href={profileHref} className="relative block cursor-pointer group">
-          {pathname.startsWith("/profile") && (
-            <motion.span
-              layoutId="sidebar-pill"
-              className="absolute inset-0 rounded-xl bg-sidebar-accent"
-              style={{ boxShadow: "inset 0 0 0 1px rgba(200,255,87,0.1)" }}
-              transition={{ type: "spring", stiffness: 440, damping: 32 }}
-            />
-          )}
-          <span className={cn(
-            "relative flex items-center gap-3 px-3.5 py-2.5 text-[13px] font-semibold rounded-xl transition-colors duration-150",
-            pathname.startsWith("/profile") ? "text-lime" : "text-sidebar-foreground/50 group-hover:text-sidebar-foreground/85 group-hover:bg-white/[0.025]",
-          )}>
-            <div className="h-[16px] w-[16px] rounded-full bg-lime flex items-center justify-center text-[8px] font-bold text-lime-foreground shrink-0">
-              {user ? user.name.slice(0, 1) : "?"}
-            </div>
-            Профиль
-          </span>
-        </Link>
       </nav>
 
       <div className="px-2 pb-4 pt-2 border-t border-sidebar-border space-y-0.5">
         {user ? (
           <>
-            <Link href="/create" className="btn-action w-full justify-center py-2.5 text-xs gap-2 mb-2">
-              <Plus className="h-4 w-4" />
-              Записать действие
-            </Link>
+            <CreateMenuButton user={user} />
             <Link
               href="/notifications"
               className="relative flex items-center gap-3 px-3.5 py-2.5 text-[13px] font-semibold text-sidebar-foreground/50 hover:text-sidebar-foreground/85 hover:bg-white/[0.025] rounded-xl transition-colors cursor-pointer"
@@ -126,20 +114,15 @@ export function Sidebar({ user, unreadCount = 0 }: { user: SessionUser | null; u
 
 export function MobileNav({ user }: { user: SessionUser | null }) {
   const pathname = usePathname();
-  const profileHref = user ? `/profile/${user.username}` : "/login";
-
-  const tabs = [
-    { href: "/",            icon: Home,   label: "Лента",   exact: true },
-    { href: "/friends",     icon: Users,  label: "Друзья" },
-    { href: "/nearby",      icon: MapPin, label: "Рядом" },
-    { href: "/leaderboard", icon: Medal,  label: "Рейтинг" },
-    { href: profileHref,    icon: Zap,    label: "Профиль" },
-  ];
+  const tabs = buildNav(user?.username);
 
   function NavItem({ href, icon: Icon, label, exact = false }: {
     href: string; icon: ElementType; label: string; exact?: boolean;
   }) {
-    const active = exact ? pathname === href : pathname === href || (href !== "/" && pathname.startsWith(href));
+    const base = href.split("?")[0];
+    const active = exact
+      ? pathname === base
+      : pathname === base || (base !== "/" && pathname.startsWith(base));
     return (
       <Link
         href={href}

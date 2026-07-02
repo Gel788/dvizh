@@ -22,6 +22,8 @@ type CreateTaskBody = {
   checklist?: string[] | string;
   priority?: boolean;
   askProof?: boolean;
+  hasTime?: boolean;
+  scheduledAt?: string;
 };
 
 export async function POST(request: Request) {
@@ -50,6 +52,8 @@ export async function POST(request: Request) {
       multiLine: body.multiLine,
       dueDate: body.dueDate,
       reminderAt: body.reminderAt,
+      hasTime: body.hasTime,
+      scheduledAt: body.scheduledAt,
       checklist,
       priority: body.priority,
       askProof: body.askProof,
