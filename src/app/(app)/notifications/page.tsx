@@ -21,6 +21,8 @@ const iconMap: Record<NotificationType, typeof Bell> = {
   EVENT_REMINDER: Calendar,
   BADGE_EARNED: Award,
   SHARED_GOAL_INVITE: Users,
+  ADMIN_BROADCAST: Bell,
+  TASK_REMINDER: Calendar,
 };
 
 export default async function NotificationsPage() {

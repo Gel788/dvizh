@@ -32,6 +32,8 @@ enum NotificationType {
   EVENT_REMINDER
   BADGE_EARNED
   SHARED_GOAL_INVITE
+  ADMIN_BROADCAST
+  TASK_REMINDER
 }
 
 enum SharedGoalMemberStatus {
@@ -176,6 +178,20 @@ model User {
   privacySettings    PrivacySettings?
   userAchievements   UserAchievement[]
   aiUsage            AiUsage[]
+  pushDevices        PushDevice[]
+}
+
+model PushDevice {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  platform  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model Follow {
@@ -470,6 +486,7 @@ model DiaryTask {
   isRecurring  Boolean      @default(false)
   recurrence   RecurrenceFreq?
   reminderAt   DateTime?
+  reminderPushedAt DateTime?
   trackStreak  Boolean      @default(false)
   priority     Boolean      @default(false)
   askProof     Boolean      @default(false)
@@ -500,6 +517,7 @@ model PersonalCalendarEvent {
   isRecurring Boolean           @default(false)
   recurrence  RecurrenceFreq?
   reminderAt  DateTime?
+  reminderPushedAt DateTime?
   visibility  Visibility        @default(PRIVATE)
   note        String?
   createdAt   DateTime          @default(now())

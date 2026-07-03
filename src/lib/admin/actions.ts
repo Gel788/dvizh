@@ -171,12 +171,16 @@ export async function broadcastNotificationAction(formData: FormData) {
   await db.notification.createMany({
     data: users.map((u) => ({
       userId: u.id,
-      type: "FOLLOW" as const,
+      type: "ADMIN_BROADCAST" as const,
       title,
       body,
       link,
     })),
   });
+
+  const { sendPushBroadcast } = await import("@/lib/push/push-service");
+  await sendPushBroadcast({ title, body, link, type: "ADMIN_BROADCAST" });
+
   revalidateAdmin();
 }
 

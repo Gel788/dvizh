@@ -30,8 +30,11 @@ export function BroadcastForm() {
             <Input id="broadcast-link" name="link" placeholder="/challenges" />
           </div>
           <Button type="submit" className="cursor-pointer bg-heat text-white hover:bg-heat/90">
-            Отправить всем
+            Отправить всем (в приложении + push)
           </Button>
+          <p className="text-xs text-muted-foreground">
+            Push дойдёт на устройства с включёнными уведомлениями. Нужен FIREBASE_SERVICE_ACCOUNT_JSON на сервере.
+          </p>
         </form>
       </CardContent>
     </Card>
