@@ -4,11 +4,14 @@ import { requireSessionFromRequest } from "@/lib/auth";
 import { jsonError, jsonOk, readJson } from "@/lib/api/http";
 
 type PatchBody = {
+  title?: string;
+  type?: string;
   pinned?: boolean;
   status?: string;
   rating?: number | null;
   review?: string | null;
   visibility?: string;
+  coverUrl?: string | null;
 };
 
 export async function DELETE(

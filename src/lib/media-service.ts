@@ -54,11 +54,14 @@ export async function updateMediaItem(
   userId: string,
   itemId: string,
   input: {
+    title?: string;
+    type?: string;
     status?: string;
     rating?: number | null;
     review?: string | null;
     visibility?: string;
     pinned?: boolean;
+    coverUrl?: string | null;
   },
 ) {
   const item = await db.mediaItem.findFirst({ where: { id: itemId, userId } });
@@ -68,11 +71,14 @@ export async function updateMediaItem(
   const updated = await db.mediaItem.update({
     where: { id: itemId },
     data: {
+      title: input.title !== undefined ? sentenceCase(input.title) : item.title,
+      type: input.type ? (MEDIA_TYPE[input.type] ?? item.type) : item.type,
       status,
       rating: input.rating !== undefined ? input.rating : item.rating,
       review: input.review !== undefined ? (input.review?.trim() ? sentenceCase(input.review) : null) : item.review,
       visibility: input.visibility ? (VIS[input.visibility] ?? item.visibility) : item.visibility,
       pinned: input.pinned ?? item.pinned,
+      coverUrl: input.coverUrl !== undefined ? input.coverUrl : item.coverUrl,
     },
   });
 

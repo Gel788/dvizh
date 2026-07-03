@@ -24,8 +24,8 @@ const STATUS_LABEL: Record<string, string> = {
   WANT: "хочу", IN_PROGRESS: "в процессе", DONE: "завершено",
 };
 
-const STATUS_NEXT: Record<string, string> = {
-  WANT: "progress", IN_PROGRESS: "done", DONE: "want",
+const STATUS_API: Record<string, string> = {
+  WANT: "want", IN_PROGRESS: "progress", DONE: "done",
 };
 
 const STATUS_COLOR: Record<string, string> = {
@@ -33,12 +33,24 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 const EMOJI: Record<string, string> = { FILM: "🎬", SERIES: "📺", BOOK: "📚", GAME: "🎮" };
+const TYPE_API: Record<string, string> = { FILM: "film", SERIES: "series", BOOK: "book", GAME: "game" };
 
 const VIS_OPTIONS = [
   { v: "private", l: "🔒 Приватно" },
   { v: "friends", l: "👥 Друзьям" },
   { v: "all", l: "🌍 Всем" },
 ];
+
+const inputCls = "w-full h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 text-sm";
+
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result as string);
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+}
 
 export function MediaSection({ autoOpen }: { autoOpen?: boolean }) {
   const { media } = useDiary();
@@ -51,9 +63,14 @@ export function MediaSection({ autoOpen }: { autoOpen?: boolean }) {
   const [visibility, setVisibility] = useState("friends");
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editType, setEditType] = useState("film");
+  const [editStatus, setEditStatus] = useState("want");
   const [editRating, setEditRating] = useState(0);
   const [editReview, setEditReview] = useState("");
   const [editVisibility, setEditVisibility] = useState("friends");
+  const [editCoverPreview, setEditCoverPreview] = useState<string | null>(null);
+  const [editCoverData, setEditCoverData] = useState<string | null | undefined>(undefined);
   const [pending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -68,9 +85,20 @@ export function MediaSection({ autoOpen }: { autoOpen?: boolean }) {
 
   function openEdit(m: (typeof media)[0]) {
     setEditingId(m.id);
+    setEditTitle(m.title);
+    setEditType(TYPE_API[m.type] ?? "film");
+    setEditStatus(STATUS_API[m.status] ?? "want");
     setEditRating(m.rating ?? 0);
     setEditReview(m.review ?? "");
     setEditVisibility(m.visibility === "PUBLIC" ? "all" : m.visibility === "FRIENDS" ? "friends" : "private");
+    setEditCoverPreview(m.coverUrl ?? null);
+    setEditCoverData(undefined);
+  }
+
+  function closeEdit() {
+    setEditingId(null);
+    setEditCoverPreview(null);
+    setEditCoverData(undefined);
   }
 
   return (
@@ -94,7 +122,7 @@ export function MediaSection({ autoOpen }: { autoOpen?: boolean }) {
 
       {showForm && (
         <div className="card-surface p-4 space-y-3">
-          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Название" className="w-full h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 text-sm" />
+          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Название" className={inputCls} />
           <div className="flex gap-2 flex-wrap">
             {(["want", "progress", "done"] as const).map((s) => (
               <button key={s} type="button" onClick={() => setStatus(s)} className={cn("px-3 py-1.5 rounded-full text-[11px] font-bold border cursor-pointer", status === s ? "border-lime/40 text-lime bg-lime/10" : "border-white/[0.07] text-muted-foreground")}>
@@ -112,25 +140,15 @@ export function MediaSection({ autoOpen }: { autoOpen?: boolean }) {
               <textarea value={review} onChange={(e) => setReview(e.target.value)} placeholder="Рецензия (опционально)" rows={2} className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-sm resize-none" />
             </>
           )}
-          <select value={visibility} onChange={(e) => setVisibility(e.target.value)} className="w-full h-10 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 text-sm">
+          <select value={visibility} onChange={(e) => setVisibility(e.target.value)} className={inputCls}>
             {VIS_OPTIONS.map((o) => <option key={o.v} value={o.v}>{o.l}</option>)}
           </select>
           <button
             type="button"
             disabled={pending || !title.trim()}
             onClick={() => startTransition(async () => {
-              await addMediaItemAction({
-                type: tab.toLowerCase(),
-                title,
-                status,
-                rating: status === "done" && rating > 0 ? rating : undefined,
-                review: review.trim() || undefined,
-                visibility,
-              });
-              setTitle("");
-              setReview("");
-              setRating(0);
-              setShowForm(false);
+              await addMediaItemAction({ type: tab.toLowerCase(), title, status, rating: status === "done" && rating > 0 ? rating : undefined, review: review.trim() || undefined, visibility });
+              setTitle(""); setReview(""); setRating(0); setShowForm(false);
               toast.success("Добавлено в медиалист");
             })}
             className="btn-action w-full text-sm py-2"
@@ -138,86 +156,96 @@ export function MediaSection({ autoOpen }: { autoOpen?: boolean }) {
         </div>
       )}
 
-      <div className="space-y-2">
+      {editingId && (
+        <div className="card-surface p-4 space-y-3 border border-lime/30">
+          <p className="text-xs font-bold text-lime">Редактировать</p>
+          {editCoverPreview && (
+            <img src={editCoverPreview} alt="" className="w-full max-h-40 object-cover rounded-xl" />
+          )}
+          <input type="file" accept="image/*" className="text-xs" onChange={async (e) => {
+            const f = e.target.files?.[0];
+            if (!f) return;
+            const data = await fileToDataUrl(f);
+            setEditCoverPreview(data);
+            setEditCoverData(data);
+          }} />
+          {editCoverPreview && (
+            <button type="button" className="text-xs text-red-400 cursor-pointer" onClick={() => { setEditCoverPreview(null); setEditCoverData(null); }}>Убрать фото</button>
+          )}
+          <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="Название" className={inputCls} />
+          <select value={editType} onChange={(e) => setEditType(e.target.value)} className={inputCls}>
+            <option value="film">🎬 Фильм</option>
+            <option value="series">📺 Сериал</option>
+            <option value="book">📚 Книга</option>
+            <option value="game">🎮 Игра</option>
+          </select>
+          <div className="flex gap-2 flex-wrap">
+            {(["want", "progress", "done"] as const).map((s) => (
+              <button key={s} type="button" onClick={() => setEditStatus(s)} className={cn("px-3 py-1.5 rounded-full text-[11px] font-bold border cursor-pointer", editStatus === s ? "border-lime/40 text-lime bg-lime/10" : "border-white/[0.07] text-muted-foreground")}>
+                {s === "want" ? "Хочу" : s === "progress" ? "В процессе" : "Закончил"}
+              </button>
+            ))}
+          </div>
+          {editStatus === "done" && (
+            <div className="flex gap-1">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <button key={n} type="button" onClick={() => setEditRating(n)} className={cn("text-lg cursor-pointer", n <= editRating ? "text-[#FFB020]" : "text-muted-foreground/40")}>★</button>
+              ))}
+            </div>
+          )}
+          <textarea value={editReview} onChange={(e) => setEditReview(e.target.value)} placeholder="Отзыв" rows={2} className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-sm resize-none" />
+          <select value={editVisibility} onChange={(e) => setEditVisibility(e.target.value)} className={inputCls}>
+            {VIS_OPTIONS.map((o) => <option key={o.v} value={o.v}>{o.l}</option>)}
+          </select>
+          <div className="flex gap-2">
+            <button type="button" disabled={pending || !editTitle.trim()} onClick={() => startTransition(async () => {
+              await updateMediaItemAction(editingId, {
+                title: editTitle,
+                type: editType,
+                status: editStatus,
+                rating: editStatus === "done" && editRating > 0 ? editRating : null,
+                review: editReview.trim() || null,
+                visibility: editVisibility,
+                ...(editCoverData !== undefined ? { coverUrl: editCoverData } : {}),
+              });
+              closeEdit();
+              toast.success("Сохранено");
+            })} className="btn-action flex-1 text-sm py-2">Сохранить</button>
+            <button type="button" disabled={pending} onClick={() => startTransition(async () => {
+              if (!confirm("Удалить из медиалиста?")) return;
+              await deleteMediaItemAction(editingId);
+              closeEdit();
+              toast.success("Удалено");
+            })} className="text-sm py-2 px-3 rounded-xl border border-red-500/40 text-red-400 cursor-pointer">Удалить</button>
+          </div>
+          <button type="button" onClick={closeEdit} className="text-xs text-muted-foreground cursor-pointer">Отмена</button>
+        </div>
+      )}
+
+      <div className="space-y-3">
         {filtered.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-8">Список пуст — добавь первый пункт</p>
         ) : (
           filtered.map((m) => (
-            <div key={m.id} className="card-surface p-3 space-y-2">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-[52px] rounded-md grid place-items-center text-lg shrink-0" style={{ background: `${STATUS_COLOR[m.status]}22` }}>
-                  {EMOJI[m.type]}
+            <div key={m.id} className="card-surface overflow-hidden">
+              <div className="flex gap-3 p-3">
+                <div className="w-14 h-[72px] rounded-xl overflow-hidden shrink-0 grid place-items-center text-xl" style={{ background: `${STATUS_COLOR[m.status]}18` }}>
+                  {m.coverUrl ? <img src={m.coverUrl} alt="" className="w-full h-full object-cover" /> : EMOJI[m.type]}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-bold text-sm">{m.title}</p>
-                  {m.rating && <p className="text-[#FFB020] text-xs mt-0.5">{"★".repeat(m.rating)} · твоя оценка</p>}
-                  {m.review && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{m.review}</p>}
+                  <p className="font-bold text-sm leading-snug">{m.title}</p>
+                  <p className="text-[10px] font-bold mt-1 uppercase tracking-wide text-muted-foreground">{STATUS_LABEL[m.status]}</p>
+                  {m.rating ? <p className="text-[#FFB020] text-xs mt-1">{"★".repeat(m.rating)}</p> : null}
+                  {m.review ? <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{m.review}</p> : null}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => startTransition(async () => {
-                    const next = STATUS_NEXT[m.status] ?? "want";
-                    await updateMediaItemAction(m.id, { status: next });
-                  })}
-                  className="text-[10px] font-bold px-2 py-1 rounded-md shrink-0 cursor-pointer"
-                  style={{ background: `${STATUS_COLOR[m.status]}1c`, color: STATUS_COLOR[m.status] }}
-                >
-                  {STATUS_LABEL[m.status]}
-                </button>
               </div>
-              {editingId === m.id ? (
-                <div className="border-t border-white/[0.06] pt-3 space-y-2">
-                  <div className="flex gap-1">
-                    {[1, 2, 3, 4, 5].map((n) => (
-                      <button key={n} type="button" onClick={() => setEditRating(n)} className={cn("text-lg cursor-pointer", n <= editRating ? "text-[#FFB020]" : "text-muted-foreground/40")}>★</button>
-                    ))}
-                  </div>
-                  <textarea value={editReview} onChange={(e) => setEditReview(e.target.value)} placeholder="Рецензия" rows={2} className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-xs resize-none" />
-                  <select value={editVisibility} onChange={(e) => setEditVisibility(e.target.value)} className="w-full h-9 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 text-xs">
-                    {VIS_OPTIONS.map((o) => <option key={o.v} value={o.v}>{o.l}</option>)}
-                  </select>
-                  <div className="flex gap-2">
-                    <button type="button" onClick={() => startTransition(async () => {
-                      await updateMediaItemAction(m.id, {
-                        status: "done",
-                        rating: editRating || null,
-                        review: editReview.trim() || null,
-                        visibility: editVisibility,
-                      });
-                      setEditingId(null);
-                      toast.success("Сохранено");
-                    })} className="btn-action flex-1 text-xs py-2">Сохранить</button>
-                    <button type="button" onClick={() => setEditingId(null)} className="text-xs text-muted-foreground px-3 cursor-pointer">Отмена</button>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex gap-2 flex-wrap">
-                  {m.status !== "DONE" && (
-                    <button type="button" onClick={() => startTransition(async () => {
-                      await updateMediaItemAction(m.id, { status: "done" });
-                      openEdit({ ...m, status: "DONE" });
-                    })} className="text-[11px] font-bold text-lime cursor-pointer">Завершить</button>
-                  )}
-                  {m.status === "DONE" && (
-                    <button type="button" onClick={() => openEdit(m)} className="text-[11px] font-bold text-muted-foreground hover:text-lime cursor-pointer">Оценка и рецензия</button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => startTransition(async () => {
-                      if (!confirm(`Удалить «${m.title}» из медиалиста?`)) return;
-                      try {
-                        await deleteMediaItemAction(m.id);
-                        toast.success("Удалено");
-                      } catch {
-                        toast.error("Не удалось удалить");
-                      }
-                    })}
-                    className="text-[11px] font-bold text-red-400 cursor-pointer"
-                  >
-                    Удалить
-                  </button>
-                </div>
-              )}
+              <div className="border-t border-white/[0.06] px-3 py-2 flex gap-3">
+                <button type="button" onClick={() => openEdit(m)} className="text-[11px] font-bold text-lime cursor-pointer">✎ Изменить</button>
+                <button type="button" onClick={() => startTransition(async () => {
+                  if (!confirm(`Удалить «${m.title}»?`)) return;
+                  try { await deleteMediaItemAction(m.id); toast.success("Удалено"); } catch { toast.error("Ошибка"); }
+                })} className="text-[11px] font-bold text-red-400 cursor-pointer">Удалить</button>
+              </div>
             </div>
           ))
         )}

@@ -195,11 +195,14 @@ export async function addMediaItemAction(input: {
 export async function updateMediaItemAction(
   itemId: string,
   input: {
+    title?: string;
+    type?: string;
     status?: string;
     rating?: number | null;
     review?: string | null;
     visibility?: string;
     pinned?: boolean;
+    coverUrl?: string | null;
   },
 ) {
   const session = await me();

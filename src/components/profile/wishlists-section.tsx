@@ -249,11 +249,18 @@ export function WishlistsSection({ autoOpen }: { autoOpen?: boolean }) {
                 </div>
               </button>
 
+              <div className="border-t border-white/[0.06] px-3 py-2 flex flex-wrap gap-3">
+                <button type="button" onClick={() => setOpenListId(isOpen ? null : list.id)} className="text-[11px] font-bold text-lime cursor-pointer">
+                  {isOpen ? "Свернуть" : "Открыть"}
+                </button>
+                <button type="button" onClick={() => openEditFolder(list)} className="text-[11px] font-bold text-muted-foreground hover:text-lime cursor-pointer">⚙ Настройки</button>
+                <button type="button" onClick={() => { setOpenListId(list.id); setAddingToList(list.id); resetItemFields(); setEditItemId(null); }} className="text-[11px] font-bold text-muted-foreground hover:text-lime cursor-pointer">+ Подарок</button>
+              </div>
+
               {isOpen && (
                 <div className="border-t border-white/[0.06] p-3 space-y-2">
                   <div className="flex gap-2 px-1">
-                    <button type="button" onClick={() => openEditFolder(list)} className="text-xs font-bold text-lime cursor-pointer">⚙ Настройки</button>
-                    <button type="button" onClick={() => { setAddingToList(list.id); resetItemFields(); setEditItemId(null); }} className="text-xs font-bold text-muted-foreground hover:text-lime cursor-pointer">+ Подарок</button>
+                    <button type="button" onClick={() => { setAddingToList(list.id); resetItemFields(); setEditItemId(null); }} className="text-xs font-bold text-lime cursor-pointer">+ Ещё подарок</button>
                   </div>
 
                   {addingToList === list.id && (
@@ -294,6 +301,10 @@ export function WishlistsSection({ autoOpen }: { autoOpen?: boolean }) {
                             <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-white/[0.06] text-muted-foreground">свободно</span>
                           )}
                           <button type="button" onClick={() => openEditItem(w)} className="text-[11px] font-bold text-lime cursor-pointer">Изменить</button>
+                          <button type="button" onClick={() => startTransition(async () => {
+                            if (!confirm("Удалить подарок?")) return;
+                            try { await deleteWishlistItemAction(w.id); toast.success("Удалено"); } catch { toast.error("Ошибка"); }
+                          })} className="text-[11px] font-bold text-red-400 cursor-pointer">Удалить</button>
                         </div>
                       </div>
                     ))
