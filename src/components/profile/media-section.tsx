@@ -4,7 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useDiary } from "./diary-context";
-import { addMediaItemAction, updateMediaItemAction } from "@/lib/social-actions";
+import { addMediaItemAction, deleteMediaItemAction, updateMediaItemAction } from "@/lib/social-actions";
 
 const TABS = [
   { id: "FILM", label: "Фильмы" },
@@ -191,7 +191,7 @@ export function MediaSection({ autoOpen }: { autoOpen?: boolean }) {
                   </div>
                 </div>
               ) : (
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
                   {m.status !== "DONE" && (
                     <button type="button" onClick={() => startTransition(async () => {
                       await updateMediaItemAction(m.id, { status: "done" });
@@ -201,6 +201,21 @@ export function MediaSection({ autoOpen }: { autoOpen?: boolean }) {
                   {m.status === "DONE" && (
                     <button type="button" onClick={() => openEdit(m)} className="text-[11px] font-bold text-muted-foreground hover:text-lime cursor-pointer">Оценка и рецензия</button>
                   )}
+                  <button
+                    type="button"
+                    onClick={() => startTransition(async () => {
+                      if (!confirm(`Удалить «${m.title}» из медиалиста?`)) return;
+                      try {
+                        await deleteMediaItemAction(m.id);
+                        toast.success("Удалено");
+                      } catch {
+                        toast.error("Не удалось удалить");
+                      }
+                    })}
+                    className="text-[11px] font-bold text-red-400 cursor-pointer"
+                  >
+                    Удалить
+                  </button>
                 </div>
               )}
             </div>

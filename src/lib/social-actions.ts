@@ -7,8 +7,9 @@ import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { createDuelRecord } from "@/lib/duel-service";
 import { claimSharedGoalItem, createSharedGoalRecord, listSharedGoalsForUser } from "@/lib/shared-goal-service";
-import { reserveWishlistItemRecord, createWishlistRecord, addWishlistItemRecord } from "@/lib/wishlist-service";
-import { updateMediaItem, copyMediaFromUser } from "@/lib/media-service";
+import { reserveWishlistItemRecord, createWishlistRecord, addWishlistItemRecord, updateWishlistRecord, updateWishlistItemRecord, deleteWishlistRecord, deleteWishlistItemRecord } from "@/lib/wishlist-service";
+import { deleteMediaItem, updateMediaItem, copyMediaFromUser } from "@/lib/media-service";
+import { sentenceCase } from "@/lib/text-format";
 
 const VIS: Record<string, Visibility> = {
   private: "PRIVATE", friends: "FRIENDS", all: "PUBLIC",
@@ -167,10 +168,10 @@ export async function addMediaItemAction(input: {
     data: {
       userId: session.id,
       type: MEDIA_TYPE[input.type] ?? "FILM",
-      title: input.title.trim(),
+      title: sentenceCase(input.title),
       status: MEDIA_STATUS[input.status] ?? "WANT",
       rating: input.rating ?? null,
-      review: input.review?.trim() || null,
+      review: input.review?.trim() ? sentenceCase(input.review) : null,
       visibility: VIS[input.visibility] ?? "PUBLIC",
     },
   });
@@ -181,8 +182,8 @@ export async function addMediaItemAction(input: {
         userId: session.id,
         type: "MEDIA_ADDED",
         visibility: VIS[input.visibility] ?? "PUBLIC",
-        title: input.title.trim(),
-        body: input.review?.trim() || input.type,
+        title: sentenceCase(input.title),
+        body: input.review?.trim() ? sentenceCase(input.review) : input.type,
         metadata: JSON.stringify({ mediaId: item.id }),
       },
     });
@@ -206,6 +207,13 @@ export async function updateMediaItemAction(
   revalidatePath(`/profile/${session.username}`);
 }
 
+export async function deleteMediaItemAction(itemId: string) {
+  const session = await me();
+  const ok = await deleteMediaItem(session.id, itemId);
+  if (!ok) throw new Error("NOT_FOUND");
+  revalidatePath(`/profile/${session.username}`);
+}
+
 export async function copyMediaItemAction(sourceItemId: string) {
   const session = await me();
   await copyMediaFromUser(session.id, sourceItemId);
@@ -218,6 +226,41 @@ export async function addWishlistItemAction(
 ) {
   const session = await me();
   await addWishlistItemRecord(session.id, listId, input);
+  revalidatePath(`/profile/${session.username}`);
+}
+
+export async function updateWishlistAction(
+  listId: string,
+  input: {
+    title?: string;
+    occasion?: string | null;
+    eventAt?: string | null;
+    visibility?: string;
+  },
+) {
+  const session = await me();
+  await updateWishlistRecord(session.id, listId, input);
+  revalidatePath(`/profile/${session.username}`);
+}
+
+export async function deleteWishlistAction(listId: string) {
+  const session = await me();
+  await deleteWishlistRecord(session.id, listId);
+  revalidatePath(`/profile/${session.username}`);
+}
+
+export async function updateWishlistItemAction(
+  itemId: string,
+  input: { title?: string; price?: string | null; link?: string | null; comment?: string | null },
+) {
+  const session = await me();
+  await updateWishlistItemRecord(session.id, itemId, input);
+  revalidatePath(`/profile/${session.username}`);
+}
+
+export async function deleteWishlistItemAction(itemId: string) {
+  const session = await me();
+  await deleteWishlistItemRecord(session.id, itemId);
   revalidatePath(`/profile/${session.username}`);
 }
 

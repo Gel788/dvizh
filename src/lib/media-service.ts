@@ -1,5 +1,6 @@
 import type { MediaStatus, MediaType, Visibility } from "@prisma/client";
 import { db } from "@/lib/db";
+import { sentenceCase } from "@/lib/text-format";
 
 const MEDIA_TYPE: Record<string, MediaType> = {
   film: "FILM", series: "SERIES", book: "BOOK", game: "GAME",
@@ -69,7 +70,7 @@ export async function updateMediaItem(
     data: {
       status,
       rating: input.rating !== undefined ? input.rating : item.rating,
-      review: input.review !== undefined ? input.review : item.review,
+      review: input.review !== undefined ? (input.review?.trim() ? sentenceCase(input.review) : null) : item.review,
       visibility: input.visibility ? (VIS[input.visibility] ?? item.visibility) : item.visibility,
       pinned: input.pinned ?? item.pinned,
     },
@@ -89,6 +90,13 @@ export async function updateMediaItem(
   }
 
   return updated;
+}
+
+export async function deleteMediaItem(userId: string, itemId: string) {
+  const item = await db.mediaItem.findFirst({ where: { id: itemId, userId } });
+  if (!item) return false;
+  await db.mediaItem.delete({ where: { id: itemId } });
+  return true;
 }
 
 export async function copyMediaFromUser(viewerId: string, sourceItemId: string) {

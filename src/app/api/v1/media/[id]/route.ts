@@ -1,5 +1,5 @@
 import { pinMediaItem } from "@/lib/api/social-create-service";
-import { updateMediaItem } from "@/lib/media-service";
+import { deleteMediaItem, updateMediaItem } from "@/lib/media-service";
 import { requireSessionFromRequest } from "@/lib/auth";
 import { jsonError, jsonOk, readJson } from "@/lib/api/http";
 
@@ -10,6 +10,21 @@ type PatchBody = {
   review?: string | null;
   visibility?: string;
 };
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    const session = await requireSessionFromRequest(request);
+    const { id } = await params;
+    const deleted = await deleteMediaItem(session.id, id);
+    if (!deleted) return jsonError("Не найдено", 404, "NOT_FOUND");
+    return jsonOk({ ok: true });
+  } catch {
+    return jsonError("Требуется авторизация", 401, "UNAUTHORIZED");
+  }
+}
 
 export async function PATCH(
   request: Request,

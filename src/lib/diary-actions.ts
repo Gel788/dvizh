@@ -11,6 +11,7 @@ import { THEMES } from "@/lib/achievements-generator";
 import { getSharedGoalsForUser } from "@/lib/social-actions";
 import { normalizePostImages } from "@/lib/media-url";
 import { resolveContentCities } from "@/lib/feed-scope";
+import { sentenceCase, sentenceCaseLines } from "@/lib/text-format";
 import {
   canViewerSeeActivity,
   diaryActivityVisibility,
@@ -539,8 +540,8 @@ export async function createDiaryTaskForUser(
   },
 ) {
   const lines = input.multiLine
-    ? input.text.split("\n").map((l) => l.trim()).filter(Boolean)
-    : [input.text.trim()].filter(Boolean);
+    ? sentenceCaseLines(input.text)
+    : [sentenceCase(input.text)].filter(Boolean);
   if (!lines.length) return [];
 
   const period = PERIOD_MAP[input.period] ?? "TODAY";
@@ -558,7 +559,7 @@ export async function createDiaryTaskForUser(
       data: {
         userId,
         title: lines[i],
-        note: input.note?.trim() || null,
+        note: input.note?.trim() ? sentenceCase(input.note) : null,
         period,
         visibility,
         hashtag: input.hashtag?.trim() || null,
@@ -574,7 +575,7 @@ export async function createDiaryTaskForUser(
         askProof: input.askProof ?? false,
         reminderAt: input.reminderAt ? new Date(input.reminderAt) : null,
         checklistJson: JSON.stringify(
-          (input.checklist ?? []).map((text) => ({ text, done: false })),
+          (input.checklist ?? []).map((text) => ({ text: sentenceCase(text), done: false })),
         ),
       },
     });
@@ -658,8 +659,8 @@ export async function updateDiaryTaskForUser(
   const row = await db.diaryTask.update({
     where: { id: taskId },
     data: {
-      ...(input.text != null ? { title: input.text.trim() } : {}),
-      ...(input.note !== undefined ? { note: input.note?.trim() || null } : {}),
+      ...(input.text != null ? { title: sentenceCase(input.text) } : {}),
+      ...(input.note !== undefined ? { note: input.note?.trim() ? sentenceCase(input.note) : null } : {}),
       ...(input.period != null ? { period: PERIOD_MAP[input.period] ?? task.period } : {}),
       ...(input.visibility != null ? { visibility: VIS_MAP[input.visibility] ?? task.visibility } : {}),
       ...(input.hashtag !== undefined ? { hashtag: input.hashtag?.trim() || null } : {}),

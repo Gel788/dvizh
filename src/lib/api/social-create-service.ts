@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import type { SessionUser } from "@/lib/auth";
 import { createDuelRecord } from "@/lib/duel-service";
 import { createSharedGoalRecord } from "@/lib/shared-goal-service";
+import { sentenceCase } from "@/lib/text-format";
 
 const VIS: Record<string, Visibility> = {
   private: "PRIVATE",
@@ -97,10 +98,10 @@ export async function addMediaItem(
     data: {
       userId: session.id,
       type: MEDIA_TYPE[input.type ?? "film"] ?? "FILM",
-      title: input.title.trim(),
+      title: sentenceCase(input.title),
       status: MEDIA_STATUS[input.status ?? "want"] ?? "WANT",
       rating: input.rating ?? null,
-      review: input.review?.trim() || null,
+      review: input.review?.trim() ? sentenceCase(input.review) : null,
       coverUrl: input.coverUrl?.trim() || null,
       pinned: input.pinned ?? false,
       visibility: VIS[input.visibility ?? "all"] ?? "PUBLIC",
