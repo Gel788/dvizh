@@ -127,8 +127,12 @@ export function DuelsSection() {
       )}
 
       {sharedGoals.map((goal) => {
-        const done = goal.items.filter((i) => i.done).length;
-        const total = goal.items.length || 1;
+        const items = [...goal.items].sort((a, b) => {
+          if (a.done !== b.done) return a.done ? 1 : -1;
+          return 0;
+        });
+        const done = items.filter((i) => i.done).length;
+        const total = items.length || 1;
         return (
           <div key={goal.id} className="card-surface p-4">
             <p className="font-bold text-[15px]">{goal.title}</p>
@@ -138,17 +142,34 @@ export function DuelsSection() {
             </div>
             <p className="text-xs text-muted-foreground mt-2">{done} из {total} пунктов готовы</p>
             <div className="mt-3 space-y-2">
-              {goal.items.map((item) => (
-                <div key={item.id} className="flex items-center gap-2.5">
-                  <div className={cn("w-5 h-5 rounded-md border-2 grid place-items-center shrink-0", item.done ? "bg-good border-good" : "border-white/[0.1]")}>
-                    {item.done && <span className="text-white text-[10px]">✓</span>}
-                  </div>
-                  <span className={cn("flex-1 text-sm", item.done && "line-through text-muted-foreground")}>{item.title}</span>
+              {items.map((item) => (
+                <div
+                  key={item.id}
+                  className={cn(
+                    "flex items-center gap-2.5 flex-wrap rounded-2xl border px-3 py-2.5",
+                    item.done ? "border-good/25 bg-good/10" : "border-white/[0.06]",
+                  )}
+                >
+                  <span className={cn("flex-1 text-sm font-semibold", item.done && "line-through text-muted-foreground font-medium")}>
+                    {item.title}
+                  </span>
                   {!item.done && !item.assigneeId && (
-                    <button type="button" onClick={() => startTransition(() => claimGoalItemAction(item.id))} className="text-[11px] font-bold px-2.5 py-1 rounded-lg border border-white/[0.08] text-muted-foreground hover:text-lime cursor-pointer">Беру я</button>
+                    <button
+                      type="button"
+                      onClick={() => startTransition(() => claimGoalItemAction(item.id))}
+                      className="text-[11px] font-extrabold px-3 py-1.5 rounded-lg bg-lime/15 text-lime border border-lime/35 cursor-pointer"
+                    >
+                      Беру я
+                    </button>
                   )}
                   {item.assigneeId && !item.done && (
-                    <button type="button" onClick={() => startTransition(() => completeGoalItemAction(item.id))} className="text-[11px] font-bold text-good cursor-pointer">Готово</button>
+                    <button
+                      type="button"
+                      onClick={() => startTransition(() => completeGoalItemAction(item.id))}
+                      className="text-[11px] font-extrabold px-3 py-1.5 rounded-lg bg-good/15 text-good border border-good/35 cursor-pointer"
+                    >
+                      Готово
+                    </button>
                   )}
                 </div>
               ))}

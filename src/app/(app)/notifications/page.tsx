@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import { ru } from "date-fns/locale";
-import { Bell, Target, Heart, MessageCircle, UserPlus, Calendar, Award } from "lucide-react";
+import { Bell, Target, Heart, MessageCircle, UserPlus, Calendar, Award, Users } from "lucide-react";
 import { markNotificationsReadAction } from "@/lib/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -20,6 +20,7 @@ const iconMap: Record<NotificationType, typeof Bell> = {
   CLUB_INVITE: UserPlus,
   EVENT_REMINDER: Calendar,
   BADGE_EARNED: Award,
+  SHARED_GOAL_INVITE: Users,
 };
 
 export default async function NotificationsPage() {

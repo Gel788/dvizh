@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { sentenceCase } from "@/lib/text-format";
 
 const goalInclude = {
   creator: { select: { id: true, name: true, username: true, avatar: true } },
@@ -6,7 +7,7 @@ const goalInclude = {
     include: { user: { select: { id: true, name: true, username: true, avatar: true } } },
   },
   items: {
-    orderBy: { sortOrder: "asc" as const },
+    orderBy: [{ done: "asc" as const }, { sortOrder: "asc" as const }],
     include: {
       assignee: { select: { id: true, name: true, username: true, avatar: true } },
     },
@@ -15,7 +16,14 @@ const goalInclude = {
 
 export async function listSharedGoalsForUser(userId: string) {
   return db.sharedGoal.findMany({
-    where: { members: { some: { userId } } },
+    where: {
+      members: {
+        some: {
+          userId,
+          status: { in: ["INVITED", "ACCEPTED"] },
+        },
+      },
+    },
     include: goalInclude,
     orderBy: [{ eventAt: "asc" }, { createdAt: "desc" }],
   });
@@ -23,7 +31,15 @@ export async function listSharedGoalsForUser(userId: string) {
 
 export async function getSharedGoalForUser(userId: string, goalId: string) {
   const goal = await db.sharedGoal.findFirst({
-    where: { id: goalId, members: { some: { userId } } },
+    where: {
+      id: goalId,
+      members: {
+        some: {
+          userId,
+          status: { in: ["INVITED", "ACCEPTED"] },
+        },
+      },
+    },
     include: goalInclude,
   });
   return goal;
@@ -42,19 +58,42 @@ export async function createSharedGoalRecord(
   if (memberIds.length < 2) throw new Error("MIN_MEMBERS");
 
   const eventAt = input.eventAt ? new Date(input.eventAt) : null;
-  const items = input.items.map((t) => t.trim()).filter(Boolean);
+  const items = input.items.map((t) => sentenceCase(t.trim())).filter(Boolean);
   if (!items.length) throw new Error("MIN_ITEMS");
+
+  const creator = await db.user.findUnique({
+    where: { id: creatorId },
+    select: { name: true, username: true },
+  });
 
   const goal = await db.sharedGoal.create({
     data: {
       creatorId,
-      title: input.title.trim(),
+      title: sentenceCase(input.title),
       eventAt,
-      members: { create: memberIds.map((userId) => ({ userId })) },
+      members: {
+        create: memberIds.map((userId) => ({
+          userId,
+          status: userId === creatorId ? "ACCEPTED" : "INVITED",
+        })),
+      },
       items: { create: items.map((title, sortOrder) => ({ title, sortOrder })) },
     },
     include: goalInclude,
   });
+
+  const invitees = memberIds.filter((id) => id !== creatorId);
+  if (invitees.length) {
+    await db.notification.createMany({
+      data: invitees.map((userId) => ({
+        userId,
+        type: "SHARED_GOAL_INVITE" as const,
+        title: `${creator?.name ?? "Друг"} приглашает в список`,
+        body: goal.title,
+        link: "/friends?view=together",
+      })),
+    });
+  }
 
   await db.activity.create({
     data: {
@@ -70,6 +109,39 @@ export async function createSharedGoalRecord(
   return goal;
 }
 
+export async function respondSharedGoalInvite(userId: string, goalId: string, accept: boolean) {
+  const member = await db.sharedGoalMember.findFirst({
+    where: { goalId, userId },
+    include: { goal: { select: { title: true, creatorId: true } } },
+  });
+  if (!member) return { error: "NOT_FOUND" as const };
+  if (member.status === "DECLINED") return { error: "ALREADY_DECLINED" as const };
+  if (member.status === "ACCEPTED" && accept) return { status: "ACCEPTED" as const };
+
+  await db.sharedGoalMember.update({
+    where: { id: member.id },
+    data: {
+      status: accept ? "ACCEPTED" : "DECLINED",
+      respondedAt: new Date(),
+    },
+  });
+
+  if (accept) {
+    await db.activity.create({
+      data: {
+        userId,
+        type: "SHARED_GOAL_UPDATED",
+        visibility: "FRIENDS",
+        title: member.goal.title,
+        body: "присоединился к списку",
+        metadata: JSON.stringify({ goalId, kind: "joined" }),
+      },
+    });
+  }
+
+  return { status: accept ? ("ACCEPTED" as const) : ("DECLINED" as const) };
+}
+
 async function assertMember(userId: string, itemId: string) {
   const item = await db.sharedGoalItem.findUnique({
     where: { id: itemId },
@@ -77,13 +149,15 @@ async function assertMember(userId: string, itemId: string) {
       goal: {
         select: {
           title: true,
-          members: { select: { userId: true } },
+          members: { select: { userId: true, status: true } },
         },
       },
     },
   });
   if (!item) return { error: "NOT_FOUND" as const };
-  if (!item.goal.members.some((m) => m.userId === userId)) return { error: "FORBIDDEN" as const };
+  const membership = item.goal.members.find((m) => m.userId === userId);
+  if (!membership || membership.status === "DECLINED") return { error: "FORBIDDEN" as const };
+  if (membership.status === "INVITED") return { error: "INVITE_PENDING" as const };
   return { item };
 }
 

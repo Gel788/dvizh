@@ -36,7 +36,7 @@ export default async function FriendsPage({ searchParams }: { searchParams: Sear
       {view === "feed" && <FriendsPendingPanel pending={pending} />}
       {view === "feed" && <FriendsFeed data={data} />}
       {view === "duels" && <FriendsDuelsPanel duels={duels} autoCreate={params.create === "1"} />}
-      {view === "together" && <FriendsTogetherPanel goals={goals} autoCreate={params.create === "1"} />}
+      {view === "together" && <FriendsTogetherPanel goals={goals} userId={session.id} autoCreate={params.create === "1"} />}
     </FriendsPageShell>
   );
 }

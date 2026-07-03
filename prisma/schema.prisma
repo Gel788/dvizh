@@ -31,6 +31,13 @@ enum NotificationType {
   CLUB_INVITE
   EVENT_REMINDER
   BADGE_EARNED
+  SHARED_GOAL_INVITE
+}
+
+enum SharedGoalMemberStatus {
+  INVITED
+  ACCEPTED
+  DECLINED
 }
 
 enum ClubRole {
@@ -625,9 +632,11 @@ model SharedGoal {
 }
 
 model SharedGoalMember {
-  id     String @id @default(cuid())
-  goalId String
-  userId String
+  id          String                  @id @default(cuid())
+  goalId      String
+  userId      String
+  status      SharedGoalMemberStatus  @default(ACCEPTED)
+  respondedAt DateTime?
 
   goal SharedGoal @relation(fields: [goalId], references: [id], onDelete: Cascade)
   user User       @relation(fields: [userId], references: [id], onDelete: Cascade)

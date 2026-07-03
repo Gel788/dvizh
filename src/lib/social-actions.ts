@@ -6,7 +6,7 @@ import type { DuelPeriod, MediaStatus, MediaType, Visibility } from "@prisma/cli
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { createDuelRecord } from "@/lib/duel-service";
-import { claimSharedGoalItem, createSharedGoalRecord, listSharedGoalsForUser } from "@/lib/shared-goal-service";
+import { claimSharedGoalItem, createSharedGoalRecord, listSharedGoalsForUser, respondSharedGoalInvite } from "@/lib/shared-goal-service";
 import { reserveWishlistItemRecord, createWishlistRecord, addWishlistItemRecord, updateWishlistRecord, updateWishlistItemRecord, deleteWishlistRecord, deleteWishlistItemRecord } from "@/lib/wishlist-service";
 import { deleteMediaItem, updateMediaItem, copyMediaFromUser } from "@/lib/media-service";
 import { sentenceCase } from "@/lib/text-format";
@@ -123,6 +123,13 @@ export async function createSharedGoalAction(input: {
 export async function claimGoalItemAction(itemId: string) {
   const session = await me();
   await claimSharedGoalItem(session.id, itemId);
+  revalidatePath(`/profile/${session.username}`);
+  revalidatePath("/friends");
+}
+
+export async function respondSharedGoalAction(goalId: string, accept: boolean) {
+  const session = await me();
+  await respondSharedGoalInvite(session.id, goalId, accept);
   revalidatePath(`/profile/${session.username}`);
   revalidatePath("/friends");
 }

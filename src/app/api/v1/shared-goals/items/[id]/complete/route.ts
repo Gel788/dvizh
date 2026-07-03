@@ -10,7 +10,10 @@ export async function POST(request: Request, ctx: Ctx) {
     const session = await requireSessionFromRequest(request);
     const result = await completeSharedGoalItem(session.id, id);
     if ("error" in result) {
-      const code = result.error === "FORBIDDEN" ? 403 : 404;
+      const code =
+        result.error === "FORBIDDEN" || result.error === "INVITE_PENDING"
+          ? 403
+          : 404;
       return jsonError("Недоступно", code, result.error);
     }
     return jsonOk(result);
