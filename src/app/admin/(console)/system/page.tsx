@@ -2,9 +2,19 @@ import { BroadcastForm } from "@/components/admin/broadcast-form";
 import { StatCard } from "@/components/admin/stat-card";
 import { getAdminStats } from "@/lib/admin/stats";
 
-export default async function AdminSystemPage() {
+type Props = {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
+
+export default async function AdminSystemPage({ searchParams }: Props) {
   const stats = await getAdminStats();
+  const sp = await searchParams;
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? process.env.SITE_URL ?? "https://www.flroal.ru";
+
+  const pushSent = Number(sp.push_sent ?? 0);
+  const pushFailed = Number(sp.push_failed ?? 0);
+  const pushDevices = Number(sp.push_devices ?? 0);
+  const hasPushResult = sp.push_sent != null;
 
   return (
     <div className="px-4 py-6 lg:px-8 lg:py-8 max-w-[900px]">
@@ -16,8 +26,8 @@ export default async function AdminSystemPage() {
       <div className="grid sm:grid-cols-2 gap-4 mb-8">
         <StatCard label="Задачи дневника" value={stats.diaryTasksTotal} accent="ice" />
         <StatCard label="Непрочитанные уведомления" value={stats.notificationsUnread} accent="heat" />
+        <StatCard label="Push-устройства" value={stats.pushDevicesTotal} accent="lime" />
         <StatCard label="Регистрации за неделю" value={stats.usersWeek} />
-        <StatCard label="Достижения в каталоге" value={stats.achievementsTotal} />
       </div>
 
       <section className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-5 mb-8">
@@ -38,7 +48,19 @@ export default async function AdminSystemPage() {
         </p>
       </section>
 
-      <BroadcastForm />
+      <BroadcastForm
+        pushDevices={stats.pushDevicesTotal}
+        pushResult={
+          hasPushResult
+            ? {
+                sent: pushSent,
+                failed: pushFailed,
+                devices: pushDevices,
+                configured: sp.push_ok === "1",
+              }
+            : null
+        }
+      />
     </div>
   );
 }

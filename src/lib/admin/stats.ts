@@ -44,6 +44,7 @@ export async function getAdminStats() {
     commentsTotal,
     hiddenPosts,
     featuredPosts,
+    pushDevicesTotal,
     recentUsers,
     recentPosts,
     recentActivities,
@@ -68,6 +69,7 @@ export async function getAdminStats() {
     db.comment.count(),
     db.post.count({ where: { hiddenFromFeed: true } }),
     db.post.count({ where: { featuredInFeed: true, hiddenFromFeed: false } }),
+    db.pushDevice.count(),
     db.user.findMany({
       orderBy: { createdAt: "desc" },
       take: 8,
@@ -144,6 +146,7 @@ export async function getAdminStats() {
     commentsTotal,
     hiddenPosts,
     featuredPosts,
+    pushDevicesTotal,
     recentUsers,
     recentPosts,
     recentActivities,

@@ -183,10 +183,17 @@ export async function broadcastNotificationAction(formData: FormData) {
   if (!push.configured) {
     console.warn("[broadcast] FIREBASE_SERVICE_ACCOUNT_JSON не настроен — push не отправлен");
   } else {
-    console.info("[broadcast] push sent:", push.sent, "failed:", push.failed);
+    console.info("[broadcast] push sent:", push.sent, "failed:", push.failed, "devices:", push.devices);
   }
 
   revalidateAdmin();
+  const q = new URLSearchParams({
+    push_sent: String(push.sent),
+    push_failed: String(push.failed),
+    push_devices: String(push.devices ?? 0),
+    push_ok: push.configured ? "1" : "0",
+  });
+  redirect(`/admin/system?${q.toString()}`);
 }
 
 export async function deleteAchievementAction(achievementId: string) {

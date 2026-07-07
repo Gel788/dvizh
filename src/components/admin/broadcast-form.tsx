@@ -5,8 +5,21 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { isPushConfigured } from "@/lib/push/firebase-admin";
 
-export function BroadcastForm() {
+type Props = {
+  pushDevices: number;
+  pushResult?: {
+    sent: number;
+    failed: number;
+    devices: number;
+    configured: boolean;
+  } | null;
+};
+
+export function BroadcastForm({ pushDevices, pushResult }: Props) {
+  const firebaseOk = isPushConfigured();
+
   return (
     <Card className="border-white/[0.08] bg-white/[0.02]">
       <CardHeader>
@@ -16,6 +29,28 @@ export function BroadcastForm() {
         </CardTitle>
       </CardHeader>
       <CardContent>
+        {pushResult && (
+          <div
+            className={`mb-4 rounded-xl border px-4 py-3 text-sm ${
+              pushResult.failed > 0
+                ? "border-amber-500/30 bg-amber-500/10 text-amber-100"
+                : "border-lime/30 bg-lime/10 text-lime"
+            }`}
+          >
+            Push: отправлено <strong>{pushResult.sent}</strong> из {pushResult.devices} устройств
+            {pushResult.failed > 0 ? `, ошибок: ${pushResult.failed}` : ""}.
+            {!pushResult.configured && " Firebase не настроен на сервере."}
+          </div>
+        )}
+
+        <div className="mb-4 rounded-xl border border-white/[0.08] bg-black/20 px-4 py-3 text-xs text-white/50 space-y-1">
+          <p>
+            Firebase: {firebaseOk ? "✅ настроен" : "❌ нет FIREBASE_SERVICE_ACCOUNT_JSON"}
+          </p>
+          <p>Зарегистрировано устройств для push: <strong className="text-white/80">{pushDevices}</strong></p>
+          <p>Если 0 — открой приложение на телефоне и разреши уведомления.</p>
+        </div>
+
         <form action={broadcastNotificationAction} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="broadcast-title">Заголовок</Label>
@@ -32,9 +67,6 @@ export function BroadcastForm() {
           <Button type="submit" className="cursor-pointer bg-heat text-white hover:bg-heat/90">
             Отправить всем (в приложении + push)
           </Button>
-          <p className="text-xs text-muted-foreground">
-            Push дойдёт на устройства с включёнными уведомлениями. Нужен FIREBASE_SERVICE_ACCOUNT_JSON на сервере.
-          </p>
         </form>
       </CardContent>
     </Card>
