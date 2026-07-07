@@ -1,18 +1,77 @@
 import { db } from "@/lib/db";
 import { getFirebaseMessaging, isPushConfigured } from "@/lib/push/firebase-admin";
+import { formatPushTitle, PUSH_BRAND, resolvePushImageUrl } from "@/lib/push/brand";
 import type { NotificationType } from "@prisma/client";
+import type { MulticastMessage } from "firebase-admin/messaging";
 
 export type PushPayload = {
   title: string;
   body: string;
   link?: string | null;
   type?: NotificationType;
+  /** HTTPS-картинка для rich push. По умолчанию — брендовый баннер ДВИЖ */
+  imageUrl?: string | null;
+  subtitle?: string | null;
 };
+
+function buildMulticast(payload: PushPayload): Omit<MulticastMessage, "tokens"> {
+  const title = formatPushTitle(payload.title);
+  const body = payload.body.trim();
+  const subtitle = payload.subtitle?.trim() || PUSH_BRAND.subtitle;
+  const image = resolvePushImageUrl(payload.imageUrl);
+  const data: Record<string, string> = {
+    title,
+    body,
+    subtitle,
+    ...(payload.link ? { link: payload.link } : {}),
+    ...(payload.type ? { type: payload.type } : {}),
+    ...(image ? { image } : {}),
+  };
+
+  return {
+    notification: { title, body },
+    data,
+    apns: {
+      headers: {
+        "apns-push-type": "alert",
+        "apns-priority": "10",
+      },
+      payload: {
+        aps: {
+          alert: { title, subtitle, body },
+          sound: "default",
+          badge: 1,
+          ...(image ? { "mutable-content": 1 } : {}),
+        },
+      },
+      ...(image ? { fcm_options: { image } } : {}),
+    },
+    android: {
+      priority: "high",
+      notification: {
+        sound: "default",
+        channelId: PUSH_BRAND.channelId,
+        title,
+        body,
+        color: PUSH_BRAND.color,
+        ...(image ? { imageUrl: image } : {}),
+      },
+    },
+    webpush: image
+      ? {
+          notification: {
+            title,
+            body,
+            icon: image,
+          },
+        }
+      : undefined,
+  };
+}
 
 export async function registerPushDevice(userId: string, token: string, platform: string) {
   const clean = token.trim();
   if (!clean) throw new Error("EMPTY_TOKEN");
-  // Один актуальный токен на пользователя — старые после переустановки приложения мешают доставке.
   await db.pushDevice.deleteMany({ where: { userId, token: { not: clean } } });
   await db.pushDevice.upsert({
     where: { token: clean },
@@ -31,35 +90,7 @@ async function sendToTokens(tokens: string[], payload: PushPayload) {
 
   const res = await messaging.sendEachForMulticast({
     tokens,
-    notification: { title: payload.title, body: payload.body },
-    data: {
-      ...(payload.link ? { link: payload.link } : {}),
-      ...(payload.type ? { type: payload.type } : {}),
-      title: payload.title,
-      body: payload.body,
-    },
-    apns: {
-      headers: {
-        "apns-push-type": "alert",
-        "apns-priority": "10",
-      },
-      payload: {
-        aps: {
-          alert: { title: payload.title, body: payload.body },
-          sound: "default",
-          badge: 1,
-        },
-      },
-    },
-    android: {
-      priority: "high",
-      notification: {
-        sound: "default",
-        channelId: "dvizh_push",
-        title: payload.title,
-        body: payload.body,
-      },
-    },
+    ...buildMulticast(payload),
   });
 
   const invalid: string[] = [];

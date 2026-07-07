@@ -163,6 +163,7 @@ export async function broadcastNotificationAction(formData: FormData) {
   const title = String(formData.get("title") ?? "").trim();
   const body = String(formData.get("body") ?? "").trim();
   const link = String(formData.get("link") ?? "").trim() || null;
+  const imageUrl = String(formData.get("imageUrl") ?? "").trim() || null;
   if (!title || !body) return;
 
   const users = await db.user.findMany({ select: { id: true } });
@@ -179,7 +180,7 @@ export async function broadcastNotificationAction(formData: FormData) {
   });
 
   const { sendPushBroadcast } = await import("@/lib/push/push-service");
-  const push = await sendPushBroadcast({ title, body, link, type: "ADMIN_BROADCAST" });
+  const push = await sendPushBroadcast({ title, body, link, imageUrl, type: "ADMIN_BROADCAST" });
   if (!push.configured) {
     console.warn("[broadcast] FIREBASE_SERVICE_ACCOUNT_JSON не настроен — push не отправлен");
   } else {

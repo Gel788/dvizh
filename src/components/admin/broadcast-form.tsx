@@ -1,5 +1,7 @@
 import { Megaphone } from "lucide-react";
 import { broadcastNotificationAction } from "@/lib/admin/actions";
+import { PUSH_BRAND } from "@/lib/push/brand";
+import { ensureAbsoluteMediaUrl } from "@/lib/media-url";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -19,6 +21,7 @@ type Props = {
 
 export function BroadcastForm({ pushDevices, pushResult }: Props) {
   const firebaseOk = isPushConfigured();
+  const defaultBanner = ensureAbsoluteMediaUrl(PUSH_BRAND.defaultImagePath);
 
   return (
     <Card className="border-white/[0.08] bg-white/[0.02]">
@@ -63,6 +66,24 @@ export function BroadcastForm({ pushDevices, pushResult }: Props) {
           <div className="space-y-2">
             <Label htmlFor="broadcast-link">Ссылка (опционально)</Label>
             <Input id="broadcast-link" name="link" placeholder="/challenges" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="broadcast-image">Картинка баннера (опционально)</Label>
+            <Input
+              id="broadcast-image"
+              name="imageUrl"
+              placeholder={defaultBanner}
+              defaultValue=""
+            />
+            <p className="text-xs text-white/45">
+              По умолчанию брендовый баннер ДВИЖ. HTTPS JPG/PNG, лучше 2:1.
+            </p>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={defaultBanner}
+              alt="Превью баннера push"
+              className="mt-2 max-h-28 w-full rounded-xl border border-white/10 object-cover"
+            />
           </div>
           <Button type="submit" className="cursor-pointer bg-heat text-white hover:bg-heat/90">
             Отправить всем (в приложении + push)
