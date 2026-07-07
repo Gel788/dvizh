@@ -26,6 +26,7 @@ const postSelect = {
     select: {
       id: true,
       name: true,
+      username: true,
       privacySettings: { select: { locationPrecision: true } },
     },
   },

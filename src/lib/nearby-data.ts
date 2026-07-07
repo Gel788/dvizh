@@ -21,6 +21,9 @@ export type NearbyItem = {
   lat: number | null;
   lng: number | null;
   imageUrl?: string | null;
+  username?: string;
+  userId?: string;
+  authorName?: string;
 };
 
 export function formatDistanceKm(km: number): string {
@@ -55,7 +58,7 @@ export function buildNearbyItems(input: {
     id: string; title: string | null; content: string; type: string;
     lat: number | null; lng: number | null; district?: string | null;
     tags?: string; images?: string; featuredInFeed?: boolean; contactInfo?: string | null;
-    author?: { name: string };
+    author?: { name: string; username?: string; id?: string };
   }[];
   events: {
     id: string; title: string; startAt: Date; lat: number | null; lng: number | null;
@@ -172,6 +175,9 @@ export function buildNearbyItems(input: {
       distanceLabel: distLabel(km),
       meta: isPerson ? (p.author?.name ? `${p.author.name} рядом` : "активность") : p.content.slice(0, 80),
       postId: p.id,
+      username: isPerson ? p.author?.username : undefined,
+      userId: isPerson ? p.author?.id : undefined,
+      authorName: isPerson ? p.author?.name : undefined,
       joinable: false,
       joined: false,
       lat: p.lat,

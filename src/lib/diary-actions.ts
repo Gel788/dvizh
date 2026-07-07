@@ -573,7 +573,11 @@ export async function createDiaryTaskForUser(
         trackStreak: input.trackStreak ?? false,
         priority: input.priority ?? false,
         askProof: input.askProof ?? false,
-        reminderAt: input.reminderAt ? new Date(input.reminderAt) : null,
+        reminderAt: input.reminderAt
+          ? new Date(input.reminderAt)
+          : input.hasTime && input.scheduledAt
+            ? new Date(input.scheduledAt)
+            : null,
         checklistJson: JSON.stringify(
           (input.checklist ?? []).map((text) => ({ text: sentenceCase(text), done: false })),
         ),
@@ -671,7 +675,14 @@ export async function updateDiaryTaskForUser(
       ...(input.dueDate !== undefined ? { dueDate: input.dueDate ? new Date(input.dueDate) : null } : {}),
       ...(input.hasTime !== undefined ? { hasTime: input.hasTime } : {}),
       ...(input.scheduledAt !== undefined ? { scheduledAt: input.scheduledAt ? new Date(input.scheduledAt) : null } : {}),
-      ...(input.reminderAt !== undefined ? { reminderAt: input.reminderAt ? new Date(input.reminderAt) : null } : {}),
+      ...(input.reminderAt !== undefined
+        ? { reminderAt: input.reminderAt ? new Date(input.reminderAt) : null }
+        : input.scheduledAt !== undefined && (input.hasTime ?? task.hasTime) && input.scheduledAt
+          ? { reminderAt: new Date(input.scheduledAt) }
+          : {}),
+      ...(input.scheduledAt !== undefined || input.reminderAt !== undefined || input.hasTime !== undefined
+        ? { reminderPushedAt: null }
+        : {}),
       ...(input.isRecurring !== undefined
         ? {
             isRecurring: input.isRecurring,

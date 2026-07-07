@@ -33,15 +33,30 @@ async function sendToTokens(tokens: string[], payload: PushPayload) {
     data: {
       ...(payload.link ? { link: payload.link } : {}),
       ...(payload.type ? { type: payload.type } : {}),
+      title: payload.title,
+      body: payload.body,
     },
     apns: {
+      headers: {
+        "apns-push-type": "alert",
+        "apns-priority": "10",
+      },
       payload: {
-        aps: { sound: "default", badge: 1 },
+        aps: {
+          alert: { title: payload.title, body: payload.body },
+          sound: "default",
+          badge: 1,
+        },
       },
     },
     android: {
       priority: "high",
-      notification: { sound: "default" },
+      notification: {
+        sound: "default",
+        channelId: "dvizh_push",
+        title: payload.title,
+        body: payload.body,
+      },
     },
   });
 

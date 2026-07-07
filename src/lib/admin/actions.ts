@@ -179,7 +179,12 @@ export async function broadcastNotificationAction(formData: FormData) {
   });
 
   const { sendPushBroadcast } = await import("@/lib/push/push-service");
-  await sendPushBroadcast({ title, body, link, type: "ADMIN_BROADCAST" });
+  const push = await sendPushBroadcast({ title, body, link, type: "ADMIN_BROADCAST" });
+  if (!push.configured) {
+    console.warn("[broadcast] FIREBASE_SERVICE_ACCOUNT_JSON не настроен — push не отправлен");
+  } else {
+    console.info("[broadcast] push sent:", push.sent, "failed:", push.failed);
+  }
 
   revalidateAdmin();
 }
