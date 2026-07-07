@@ -11,6 +11,7 @@ export type PushPayload = {
   type?: NotificationType;
   /** HTTPS-картинка для rich push. По умолчанию — брендовый баннер ДВИЖ */
   imageUrl?: string | null;
+  useDefaultImage?: boolean;
   subtitle?: string | null;
 };
 
@@ -18,7 +19,7 @@ function buildMulticast(payload: PushPayload): Omit<MulticastMessage, "tokens"> 
   const title = formatPushTitle(payload.title);
   const body = payload.body.trim();
   const subtitle = payload.subtitle?.trim() || PUSH_BRAND.subtitle;
-  const image = resolvePushImageUrl(payload.imageUrl);
+  const image = resolvePushImageUrl(payload.imageUrl, payload.useDefaultImage === true);
   const data: Record<string, string> = {
     title,
     body,

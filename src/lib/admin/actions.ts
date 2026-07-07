@@ -163,8 +163,24 @@ export async function broadcastNotificationAction(formData: FormData) {
   const title = String(formData.get("title") ?? "").trim();
   const body = String(formData.get("body") ?? "").trim();
   const link = String(formData.get("link") ?? "").trim() || null;
-  const imageUrl = String(formData.get("imageUrl") ?? "").trim() || null;
+  const imageMode = String(formData.get("imageMode") ?? "brand");
+  const imageUrlInput = String(formData.get("imageUrl") ?? "").trim();
+  const imageFile = formData.get("imageFile");
   if (!title || !body) return;
+
+  let imageUrl: string | null = null;
+  let useDefaultImage = imageMode === "brand";
+  if (imageMode === "custom") {
+    useDefaultImage = false;
+    if (imageFile instanceof File && imageFile.size > 0) {
+      const { saveImageFromFile } = await import("@/lib/upload/media");
+      imageUrl = await saveImageFromFile("push", "broadcast", imageFile);
+    } else {
+      imageUrl = imageUrlInput || null;
+    }
+  } else if (imageMode === "none") {
+    useDefaultImage = false;
+  }
 
   const users = await db.user.findMany({ select: { id: true } });
   if (users.length === 0) return;
@@ -180,7 +196,14 @@ export async function broadcastNotificationAction(formData: FormData) {
   });
 
   const { sendPushBroadcast } = await import("@/lib/push/push-service");
-  const push = await sendPushBroadcast({ title, body, link, imageUrl, type: "ADMIN_BROADCAST" });
+  const push = await sendPushBroadcast({
+    title,
+    body,
+    link,
+    imageUrl,
+    useDefaultImage,
+    type: "ADMIN_BROADCAST",
+  });
   if (!push.configured) {
     console.warn("[broadcast] FIREBASE_SERVICE_ACCOUNT_JSON не настроен — push не отправлен");
   } else {

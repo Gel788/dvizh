@@ -10,6 +10,10 @@ export const metadata: Metadata = {
   description:
     "Молодёжная соцсеть локальных активностей, челленджей и объявлений. Врывайся в движ своего района.",
   themeColor: "#08080D",
+  icons: {
+    icon: "/brand/app-icon-1024.png",
+    apple: "/brand/app-icon-1024.png",
+  },
 };
 
 export default function RootLayout({

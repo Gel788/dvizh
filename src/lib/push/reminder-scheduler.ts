@@ -57,6 +57,7 @@ export async function processDueReminders() {
       title: task.title,
       body: "Пора выполнить",
       link: `/diary/task/${task.id}`,
+      useDefaultImage: false,
     });
     await db.diaryTask.update({ where: { id: task.id }, data: { reminderPushedAt: now } });
     pushedTasks += 1;
@@ -70,6 +71,7 @@ export async function processDueReminders() {
       title: ev.title,
       body: "Скоро событие",
       link: "/diary",
+      useDefaultImage: false,
     });
     await db.personalCalendarEvent.update({ where: { id: ev.id }, data: { reminderPushedAt: now } });
     pushedEvents += 1;

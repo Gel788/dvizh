@@ -12,8 +12,8 @@ export const PUSH_BRAND = {
   defaultImagePath: "/brand/push-banner.png",
 } as const;
 
-export function resolvePushImageUrl(imageUrl?: string | null): string | undefined {
-  const raw = imageUrl?.trim() || PUSH_BRAND.defaultImagePath;
+export function resolvePushImageUrl(imageUrl?: string | null, useDefault = true): string | undefined {
+  const raw = imageUrl?.trim() || (useDefault ? PUSH_BRAND.defaultImagePath : "");
   const abs = ensureAbsoluteMediaUrl(raw);
   return abs || undefined;
 }
