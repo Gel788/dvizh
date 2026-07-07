@@ -106,6 +106,12 @@ async function sendToTokens(tokens: string[], payload: PushPayload) {
     await db.pushDevice.deleteMany({ where: { token: { in: invalid } } });
   }
   if (errors.length) {
+    const apnsAuth = "messaging/third-party-auth-error";
+    if (errors.some((e) => e.startsWith(apnsAuth))) {
+      console.error(
+        "[push] APNs auth error — проверь Production APNs key в Firebase → Cloud Messaging → com.example.dvizhApp",
+      );
+    }
     console.warn("[push] FCM errors:", errors.slice(0, 5).join(" | "));
   }
 
