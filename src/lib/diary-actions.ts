@@ -335,12 +335,15 @@ export async function getDiaryBundle(
   const userAch = await db.userAchievement.findMany({ where: { userId } });
   const achievements = defs.map((d) => {
     const ua = userAch.find((u) => u.achievementId === d.id);
+    const slugKey = d.slug.replace(/-/g, "_");
+    const assetKey = slugKey.startsWith("achievement_") ? slugKey : `achievement_${slugKey}`;
     return {
       slug: d.slug,
       name: d.name,
       description: d.description,
       icon: d.icon,
       color: d.color,
+      assetKey,
       unlocked: !!ua?.unlockedAt,
       progress: ua?.progress ?? 0,
       threshold: d.threshold,
