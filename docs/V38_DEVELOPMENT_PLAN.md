@@ -37,7 +37,7 @@
 
 **Текущий долг (пример Wishlist):** фронт bridge есть, бэк не дотягивает спеку — нет `cancel-reservation`, `bought`, `surpriseMode` в модели, share links. Следующий срез = закрыть B, затем подтянуть M/I.
 
-**Последнее обновление плана:** 2026-07-10 — Calendar cron smoke + Move join requests API (build 13).
+**Последнее обновление плана:** 2026-07-10 — Calendar поиск + Today bridge (build 14).
 
 ## Легенда
 
@@ -354,12 +354,12 @@
 
 - [x] **M** Месячная сетка — `CalendarScreen` + sync `/diary/calendar` + реальная дата
 - [x] **M** CRUD событий, напоминания — create+edit+delete+reminderAt PATCH API
-- [ ] **M** Поиск по календарю
-- [ ] **M** Подмешивание в Today только Сегодня/Завтра
+- [x] **M** Поиск по календарю — `searchEvents` + поле поиска в `CalendarScreen`
+- [x] **M** Подмешивание в Today только Сегодня/Завтра — `TodayCalendarBridge` + sync двух месяцев на границе
 
 ### 9.2 Backend (B)
 
-- [ ] **B** `GET/POST/PATCH/DELETE /diary/events` — частично: все методы на prod
+- [x] **B** `GET/POST/PATCH/DELETE /diary/events` — все методы на prod
 - [x] **B** Reminders + cron (`/cron/reminders`) — endpoint + scheduler + smoke в vps-deploy
 - [x] **B** `sourceKind=move` при создании из Движа — задеплоено на prod (миграция + API)
 - [x] **B** Challenges не попадают в calendar — guard в createPersonalEventForUser
@@ -371,9 +371,8 @@
 - [x] **I** `updateEvent` / `deleteEvent` → PATCH/DELETE `/diary/events/{id}`
 - [x] **I** `setReminder` → `PATCH /diary/events/{id}` с `reminderAt`
 - [x] **I** Move → Calendar создаёт event только после tap пользователя
+- [x] **I** Today ← calendar events только для периодов Сегодня/Завтра через `forTodayBridge`
 - [ ] **I** Acceptance § Calendar
-
----
 
 ## Фаза 10 — Wishlist
 
