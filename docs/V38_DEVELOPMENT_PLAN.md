@@ -37,7 +37,7 @@
 
 **Текущий долг (пример Wishlist):** фронт bridge есть, бэк не дотягивает спеку — нет `cancel-reservation`, `bought`, `surpriseMode` в модели, share links. Следующий срез = закрыть B, затем подтянуть M/I.
 
-**Последнее обновление плана:** 2026-07-10 — Friends API wire + acceptance smoke (build 16).
+**Последнее обновление плана:** 2026-07-10 — privacy/launch-private срез; smoke 24 checks; Auth SMS + Android отложены.
 
 ## Легенда
 
@@ -49,14 +49,14 @@
 
 ## Launch-правила (не нарушать)
 
-- [ ] Зафиксировано в коде и QA: **нет маскотов**, **нет блока «Приоритет»** на Today
-- [ ] Спор и Вместе — **только приватные** на launch
-- [ ] Задачи default `ownerOnly`, опционально `friends` / `public`
-- [ ] Today progress — **никогда** не публичный
-- [ ] Вызовы **не** попадают в Calendar автоматически
-- [ ] Move → Calendar **только** по явному действию пользователя
-- [ ] Wishlist surprise mode **не палит** бронирование владельцу
-- [ ] Движ ≠ Лента; Лента ≠ карта событий
+- [x] **B** Задачи default `ownerOnly` (PRIVATE) — `createDiaryTask` default visibility PRIVATE
+- [x] **B** Спор и Вместе — **только приватные** на launch — duels default `private`, activities DUEL_*/SHARED_GOAL_* убраны из friends feed
+- [x] **B** Wishlist surprise mode **не палит** бронирование владельцу — `maskItems` полная маскировка reserved/reservedBy
+- [ ] Зафиксировано в коде и QA: **нет маскотов**, **нет блока «Приоритет»** на Today — M: v38 Today без приоритета; QA на устройстве
+- [ ] Today progress — **никогда** не публичный — owner-only в diary bundle; нет отдельного public endpoint
+- [x] Вызовы **не** попадают в Calendar автоматически — guard `createPersonalEventForUser`
+- [x] Move → Calendar **только** по явному действию пользователя — delegate tap only
+- [ ] Движ ≠ Лента; Лента ≠ карта событий — разные API (`/move/*` vs `/feed/*`); UI разделены
 
 ---
 
@@ -133,6 +133,8 @@
 
 ## Фаза 2 — Auth и онбординг
 
+> **Отложено (2026-07-10):** SMS-онбординг и смена auth-потока. На launch — **email + пароль** (`/auth/login`, `/auth/register`).
+
 ### 2.1 Frontend (M)
 
 - [ ] **M** Экраны v38: телефон → SMS → профиль → интересы → город/район → тема → первое дело
@@ -165,8 +167,8 @@
 - [x] **B** Сервис `can()` — `src/lib/privacy-service.ts` (foundation)
 - [x] **B** Relation resolver: owner / friend / blocked / stranger
 - [ ] **B** Матрица из `PRIVACY_ACCESS_MATRIX_V1.md` покрыта unit-тестами
-- [ ] **B** Surprise mode: owner не видит кто забронировал wishlist item — частично в wishlist-service
-- [ ] **B** Today progress — всегда ownerOnly в ответах API
+- [x] **B** Surprise mode: owner не видит кто забронировал wishlist item — `wishlist-service.ts` maskItems (2026-07-10)
+- [x] **B** Today progress — всегда ownerOnly в ответах API — только в `/profile/diary` для владельца
 - [x] **B** `POST /users/{id}/block` + модели UserBlock/HiddenPost/ContentReport
 
 ### 3.2 Frontend (M)
@@ -180,7 +182,7 @@
 - [ ] **I** Задача `ownerOnly` — друг не видит в API и в UI
 - [ ] **I** Задача `friends` — видна другу + в feed friends
 - [x] **I** Заблокированный не видит контент блокирующего — feed/search фильтр UserBlock/HiddenPost
-- [ ] **I** Acceptance § Privacy из `BACKEND_ACCEPTANCE_CRITERIA.md`
+- [ ] **I** Acceptance § Privacy из `BACKEND_ACCEPTANCE_CRITERIA.md` — частично: smoke friends feed filter + surprise mask (2026-07-10)
 
 ---
 
@@ -193,7 +195,7 @@
 - [x] **M** CRUD задачи, visibility, тег, streak, XP burst — create/edit/add → API через delegate
 - [x] **M** Complete / restore / uncomplete — delegate → `AppState` → API
 - [x] **M** Фото-пруф UI (загрузка → API) — v38 `showTaskCompletionSheet` + `/diary/tasks/{id}/proof`
-- [x] **M** Quick-ряд: Календарь, Медиа, Вишлист, Спор, Вместе — shell
+- [x] **M** Quick-ряд над nav: Календарь / Медиа / Вишлист / Спор / Вместе + «+» — fix goBranch reset + rootNavigator (build 17)
 - [x] **M** **Нет** блока «Приоритет» — v38 Today
 
 ### 4.2 Backend (B)
@@ -213,7 +215,7 @@
 - [x] **I** Периоды API ↔ UI labels (маппинг `Сегодня` → `today`) — `v38_app_mappers.dart`
 - [x] **I** Diary sync fallback `/profile?full=1` при 404 на `/profile/diary`
 - [ ] **I** Выполнение на телефоне → XP/level в профиле обновляются — нужен smoke
-- [ ] **I** Acceptance § Tasks / Today
+- [ ] **I** Acceptance § Tasks / Today — smoke: `/profile/diary` (2026-07-10)
 
 ---
 
@@ -250,7 +252,7 @@
 - [x] **I** Like/going работают с `/posts/{id}/like` и `/posts/{id}/going`
 - [x] **I** Комментарии → API — `V38FeedDelegate.loadComments/addComment`
 - [x] **I** Friends tab: posts + tasks + activities merge; district/global → scoped `/feed`
-- [ ] **I** Acceptance § Feed
+- [ ] **I** Acceptance § Feed — smoke: `/feed`, `/feed/curated`, `/pulse`, friends feed filter (2026-07-10)
 
 ---
 
@@ -387,7 +389,7 @@
 ### 10.2 Backend (B)
 
 - [x] **B** `POST .../reserve`, cancel, bought — `cancel-reservation`, `mark-bought`, `reservationStatus`, `surpriseMode`
-- [ ] **B** Surprise sanitizer на сервере — частично: maskItems + surpriseMode
+- [x] **B** Surprise sanitizer на сервере — `maskItems` + surpriseMode (2026-07-10)
 - [x] **B** Share links (tokenized URLs) — `shareToken` + `POST /wishlists/{id}/share` + `GET /wishlists/share/{token}`
 - [ ] **B** Place-wishes / visited places
 
@@ -396,7 +398,7 @@
 - [x] **I** v38 `wishlist_feature.dart` → `/wishlists/*` (reserve/create/add/cancel/bought)
 - [x] **I** Share link create → API token URL через `V38WishlistDelegate.onCreateShareLink`
 - [x] **I** Владелец в surprise mode не видит who reserved — API mask + surpriseMode
-- [ ] **I** Acceptance § Wishlist
+- [ ] **I** Acceptance § Wishlist — smoke: `GET /wishlists` (2026-07-10)
 
 ---
 
@@ -416,7 +418,7 @@
 ### 11.3 Интеграция (I)
 
 - [x] **I** v38 `DisputeStore` ← `GET /duels` + create/mark → API + friend picker → `friendIds`
-- [ ] **I** Acceptance § Disputes
+- [ ] **I** Acceptance § Disputes — smoke: `GET /duels` + private feed filter (2026-07-10)
 
 ---
 
@@ -429,13 +431,13 @@
 ### 12.2 Backend (B)
 
 - [x] **B** API `/shared-goals` GET+POST + respond + item complete — DAR prod
-- [ ] **B** Invites, members, tasks, notes
-- [ ] **B** Не в feed/search
+- [x] **B** Не в feed/search — activities filtered; search без duels/shared-goals (2026-07-10)
+- [ ] **B** Invites, members, tasks, notes — базовый CRUD есть; notes post-MVP
 
 ### 12.3 Интеграция (I)
 
 - [x] **I** v38 `TogetherStore` ← `GET /shared-goals` + create/complete/respond + friend picker → `friendIds`
-- [ ] **I** Acceptance § Together
+- [ ] **I** Acceptance § Together — smoke: `GET /shared-goals` (2026-07-10)
 
 ---
 
@@ -454,7 +456,7 @@
 ### 13.3 Интеграция (I)
 
 - [x] **I** v38 `medialist_feature.dart` ← `V38MediaStore` read + `V38MediaDelegate` write
-- [ ] **I** Acceptance § Medialist
+- [ ] **I** Acceptance § Medialist — smoke: `GET /media` + privacy viewer (2026-07-10)
 
 ---
 
@@ -470,7 +472,7 @@
 
 - [x] **B** `GET /search?q=&city=` + privacy `profileInSearch` — DAR prod
 - [x] **B** `GET /notifications`, `PATCH .../read` — DAR prod
-- [ ] **B** `POST /reports`
+- [x] **B** `POST /reports` — endpoint + smoke invalid body → 400 (2026-07-10)
 - [ ] **B** FCM/APNs — device tokens (`/push/register`) — частично: native есть
 
 ### 14.3 Интеграция (I)
@@ -489,13 +491,13 @@
 - [ ] **B** Staging = prod schema parity
 - [x] **B** PM2 / `ecosystem.config.cjs` — deploy без downtime (промежуточный deploy 2026-07-10)
 - [ ] **B** Мониторинг `/api/v1/health`
-- [ ] **B** Полный прогон `BACKEND_ACCEPTANCE_CRITERIA.md` — частично: `v38-acceptance-smoke.sh` endpoint-level
+- [ ] **B** Полный прогон `BACKEND_ACCEPTANCE_CRITERIA.md` — частично: `v38-acceptance-smoke.sh` 24 checks (2026-07-10)
 
 ### 15.2 Mobile
 
-- [x] **M** `flutter build ios --release` + установка на iPhone — build 1.2.0 (7–16)
+- [x] **M** `flutter build ios --release` + установка на iPhone — build 1.2.0+18 (privacy backend slice)
 - [ ] **M** `flutter build ios --release` + TestFlight
-- [ ] **M** `flutter build apk/appbundle` (если нужен Android)
+- [ ] **M** `flutter build apk/appbundle` — **отложено** (только iOS на launch)
 - [ ] **M** Реальное устройство: login → 5 табов → quick screens
 - [x] **I** API base: prod `flroal.ru` в release-сборке
 - [x] **I** Email login → главный экран (auth race fix, build 7+)
@@ -543,4 +545,4 @@
 
 ---
 
-*Документ создан: 2026-07-10. Последнее обновление: Challenges proof API + calendar move sourceKind (build 9).*
+*Документ создан: 2026-07-10. Последнее обновление: privacy/launch-private + smoke 24 checks (build 18).*

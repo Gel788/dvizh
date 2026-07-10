@@ -68,7 +68,7 @@ export async function createDuelRecord(
   if (ids.length < 2) throw new Error("MIN_PARTICIPANTS");
   if (ids.length > 8) throw new Error("MAX_PARTICIPANTS");
 
-  const visibility = VIS[input.visibility ?? "friends"] ?? "FRIENDS";
+  const visibility = VIS[input.visibility ?? "private"] ?? "PRIVATE";
   const duel = await db.duel.create({
     data: {
       creatorId,
@@ -82,19 +82,6 @@ export async function createDuelRecord(
     },
     include: duelInclude,
   });
-
-  if (visibility !== "PRIVATE") {
-    await db.activity.create({
-      data: {
-        userId: creatorId,
-        type: "DUEL_STARTED",
-        visibility,
-        title: duel.title,
-        body: duel.emoji,
-        metadata: JSON.stringify({ duelId: duel.id }),
-      },
-    });
-  }
 
   return duel;
 }

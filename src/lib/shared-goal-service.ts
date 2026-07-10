@@ -95,17 +95,6 @@ export async function createSharedGoalRecord(
     });
   }
 
-  await db.activity.create({
-    data: {
-      userId: creatorId,
-      type: "SHARED_GOAL_UPDATED",
-      visibility: "FRIENDS",
-      title: goal.title,
-      body: `${items.length} пунктов · ${memberIds.length} участников`,
-      metadata: JSON.stringify({ goalId: goal.id, kind: "created" }),
-    },
-  });
-
   return goal;
 }
 
@@ -125,19 +114,6 @@ export async function respondSharedGoalInvite(userId: string, goalId: string, ac
       respondedAt: new Date(),
     },
   });
-
-  if (accept) {
-    await db.activity.create({
-      data: {
-        userId,
-        type: "SHARED_GOAL_UPDATED",
-        visibility: "FRIENDS",
-        title: member.goal.title,
-        body: "присоединился к списку",
-        metadata: JSON.stringify({ goalId, kind: "joined" }),
-      },
-    });
-  }
 
   return { status: accept ? ("ACCEPTED" as const) : ("DECLINED" as const) };
 }
@@ -184,17 +160,6 @@ export async function completeSharedGoalItemRecord(userId: string, itemId: strin
   await db.sharedGoalItem.update({
     where: { id: itemId },
     data: { done: true, assigneeId: userId },
-  });
-
-  await db.activity.create({
-    data: {
-      userId,
-      type: "SHARED_GOAL_UPDATED",
-      visibility: "FRIENDS",
-      title: item.title,
-      body: item.goal.title,
-      metadata: JSON.stringify({ goalItemId: itemId }),
-    },
   });
 
   return { done: true };

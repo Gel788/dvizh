@@ -22,7 +22,11 @@ export default async function FriendsPage({ searchParams }: { searchParams: Sear
   const view = (params.view === "duels" || params.view === "together" ? params.view : "feed") as "feed" | "duels" | "together";
 
   const [data, duels, goals, pending] = await Promise.all([
-    view === "feed" ? getFriendsFeed(session.id, session.city ?? "Москва", "ALL", "feed").catch(() => ({ activities: [], posts: [] })) : Promise.resolve({ activities: [], posts: [] }),
+    view === "feed"
+      ? getFriendsFeed(session.id, session.city ?? "Москва", "ALL", "feed").catch(
+          (): Awaited<ReturnType<typeof getFriendsFeed>> => ({ activities: [], posts: [], tasks: [] }),
+        )
+      : Promise.resolve({ activities: [], posts: [], tasks: [] } satisfies Awaited<ReturnType<typeof getFriendsFeed>>),
     view === "duels" ? getDuelsForUser(session.id) : Promise.resolve([]),
     view === "together" ? getSharedGoalsForUser(session.id) : Promise.resolve([]),
     listPendingFriendRequests(session.id),

@@ -25,7 +25,7 @@ function maskItems<T extends {
     }
     if (viewerId === ownerId) {
       if (surpriseMode) {
-        return { ...item, reserved: true, reservedBy: null, reservationStatus: item.reservationStatus ?? "RESERVED" };
+        return { ...item, reserved: false, reservedBy: null, reservationStatus: null as T["reservationStatus"] };
       }
       return item;
     }

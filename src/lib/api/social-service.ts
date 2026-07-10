@@ -176,18 +176,7 @@ export async function markDuelForUser(userId: string, duelId: string) {
   ]);
 
   const duel = await db.duel.findUnique({ where: { id: duelId }, select: { title: true, visibility: true, emoji: true } });
-  if (duel && duel.visibility !== "PRIVATE") {
-    await db.activity.create({
-      data: {
-        userId,
-        type: "DUEL_MARKED",
-        visibility: duel.visibility,
-        title: duel.title,
-        body: duel.emoji ?? "⚔️",
-        metadata: JSON.stringify({ duelId }),
-      },
-    });
-  }
+  void duel;
 
   return { marked: true };
 }

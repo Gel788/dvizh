@@ -1345,12 +1345,25 @@ export async function getFriendsFeed(
   const followIds = follows.map((f) => f.followingId);
   const authorIds = [...new Set([...friendIds, ...followIds])];
 
+  const FEED_PRIVATE_LAUNCH_DENY = [
+    "DUEL_STARTED",
+    "DUEL_MARKED",
+    "SHARED_GOAL_UPDATED",
+  ] as const;
+
   const activityTypes =
     view === "duels"
       ? (["DUEL_MARKED", "CHALLENGE_JOINED"] as const)
       : view === "together"
         ? (["CHALLENGE_CREATED", "TASK_COMPLETED", "EVENT_ATTENDED"] as const)
         : null;
+
+  const activityTypeFilter =
+    view === "feed"
+      ? { type: { notIn: [...FEED_PRIVATE_LAUNCH_DENY] } }
+      : activityTypes
+        ? { type: { in: [...activityTypes] } }
+        : {};
 
   const friendIdSet = new Set(friendIds);
 
@@ -1359,7 +1372,7 @@ export async function getFriendsFeed(
       ? db.activity.findMany({
           where: {
             userId: { in: authorIds },
-            ...(activityTypes ? { type: { in: [...activityTypes] } } : {}),
+            ...activityTypeFilter,
           },
           include: {
             user: { select: { id: true, name: true, username: true, avatar: true, verified: true } },
@@ -1423,7 +1436,7 @@ export async function getFriendsFeed(
       ),
     )
     .slice(0, 40)
-    .map(sanitizeActivityForViewer);
+    .map((a) => ({ ...sanitizeActivityForViewer(a), user: a.user }));
 
   const tasks = friendTasks.map((task) => ({
     id: task.id,
