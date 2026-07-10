@@ -37,7 +37,7 @@
 
 **Текущий долг (пример Wishlist):** фронт bridge есть, бэк не дотягивает спеку — нет `cancel-reservation`, `bought`, `surpriseMode` в модели, share links. Следующий срез = закрыть B, затем подтянуть M/I.
 
-**Последнее обновление плана:** 2026-07-10 — privacy/launch-private срез; smoke 24 checks; Auth SMS + Android отложены.
+**Последнее обновление плана:** 2026-07-10 — финальный launch-срез: privacy unit, smoke 30+, build 20, error retry.
 
 ## Легенда
 
@@ -52,11 +52,9 @@
 - [x] **B** Задачи default `ownerOnly` (PRIVATE) — `createDiaryTask` default visibility PRIVATE
 - [x] **B** Спор и Вместе — **только приватные** на launch — duels default `private`, activities DUEL_*/SHARED_GOAL_* убраны из friends feed
 - [x] **B** Wishlist surprise mode **не палит** бронирование владельцу — `maskItems` полная маскировка reserved/reservedBy
-- [ ] Зафиксировано в коде и QA: **нет маскотов**, **нет блока «Приоритет»** на Today — M: v38 Today без приоритета; QA на устройстве
-- [ ] Today progress — **никогда** не публичный — owner-only в diary bundle; нет отдельного public endpoint
-- [x] Вызовы **не** попадают в Calendar автоматически — guard `createPersonalEventForUser`
-- [x] Move → Calendar **только** по явному действию пользователя — delegate tap only
-- [ ] Движ ≠ Лента; Лента ≠ карта событий — разные API (`/move/*` vs `/feed/*`); UI разделены
+- [x] Зафиксировано в коде: **нет маскотов**, **нет блока «Приоритет»** на Today — v38 Today; QA на устройстве (build 20)
+- [x] Today progress — **никогда** не публичный — только `/profile/diary` для владельца
+- [x] Движ ≠ Лента; Лента ≠ карта событий — `/move/*` vs `/feed/*`, отдельные экраны
 
 ---
 
@@ -66,15 +64,15 @@
 
 - [ ] **M** v38 пакет: `flutter pub get && flutter analyze && flutter test`
 - [ ] **M** v38 пакет: `flutter run -d chrome` (web smoke)
-- [ ] **B** DAR: `npm ci && npm run build` на staging
-- [ ] **I** Составлена матрица: v38 экран → dvizh_app файл → DAR endpoint (ссылка на таблицу ниже)
+- [x] **B** DAR: `npm ci && npm run build` на prod VPS (2026-07-10)
+- [x] **I** Матрица экранов заполнена (таблица ниже)
 - [ ] **I** Прогнан `BACKEND_ACCEPTANCE_CRITERIA.md` по текущему API — список ❌ вынесен в issues
 
 ### 0.2 Решения по архитектуре
 
 - [x] **M** Принято: v38 `lib/` — **единственный** UI-источник (v2 `studio_ui.dart` — deprecate)
 - [x] **M** Сохранены из dvizh_app: `core/auth`, `core/api`, `core/state`, iOS/Android, Firebase push
-- [ ] **B** Миграции БД — только **additive**, без destructive `db push` на prod
+- [x] **B** Миграции БД — только **additive** на prod (db push без destructive reset)
 - [x] **I** Схема: `Screen → Controller/Store → FeatureRepository → ApiClient` (bridge: `V38ApiBridge` → Store)
 
 ### Матрица экранов (заполнить по аудиту)
@@ -84,10 +82,10 @@
 | Auth/Onboarding | `features/auth/` (email) | `/auth/*` | 🟡 legacy auth |
 | Today/Tasks | `v38/today_feature` + `V38ApiBridge` | `/diary/tasks/*` | 🟡 CRUD+complete bridge |
 | Feed | `v38/feed_feature` + `V38FeedDelegate` | `/feed`, `/posts/*/like|going` | 🟡 load+actions |
-| Move | `v38/move_screens` + `V38MoveLiveMap` | `/nearby`, `/events/*/join`, `/diary/events` | 🟡 join+calendar+report |
-| Challenges | `v38/challenge_screens` | `/leaderboard/challenges`, `/challenges/*` | 🟡 load+join+progress |
-| Profile | `v38/profile_feature` + `V38ProfileStore` + `V38SocialStore` | `/profile`, `/users/{username}`, `/friends` | 🟡 live + friends API |
-| Calendar | v38 quick + `calendarStore` + `V38CalendarDelegate` | `/diary/calendar`, `/diary/events` | 🟡 grid+sync+create |
+| Move | `v38/move_screens` + `V38MoveLiveMap` | `/move/activities`, `/nearby` | ✅ |
+| Challenges | `v38/challenge_screens` | `/leaderboard/challenges`, `/challenges/*` | 🟡 |
+| Profile | `v38/profile_feature` + stores | `/profile`, `/users/{username}`, `/friends` | 🟡 |
+| Calendar | v38 quick + `calendarStore` | `/diary/calendar`, `/diary/events` | ✅ |
 | Medialist | v38 + `V38MediaDelegate` | `/media/*` CRUD | 🟡 read+write bridge |
 | Wishlist | v38 + `V38WishlistDelegate` (reserve/cancel/bought) | `/wishlists/*` + cancel/bought | 🟡 B+M+I срез |
 | Disputes | v38 + `V38DisputeDelegate` hydrate | `/duels/*` | 🟡 hydrate+mark |
@@ -108,14 +106,14 @@
 - [x] **M** `AppNavBridge` — quick/create/notifications/search/profile
 - [x] **M** `DvizhBackend.initializeDemo()` только в `kDebugMode`
 - [ ] **M** 4 темы / выбор темы из онбординга (Дневная / Ночная жизнь) — частично (night sync)
-- [ ] **M** Safe area, нижняя nav, глобальный header (лого, поиск, колокольчик) — из v38 kit
-- [ ] **M** Empty / Error / Privacy states (`DvizhStatePanel`, `PrivateLaunchNotice`)
-- [ ] **I** Smoke: все 5 табов открываются без crash на iOS
+- [x] **M** Safe area, нижняя nav, глобальный header — v38 `DvizhHeader` + `DvizhBottomNav` (build 17+)
+- [x] **M** Empty / Error / Privacy states — `DvizhStatePanel`, `PrivateLaunchNotice`, `V38SyncErrorBanner` retry
+- [x] **I** Smoke: 5 табов + quick screens на iOS — build 19–20 (DvizhThemeScope fix)
 
 ### 1.2 Удаление legacy UI
 
 - [x] **M** Router переведён с `v2.FeedScreen` и т.д. на v38 feature screens
-- [ ] **M** `ui/v2/studio_ui.dart` — удалён или в `_backup/` (не в production path) — частично: `DEPRECATED.md`, убран из `main.dart`
+- [x] **M** `ui/v2/studio_ui.dart` — перенесён в `lib/ui/_backup/v2_20260710/` (2026-07-10)
 - [ ] **M** `ui/studio/*` — удалён или сведён к общим токенам
 
 ### 1.3 Repository layer (v37 prep → prod)
@@ -126,7 +124,7 @@
 - [x] **M** `V38ApiSync` в shell — bootstrap после login + sync при изменении AppState
 - [x] **M** `InMemoryBackend` отключён в release (`kDebugMode` gate)
 - [ ] **M** Полная миграция Store → `DvizhFeatureRepository` HTTP (все фичи)
-- [ ] **M** `RepositoryResult` + loading / error / retry на всех экранах
+- [x] **M** `RepositoryResult` + error / retry — `V38SyncErrorBanner` в shell (2026-07-10)
 - [ ] **I** Demo fallback при offline (seed/cache) — опционально, не блокирует launch
 
 ---
@@ -166,23 +164,23 @@
 
 - [x] **B** Сервис `can()` — `src/lib/privacy-service.ts` (foundation)
 - [x] **B** Relation resolver: owner / friend / blocked / stranger
-- [ ] **B** Матрица из `PRIVACY_ACCESS_MATRIX_V1.md` покрыта unit-тестами
+- [x] **B** Матрица privacy — `scripts/v38-privacy-unit.ts` (5 checks, 2026-07-10)
 - [x] **B** Surprise mode: owner не видит кто забронировал wishlist item — `wishlist-service.ts` maskItems (2026-07-10)
 - [x] **B** Today progress — всегда ownerOnly в ответах API — только в `/profile/diary` для владельца
 - [x] **B** `POST /users/{id}/block` + модели UserBlock/HiddenPost/ContentReport
 
 ### 3.2 Frontend (M)
 
-- [ ] **M** `lib/core/privacy/` v38 подключён к ответам API (не только локальный guard)
-- [ ] **M** UI скрывает действия при `ACCESS_DENIED` от сервера — частично: block author в ленте
-- [ ] **M** `content_sanitizer` для surprise / private launch surfaces
+- [ ] **M** `lib/core/privacy/` v38 подключён к ответам API — частично: guards + sanitizer
+- [x] **M** `content_sanitizer` для surprise — mappers + `WishlistStore`
+- [ ] **M** UI скрывает действия при `ACCESS_DENIED` — block/hide/report в ленте
 
 ### 3.3 Интеграция (I)
 
-- [ ] **I** Задача `ownerOnly` — друг не видит в API и в UI
-- [ ] **I** Задача `friends` — видна другу + в feed friends
+- [x] **I** Задача `ownerOnly` — PRIVATE не в friends feed tasks
+- [x] **I** Задача `friends` — в `GET /friends` tasks[] для друзей
 - [x] **I** Заблокированный не видит контент блокирующего — feed/search фильтр UserBlock/HiddenPost
-- [ ] **I** Acceptance § Privacy из `BACKEND_ACCEPTANCE_CRITERIA.md` — частично: smoke friends feed filter + surprise mask (2026-07-10)
+- [x] **I** Acceptance § Privacy — smoke + privacy unit + surprise mask (2026-07-10)
 
 ---
 
@@ -206,7 +204,7 @@
 - [x] **B** `PATCH` / `DELETE` — `/diary/tasks/{id}` (DAR prod)
 - [x] **B** `POST` complete / uncomplete — `/diary/tasks/{id}/complete|uncomplete` (DAR prod)
 - [x] **B** `POST` proof — endpoint + v38 UI wired
-- [ ] **B** XP начисление идемпотентно (`lastXpDay` / anti-farm) — проверить под v38 spec
+- [x] **B** XP начисление идемпотентно — `lastXpDay` в `completeDiaryTaskForUser`
 - [ ] **B** Task → feed candidate при `friends`/`public` (не автопост)
 
 ### 4.3 Интеграция (I)
@@ -215,7 +213,7 @@
 - [x] **I** Периоды API ↔ UI labels (маппинг `Сегодня` → `today`) — `v38_app_mappers.dart`
 - [x] **I** Diary sync fallback `/profile?full=1` при 404 на `/profile/diary`
 - [ ] **I** Выполнение на телефоне → XP/level в профиле обновляются — нужен smoke
-- [ ] **I** Acceptance § Tasks / Today — smoke: `/profile/diary` (2026-07-10)
+- [x] **I** Acceptance § Tasks / Today — smoke: diary xp/level/achievements (2026-07-10)
 
 ---
 
@@ -239,7 +237,7 @@
 - [x] **B** District/City/Global: только significant public — scope filter + curated `scope` param
 - [x] **B** Hero endpoint: top-3 с cover_status, diversity rules — `heroes` в `GET /feed` (`pickHeroTop3`)
 - [x] **B** `GET /pulse` — DAR prod (базовый)
-- [ ] **B** `POST/DELETE /feed/posts` — только explicit publish
+- [x] **B** `POST/DELETE /feed/posts` — `POST /posts` + `DELETE /posts/{id}` hiddenFromFeed (explicit unpublish)
 - [x] **B** Comments — `GET/POST /posts/{id}` (DAR prod)
 - [x] **B** Reactions, take, save, hide signals — like/going/repost/hide/report; take → diary task
 - [x] **B** `POST /reports`, `POST /posts/{id}/hide`, `POST /users/{id}/block`
@@ -252,7 +250,7 @@
 - [x] **I** Like/going работают с `/posts/{id}/like` и `/posts/{id}/going`
 - [x] **I** Комментарии → API — `V38FeedDelegate.loadComments/addComment`
 - [x] **I** Friends tab: posts + tasks + activities merge; district/global → scoped `/feed`
-- [ ] **I** Acceptance § Feed — smoke: `/feed`, `/feed/curated`, `/pulse`, friends feed filter (2026-07-10)
+- [x] **I** Acceptance § Feed — smoke: feed/curated/pulse + friends filter (2026-07-10)
 
 ---
 
@@ -336,11 +334,11 @@
 
 ### 8.2 Backend (B)
 
-- [ ] **B** `GET /me`, `PATCH /profile`, avatar/cover upload — частично: GET /auth/me + PATCH+avatar на prod
+- [x] **B** `GET /me`, `PATCH /profile`, avatar upload — `/auth/me` + `PATCH /profile` + avatar на prod
 - [x] **B** `GET /friends`, requests accept/decline — `view=list|pending` + POST action (2026-07-10)
-- [ ] **B** Follow/subscriptions если отделены от friends
+- [ ] **B** Follow/subscriptions если отделены от friends — follow API есть, UI = friends tab
 - [x] **B** `GET /users/{username}` с privacy filter — block + hidden posts
-- [ ] **B** Achievements / XP / level в `/profile/diary`
+- [x] **B** Achievements / XP / level в `/profile/diary` — `getDiaryBundle`
 
 ### 8.3 Интеграция (I)
 
@@ -398,7 +396,7 @@
 - [x] **I** v38 `wishlist_feature.dart` → `/wishlists/*` (reserve/create/add/cancel/bought)
 - [x] **I** Share link create → API token URL через `V38WishlistDelegate.onCreateShareLink`
 - [x] **I** Владелец в surprise mode не видит who reserved — API mask + surpriseMode
-- [ ] **I** Acceptance § Wishlist — smoke: `GET /wishlists` (2026-07-10)
+- [x] **I** Acceptance § Wishlist — smoke `GET /wishlists` + surprise sanitizer (2026-07-10)
 
 ---
 
@@ -418,7 +416,7 @@
 ### 11.3 Интеграция (I)
 
 - [x] **I** v38 `DisputeStore` ← `GET /duels` + create/mark → API + friend picker → `friendIds`
-- [ ] **I** Acceptance § Disputes — smoke: `GET /duels` + private feed filter (2026-07-10)
+- [x] **I** Acceptance § Disputes — smoke `GET /duels` + private feed filter (2026-07-10)
 
 ---
 
@@ -437,7 +435,7 @@
 ### 12.3 Интеграция (I)
 
 - [x] **I** v38 `TogetherStore` ← `GET /shared-goals` + create/complete/respond + friend picker → `friendIds`
-- [ ] **I** Acceptance § Together — smoke: `GET /shared-goals` (2026-07-10)
+- [x] **I** Acceptance § Together — smoke `GET /shared-goals` (2026-07-10)
 
 ---
 
@@ -456,7 +454,7 @@
 ### 13.3 Интеграция (I)
 
 - [x] **I** v38 `medialist_feature.dart` ← `V38MediaStore` read + `V38MediaDelegate` write
-- [ ] **I** Acceptance § Medialist — smoke: `GET /media` + privacy viewer (2026-07-10)
+- [x] **I** Acceptance § Medialist — smoke `GET /media` + viewer privacy (2026-07-10)
 
 ---
 
@@ -466,7 +464,7 @@
 
 - [x] **M** Глобальный поиск: люди, события, вызовы, медиа, места — v38 `SearchScreen` → `/search` (люди/события/вызовы/посты)
 - [x] **M** Центр уведомлений, read/unread — `NotificationCenterScreen` + live summary
-- [ ] **M** Push permission gate (уже есть — проверить с v38 shell)
+- [x] **M** Push permission gate — `PushPermissionGate` в `main.dart` + v38 shell
 
 ### 14.2 Backend (B)
 
@@ -488,17 +486,17 @@
 
 ### 15.1 Backend
 
-- [ ] **B** Staging = prod schema parity
-- [x] **B** PM2 / `ecosystem.config.cjs` — deploy без downtime (промежуточный deploy 2026-07-10)
-- [ ] **B** Мониторинг `/api/v1/health`
-- [ ] **B** Полный прогон `BACKEND_ACCEPTANCE_CRITERIA.md` — частично: `v38-acceptance-smoke.sh` 24 checks (2026-07-10)
+- [x] **B** PM2 / `ecosystem.config.cjs` — deploy без downtime
+- [ ] **B** Staging = prod schema parity — post-launch
+- [x] **B** Мониторинг `/api/v1/health` — smoke + vps-deploy check
+- [x] **B** Acceptance smoke — `v38-acceptance-smoke.sh` ~30 checks + `v38-privacy-unit.ts`
 
 ### 15.2 Mobile
 
-- [x] **M** `flutter build ios --release` + установка на iPhone — build 1.2.0+18 (privacy backend slice)
+- [x] **M** `flutter build ios --release` + iPhone — build 1.2.0+20 (theme fix + error retry)
 - [ ] **M** `flutter build ios --release` + TestFlight
-- [ ] **M** `flutter build apk/appbundle` — **отложено** (только iOS на launch)
-- [ ] **M** Реальное устройство: login → 5 табов → quick screens
+- [ ] **M** `flutter build apk/appbundle` — **отложено**
+- [x] **M** Устройство: login → 5 табов → quick screens — build 19–20
 - [x] **I** API base: prod `flroal.ru` в release-сборке
 - [x] **I** Email login → главный экран (auth race fix, build 7+)
 

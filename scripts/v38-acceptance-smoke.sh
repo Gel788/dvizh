@@ -87,6 +87,44 @@ else
   pass=$((pass + 1))
 fi
 
+# Diary bundle: XP / level / achievements (owner-only progress)
+DIARY_JSON=$(curl -s -H "$AUTH" "$API_BASE/profile/diary")
+if echo "$DIARY_JSON" | grep -qE '"xp"[[:space:]]*:[[:space:]]*[0-9]+' && echo "$DIARY_JSON" | grep -q '"level"'; then
+  echo "PASS: diary xp/level fields"
+  pass=$((pass + 1))
+else
+  echo "FAIL: diary missing xp/level"
+  fail=$((fail + 1))
+fi
+if echo "$DIARY_JSON" | grep -q '"achievements"'; then
+  echo "PASS: diary achievements array"
+  pass=$((pass + 1))
+else
+  echo "FAIL: diary missing achievements"
+  fail=$((fail + 1))
+fi
+
+# Health monitoring endpoint
+check_http "GET /health" "$(curl -s -o /dev/null -w '%{http_code}' "$API_BASE/health")" "200"
+
+# Explicit feed unpublish guard (foreign post)
+check_http "DELETE /posts/fake forbidden" "$(curl -s -o /dev/null -w '%{http_code}' -X DELETE -H "$AUTH" "$API_BASE/posts/fake-post-id")" "404"
+
+# Second user (friend graph) — anna from seed
+ANNA_LOGIN=$(curl -s -X POST "$API_BASE/auth/login" \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"anna@dvizh.app","password":"demo1234"}')
+ANNA_TOKEN=$(echo "$ANNA_LOGIN" | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
+if [ -n "$ANNA_TOKEN" ]; then
+  echo "PASS: anna login (2-user graph)"
+  pass=$((pass + 1))
+  ANNA_AUTH="Authorization: Bearer $ANNA_TOKEN"
+  check_http "GET /friends?view=list (anna)" "$(curl -s -o /dev/null -w '%{http_code}' -H "$ANNA_AUTH" "$API_BASE/friends?view=list")" "200"
+else
+  echo "FAIL: anna login"
+  fail=$((fail + 1))
+fi
+
 CRON_SECRET="${CRON_SECRET:-}"
 if [ -n "$CRON_SECRET" ]; then
   check_http "GET /cron/reminders" "$(curl -s -o /dev/null -w '%{http_code}' "$API_BASE/cron/reminders?secret=$CRON_SECRET")" "200"

@@ -10,7 +10,8 @@
     "db:push": "prisma db push",
     "db:seed": "node --env-file=.env ./node_modules/tsx/dist/cli.mjs prisma/seed.ts",
     "db:reset": "prisma db push --force-reset && node --env-file=.env ./node_modules/tsx/dist/cli.mjs prisma/seed.ts",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "test:privacy": "tsx scripts/v38-privacy-unit.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
