@@ -13,6 +13,10 @@ type CreatePostBody = {
   tags?: string;
   goalCount?: number;
   reward?: string;
+  rules?: string;
+  deadline?: string;
+  isGlobal?: boolean;
+  hiddenFromFeed?: boolean;
   lat?: number;
   lng?: number;
 };
@@ -45,17 +49,24 @@ export async function POST(request: Request) {
         lat,
         lng,
         tags,
+        hiddenFromFeed: body.hiddenFromFeed === true,
         challenge:
           type === "CHALLENGE"
             ? {
                 create: {
-                  goalCount: Number(body.goalCount ?? 1),
+                  goalCount: Math.min(7, Math.max(1, Number(body.goalCount ?? 7))),
+                  deadline: body.deadline
+                    ? new Date(body.deadline)
+                    : new Date(Date.now() + Math.min(7, Math.max(1, Number(body.goalCount ?? 7))) * 86_400_000),
+                  rules: String(body.rules ?? "").trim() || null,
                   reward: body.reward?.trim() || null,
+                  isGlobal: body.isGlobal === true,
                 },
               }
             : undefined,
       },
       include: {
+        challenge: true,
         author: {
           select: {
             id: true,
@@ -70,6 +81,28 @@ export async function POST(request: Request) {
         _count: { select: { likes: true, comments: true, going: true, reposts: true } },
       },
     });
+
+    if (type === "CHALLENGE" && post.challenge) {
+      await db.challengeParticipant.upsert({
+        where: {
+          challengeId_userId: {
+            challengeId: post.challenge.id,
+            userId: session.id,
+          },
+        },
+        create: { challengeId: post.challenge.id, userId: session.id },
+        update: {},
+      });
+      await db.activity.create({
+        data: {
+          userId: session.id,
+          type: "CHALLENGE_CREATED",
+          visibility: post.hiddenFromFeed ? "PRIVATE" : "PUBLIC",
+          title: title ?? content.slice(0, 80),
+          postId: post.id,
+        },
+      });
+    }
 
     return jsonOk({ post }, 201);
   } catch (e) {

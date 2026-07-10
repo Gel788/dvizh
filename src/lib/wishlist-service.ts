@@ -1,4 +1,5 @@
 import type { Visibility } from "@prisma/client";
+import crypto from "node:crypto";
 import { db } from "@/lib/db";
 import { sentenceCase } from "@/lib/text-format";
 
@@ -6,21 +7,32 @@ const VIS: Record<string, Visibility> = {
   private: "PRIVATE", friends: "FRIENDS", all: "PUBLIC", public: "PUBLIC",
 };
 
-function maskItems<T extends { reserved: boolean; reservedBy: string | null }>(
+function maskItems<T extends {
+  reserved: boolean;
+  reservedBy: string | null;
+  reservationStatus?: string | null;
+}>(
   items: T[],
   ownerId: string,
   viewerId: string,
   viewerUsername?: string,
+  surpriseMode = true,
 ): T[] {
   return items.map((item) => {
-    if (!item.reserved) return item;
+    const active = item.reserved && item.reservationStatus !== "CANCELLED";
+    if (!active) {
+      return { ...item, reserved: false, reservedBy: null, reservationStatus: null as T["reservationStatus"] };
+    }
     if (viewerId === ownerId) {
-      return { ...item, reservedBy: null };
+      if (surpriseMode) {
+        return { ...item, reserved: true, reservedBy: null, reservationStatus: item.reservationStatus ?? "RESERVED" };
+      }
+      return item;
     }
     if (item.reservedBy === viewerUsername) {
       return item;
     }
-    return { ...item, reservedBy: null };
+    return { ...item, reserved: true, reservedBy: null, reservationStatus: "RESERVED" as T["reservationStatus"] };
   });
 }
 
@@ -36,7 +48,7 @@ export async function listWishlistsForViewer(ownerId: string, viewerId: string, 
 
   return lists.map((list) => ({
     ...list,
-    items: maskItems(list.items, ownerId, viewerId, viewerUsername),
+    items: maskItems(list.items, ownerId, viewerId, viewerUsername, list.surpriseMode),
   }));
 }
 
@@ -47,11 +59,13 @@ export async function createWishlistRecord(
     occasion?: string;
     eventAt?: string | null;
     visibility?: string;
+    surpriseMode?: boolean;
     items?: { title: string; price?: string; link?: string; comment?: string }[];
   },
 ) {
   const visibility = VIS[input.visibility ?? "friends"] ?? "FRIENDS";
   const items = (input.items ?? []).filter((i) => i.title.trim());
+  const surpriseMode = input.surpriseMode ?? visibility !== "PUBLIC";
 
   const list = await db.wishlist.create({
     data: {
@@ -60,6 +74,7 @@ export async function createWishlistRecord(
       occasion: input.occasion?.trim() ? sentenceCase(input.occasion) : null,
       eventAt: input.eventAt ? new Date(input.eventAt) : null,
       visibility,
+      surpriseMode,
       items: items.length
         ? {
             create: items.map((item) => ({
@@ -138,6 +153,7 @@ export async function updateWishlistRecord(
     occasion?: string | null;
     eventAt?: string | null;
     visibility?: string;
+    surpriseMode?: boolean;
   },
 ) {
   const list = await db.wishlist.findFirst({ where: { id: listId, userId } });
@@ -150,6 +166,7 @@ export async function updateWishlistRecord(
       occasion: input.occasion !== undefined ? (input.occasion?.trim() ? sentenceCase(input.occasion) : null) : list.occasion,
       eventAt: input.eventAt !== undefined ? (input.eventAt ? new Date(input.eventAt) : null) : list.eventAt,
       visibility: input.visibility ? (VIS[input.visibility] ?? list.visibility) : list.visibility,
+      surpriseMode: input.surpriseMode ?? list.surpriseMode,
     },
     include: { items: { orderBy: { title: "asc" } } },
   });
@@ -212,8 +229,122 @@ export async function reserveWishlistItemRecord(
 
   await db.wishlistItem.update({
     where: { id: itemId },
-    data: { reserved: true, reservedBy: viewerUsername },
+    data: { reserved: true, reservedBy: viewerUsername, reservationStatus: "RESERVED" },
   });
 
   return { reserved: true };
+}
+
+export async function cancelWishlistReservationRecord(
+  viewerId: string,
+  viewerUsername: string,
+  itemId: string,
+) {
+  const item = await db.wishlistItem.findUnique({
+    where: { id: itemId },
+    include: { list: true },
+  });
+  if (!item) return { error: "NOT_FOUND" as const };
+  if (!item.reserved || item.reservationStatus === "CANCELLED") {
+    return { error: "NOT_RESERVED" as const };
+  }
+  if (item.reservedBy !== viewerUsername) return { error: "FORBIDDEN" as const };
+
+  await db.wishlistItem.update({
+    where: { id: itemId },
+    data: { reserved: false, reservedBy: null, reservationStatus: "CANCELLED" },
+  });
+
+  return { cancelled: true };
+}
+
+export async function markWishlistItemBoughtRecord(
+  viewerId: string,
+  viewerUsername: string,
+  itemId: string,
+) {
+  const item = await db.wishlistItem.findUnique({
+    where: { id: itemId },
+    include: { list: true },
+  });
+  if (!item) return { error: "NOT_FOUND" as const };
+  if (!item.reserved || item.reservationStatus === "CANCELLED") {
+    return { error: "NOT_RESERVED" as const };
+  }
+  if (item.reservedBy !== viewerUsername) return { error: "FORBIDDEN" as const };
+
+  await db.wishlistItem.update({
+    where: { id: itemId },
+    data: { reserved: true, reservationStatus: "BOUGHT" },
+  });
+
+  return { bought: true };
+}
+
+function shareUrlForToken(token: string) {
+  const base = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.flroal.ru";
+  return `${base.replace(/\/$/, "")}/wishlists/share/${token}`;
+}
+
+export async function createWishlistShareLink(ownerId: string, listId: string) {
+  const list = await db.wishlist.findFirst({
+    where: { id: listId, userId: ownerId },
+    select: { id: true, title: true, shareToken: true },
+  });
+  if (!list) return null;
+
+  const token =
+    list.shareToken ??
+    (await (async () => {
+      const next = crypto.randomUUID().replace(/-/g, "");
+      await db.wishlist.update({
+        where: { id: listId },
+        data: { shareToken: next },
+      });
+      return next;
+    })());
+
+  return {
+    wishlistId: list.id,
+    title: list.title,
+    token,
+    url: shareUrlForToken(token),
+  };
+}
+
+export async function getWishlistByShareToken(
+  token: string,
+  viewerId?: string,
+  viewerUsername?: string,
+) {
+  const list = await db.wishlist.findFirst({
+    where: { shareToken: token },
+    include: { items: { orderBy: { title: "asc" } }, user: { select: { id: true, name: true, username: true } } },
+  });
+  if (!list) return null;
+
+  const ownerId = list.userId;
+  const viewer = viewerId ?? "";
+
+  let canView = viewer === ownerId || list.visibility === "PUBLIC";
+  if (!canView && list.visibility === "FRIENDS" && viewerId) {
+    canView = !!(await db.friendship.findFirst({
+      where: {
+        status: "ACCEPTED",
+        OR: [
+          { requesterId: viewerId, addresseeId: ownerId },
+          { requesterId: ownerId, addresseeId: viewerId },
+        ],
+      },
+    }));
+  }
+
+  if (!canView) return { error: "FORBIDDEN" as const };
+
+  return {
+    wishlist: {
+      ...list,
+      items: maskItems(list.items, ownerId, viewer, viewerUsername, list.surpriseMode),
+    },
+  };
 }

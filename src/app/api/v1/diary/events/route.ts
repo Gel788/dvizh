@@ -13,6 +13,8 @@ type CreateEventBody = {
   reminderAt?: string;
   visibility?: string;
   note?: string;
+  sourceKind?: string;
+  sourceId?: string;
 };
 
 export async function POST(request: Request) {
@@ -33,6 +35,8 @@ export async function POST(request: Request) {
       reminderAt: body.reminderAt,
       visibility: body.visibility,
       note: body.note,
+      sourceKind: body.sourceKind,
+      sourceId: body.sourceId,
     });
     if (!created) return jsonError("Не удалось создать", 400, "FAILED");
     return jsonOk({ event: created }, 201);

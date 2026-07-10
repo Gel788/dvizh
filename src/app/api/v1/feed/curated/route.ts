@@ -7,12 +7,14 @@ export async function GET(request: Request) {
   const session = await getSessionFromRequest(request);
   const { searchParams } = new URL(request.url);
   const city = searchParams.get("city") ?? session?.city ?? "Москва";
-  const cacheKey = `curated:v2:${city}:${session?.id ?? "anon"}`;
+  const scope = (searchParams.get("scope") as "city" | "district" | "global") ?? "city";
+  const district = searchParams.get("district") ?? session?.district ?? undefined;
+  const cacheKey = `curated:v3:${scope}:${city}:${district ?? ""}:${session?.id ?? "anon"}`;
 
   const cached = getCached<Awaited<ReturnType<typeof getCuratedFeed>>>(cacheKey);
   if (cached) return jsonOk(cached);
 
-  const feed = await getCuratedFeed(city, session?.id);
+  const feed = await getCuratedFeed(city, session?.id, scope, district);
   setCached(cacheKey, feed);
   return jsonOk(feed);
 }

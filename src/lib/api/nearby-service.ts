@@ -9,6 +9,7 @@ import { buildNearbyItems } from "@/lib/nearby-data";
 import type { SessionUser } from "@/lib/auth";
 import { normalizePostImages } from "@/lib/media-url";
 import { resolveContentCities } from "@/lib/feed-scope";
+import { getBlockedUserIds, getHiddenPostIds } from "@/lib/privacy-service";
 
 const postSelect = {
   id: true,
@@ -54,9 +55,20 @@ export async function getNearbyPayload(
   const userId = session?.id;
   const district = options.district ?? session?.district ?? undefined;
 
+  let blockedIds: string[] = [];
+  let hiddenPostIds: string[] = [];
+  if (userId) {
+    [blockedIds, hiddenPostIds] = await Promise.all([
+      getBlockedUserIds(userId),
+      getHiddenPostIds(userId),
+    ]);
+  }
+
   const postWhere = district
     ? {
         hiddenFromFeed: false,
+        ...(blockedIds.length ? { authorId: { notIn: blockedIds } } : {}),
+        ...(hiddenPostIds.length ? { id: { notIn: hiddenPostIds } } : {}),
         OR: [
           { city: { in: contentCities }, district },
           { tags: { contains: "sponsored" } },
@@ -65,6 +77,8 @@ export async function getNearbyPayload(
       }
     : {
         hiddenFromFeed: false,
+        ...(blockedIds.length ? { authorId: { notIn: blockedIds } } : {}),
+        ...(hiddenPostIds.length ? { id: { notIn: hiddenPostIds } } : {}),
         OR: [
           { city: { in: contentCities } },
           { tags: { contains: "sponsored" } },
@@ -122,6 +136,7 @@ export async function getNearbyPayload(
     db.event.findMany({
       where: {
         startAt: { gte: new Date() },
+        ...(blockedIds.length ? { organizerId: { notIn: blockedIds } } : {}),
         OR: [
           { city: { in: contentCities }, ...(district ? { district } : {}) },
         ],

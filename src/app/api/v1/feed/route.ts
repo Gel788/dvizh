@@ -1,4 +1,5 @@
 import { getFeedPosts, type FeedFilters } from "@/lib/actions";
+import { pickHeroTop3 } from "@/lib/feed-scope-service";
 import { getSessionFromRequest } from "@/lib/auth";
 import { jsonOk } from "@/lib/api/http";
 import { parseCoord, resolveOrigin } from "@/lib/geo";
@@ -15,15 +16,16 @@ export async function GET(request: Request) {
   });
 
   const typeParam = searchParams.get("type");
-  const feed = (searchParams.get("feed") as FeedFilters["feed"]) ?? "all";
+  const feed = (searchParams.get("feed") as FeedFilters["feed"]) ?? "city";
   const radiusRaw = searchParams.get("radiusKm") ?? searchParams.get("radius");
+  const district = searchParams.get("district") ?? session?.district ?? undefined;
 
   const filters: FeedFilters = {
     city,
     type: (typeParam as PostType | "ALL") ?? "ALL",
-    district: searchParams.get("district") ?? undefined,
+    district: feed === "district" ? district : searchParams.get("district") ?? undefined,
     tag: searchParams.get("tag") ?? undefined,
-    feed,
+    feed: feed === "all" ? "city" : feed,
     userLat: origin.lat,
     userLng: origin.lng,
     radiusKm:
@@ -33,5 +35,11 @@ export async function GET(request: Request) {
   };
 
   const posts = await getFeedPosts(filters, session);
-  return jsonOk({ posts, origin: { lat: origin.lat, lng: origin.lng }, hasGps: origin.hasGps });
+  const heroes = pickHeroTop3(posts);
+  return jsonOk({
+    posts,
+    heroes,
+    origin: { lat: origin.lat, lng: origin.lng },
+    hasGps: origin.hasGps,
+  });
 }

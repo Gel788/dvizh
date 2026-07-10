@@ -10,6 +10,7 @@ type Body = {
   occasion?: string;
   eventAt?: string | null;
   visibility?: string;
+  surpriseMode?: boolean;
   items?: { title: string; price?: string; link?: string; comment?: string }[];
 };
 

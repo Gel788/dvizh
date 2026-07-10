@@ -86,6 +86,7 @@ enum PersonalEventType {
   MEETING
   APPOINTMENT
   HOUSEHOLD
+  MOVE
   CUSTOM
 }
 
@@ -177,6 +178,10 @@ model User {
   mediaItems         MediaItem[]
   privacySettings    PrivacySettings?
   userAchievements   UserAchievement[]
+  blocksSent         UserBlock[]          @relation("blocksSent")
+  blocksReceived     UserBlock[]          @relation("blocksReceived")
+  hiddenPosts        HiddenPost[]
+  contentReports     ContentReport[]
   aiUsage            AiUsage[]
   pushDevices        PushDevice[]
 }
@@ -254,6 +259,7 @@ model Post {
   comments     Comment[]
   reposts      Repost[]
   going        Going[]
+  hiddenBy     HiddenPost[]
 
   @@index([city, type])
   @@index([createdAt])
@@ -520,11 +526,14 @@ model PersonalCalendarEvent {
   reminderPushedAt DateTime?
   visibility  Visibility        @default(PRIVATE)
   note        String?
+  sourceKind  String?
+  sourceId    String?
   createdAt   DateTime          @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, eventDate])
+  @@index([userId, sourceKind, sourceId])
 }
 
 model TaskCopy {
@@ -674,29 +683,38 @@ model SharedGoalItem {
   assignee User?      @relation("sharedGoalAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
 }
 
+enum WishlistReservationStatus {
+  RESERVED
+  BOUGHT
+  CANCELLED
+}
+
 model Wishlist {
-  id         String     @id @default(cuid())
-  userId     String
-  title      String
-  occasion   String?
-  eventAt    DateTime?
-  visibility Visibility @default(FRIENDS)
-  createdAt  DateTime   @default(now())
+  id           String     @id @default(cuid())
+  userId       String
+  title        String
+  occasion     String?
+  eventAt      DateTime?
+  visibility   Visibility @default(FRIENDS)
+  surpriseMode Boolean    @default(true)
+  shareToken   String?    @unique
+  createdAt    DateTime   @default(now())
 
   user  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   items WishlistItem[]
 }
 
 model WishlistItem {
-  id        String  @id @default(cuid())
-  listId    String
-  title     String
-  imageUrl  String?
-  link      String?
-  price     String?
-  comment   String?
-  reserved  Boolean @default(false)
-  reservedBy String?
+  id                String                     @id @default(cuid())
+  listId            String
+  title             String
+  imageUrl          String?
+  link              String?
+  price             String?
+  comment           String?
+  reserved          Boolean                    @default(false)
+  reservedBy        String?
+  reservationStatus WishlistReservationStatus?
 
   list Wishlist @relation(fields: [listId], references: [id], onDelete: Cascade)
 }
@@ -744,4 +762,46 @@ model AiUsage {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([userId, day])
+}
+
+model UserBlock {
+  id        String   @id @default(cuid())
+  blockerId String
+  blockedId String
+  createdAt DateTime @default(now())
+
+  blocker User @relation("blocksSent", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked User @relation("blocksReceived", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
+  @@index([blockerId])
+  @@index([blockedId])
+}
+
+model HiddenPost {
+  id        String   @id @default(cuid())
+  userId    String
+  postId    String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+  @@index([userId])
+}
+
+model ContentReport {
+  id         String   @id @default(cuid())
+  reporterId String
+  targetKind String
+  targetId   String
+  reason     String
+  details    String?
+  createdAt  DateTime @default(now())
+
+  reporter User @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@index([targetKind, targetId])
+  @@index([reporterId])
 }

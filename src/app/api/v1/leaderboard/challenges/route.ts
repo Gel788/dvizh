@@ -13,7 +13,11 @@ export async function GET(request: Request) {
         ? "friends"
         : scopeParam === "district"
           ? "district"
-          : "local";
+          : scopeParam === "mine"
+            ? "mine"
+            : scopeParam === "city"
+              ? "local"
+              : "local";
   const city = searchParams.get("city") ?? session?.city ?? "Москва";
   const district = searchParams.get("district") ?? session?.district ?? undefined;
 

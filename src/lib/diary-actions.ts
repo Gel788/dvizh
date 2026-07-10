@@ -11,6 +11,7 @@ import { THEMES } from "@/lib/achievements-generator";
 import { getSharedGoalsForUser } from "@/lib/social-actions";
 import { normalizePostImages } from "@/lib/media-url";
 import { resolveContentCities } from "@/lib/feed-scope";
+import { isSignificantPost } from "@/lib/feed-scope-service";
 import { sentenceCase, sentenceCaseLines } from "@/lib/text-format";
 import {
   canViewerSeeActivity,
@@ -69,6 +70,8 @@ export type PersonalEventDto = {
   reminderAt?: string;
   visibility?: "private" | "friends" | "all";
   note?: string;
+  sourceKind?: string;
+  sourceId?: string;
 };
 
 export type DiaryBundle = {
@@ -856,6 +859,8 @@ export async function getCalendarData(
       reminderAt: ev.reminderAt?.toISOString(),
       visibility: toClientVis(ev.visibility),
       note: ev.note ?? undefined,
+      sourceKind: ev.sourceKind ?? (ev.eventType === "MOVE" ? "move" : undefined),
+      sourceId: ev.sourceId ?? undefined,
     });
   }
 
@@ -868,7 +873,7 @@ export async function fetchCalendarAction(year: number, month: number, tzOffset?
   return getCalendarData(session.id, year, month, tzOffset ?? DEFAULT_TZ_OFFSET_MINUTES);
 }
 
-const EVENT_TYPE_MAP: Record<string, "BIRTHDAY" | "ANNIVERSARY" | "HOLIDAY" | "PAYMENT" | "MEETING" | "APPOINTMENT" | "HOUSEHOLD" | "CUSTOM"> = {
+const EVENT_TYPE_MAP: Record<string, "BIRTHDAY" | "ANNIVERSARY" | "HOLIDAY" | "PAYMENT" | "MEETING" | "APPOINTMENT" | "HOUSEHOLD" | "MOVE" | "CUSTOM"> = {
   birthday: "BIRTHDAY",
   anniversary: "ANNIVERSARY",
   holiday: "HOLIDAY",
@@ -876,6 +881,7 @@ const EVENT_TYPE_MAP: Record<string, "BIRTHDAY" | "ANNIVERSARY" | "HOLIDAY" | "P
   meeting: "MEETING",
   appointment: "APPOINTMENT",
   household: "HOUSEHOLD",
+  move: "MOVE",
   custom: "CUSTOM",
 };
 
@@ -892,6 +898,8 @@ export async function createPersonalEventForUser(
     reminderAt?: string;
     visibility?: string;
     note?: string;
+    sourceKind?: string;
+    sourceId?: string;
   },
 ) {
   const title = input.title.trim();
@@ -902,6 +910,28 @@ export async function createPersonalEventForUser(
   const eventType = EVENT_TYPE_MAP[input.eventType?.toLowerCase() ?? "custom"] ?? "CUSTOM";
   const visibility = VIS_MAP[input.visibility ?? "private"] ?? "PRIVATE";
   const eventDate = new Date(`${input.eventDate}T12:00:00`);
+  const sourceKind = input.sourceKind?.trim() || (eventType === "MOVE" ? "move" : null);
+  const sourceId = input.sourceId?.trim() || null;
+
+  if (sourceKind && sourceId) {
+    const existing = await db.personalCalendarEvent.findFirst({
+      where: { userId, sourceKind, sourceId },
+    });
+    if (existing) {
+      return {
+        id: existing.id,
+        title: existing.title,
+        eventType: existing.eventType.toLowerCase(),
+        eventDate: existing.eventDate.toISOString().slice(0, 10),
+        hasTime: existing.hasTime,
+        scheduledAt: existing.scheduledAt?.toISOString(),
+        visibility: toClientVis(existing.visibility),
+        note: existing.note ?? undefined,
+        sourceKind: existing.sourceKind ?? undefined,
+        sourceId: existing.sourceId ?? undefined,
+      } satisfies PersonalEventDto;
+    }
+  }
 
   const row = await db.personalCalendarEvent.create({
     data: {
@@ -916,6 +946,8 @@ export async function createPersonalEventForUser(
       reminderAt: input.reminderAt ? new Date(input.reminderAt) : null,
       visibility,
       note: input.note?.trim() || null,
+      sourceKind,
+      sourceId,
     },
   });
 
@@ -928,6 +960,8 @@ export async function createPersonalEventForUser(
     scheduledAt: row.scheduledAt?.toISOString(),
     visibility: toClientVis(row.visibility),
     note: row.note ?? undefined,
+    sourceKind: row.sourceKind ?? undefined,
+    sourceId: row.sourceId ?? undefined,
   } satisfies PersonalEventDto;
 }
 
@@ -956,6 +990,75 @@ export async function deletePersonalEventAction(eventId: string) {
   if (!session) redirect("/login");
   await db.personalCalendarEvent.deleteMany({ where: { id: eventId, userId: session.id } });
   revalidatePath(`/profile/${session.username}`);
+}
+
+export async function updatePersonalEventForUser(
+  userId: string,
+  eventId: string,
+  input: {
+    title?: string;
+    eventType?: string;
+    eventDate?: string;
+    hasTime?: boolean;
+    scheduledAt?: string | null;
+    isRecurring?: boolean;
+    recurrence?: string | null;
+    reminderAt?: string | null;
+    visibility?: string;
+    note?: string | null;
+  },
+) {
+  const existing = await db.personalCalendarEvent.findFirst({
+    where: { id: eventId, userId },
+  });
+  if (!existing) return null;
+
+  const recurrenceMap: Record<string, "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY"> = {
+    daily: "DAILY", weekly: "WEEKLY", monthly: "MONTHLY", yearly: "YEARLY",
+  };
+
+  const row = await db.personalCalendarEvent.update({
+    where: { id: eventId },
+    data: {
+      ...(input.title != null ? { title: input.title.trim() } : {}),
+      ...(input.eventType != null
+        ? { eventType: EVENT_TYPE_MAP[input.eventType.toLowerCase()] ?? existing.eventType }
+        : {}),
+      ...(input.eventDate != null ? { eventDate: new Date(`${input.eventDate}T12:00:00`) } : {}),
+      ...(input.hasTime != null ? { hasTime: input.hasTime } : {}),
+      ...(input.scheduledAt !== undefined
+        ? { scheduledAt: input.scheduledAt ? new Date(input.scheduledAt) : null }
+        : {}),
+      ...(input.isRecurring != null ? { isRecurring: input.isRecurring } : {}),
+      ...(input.recurrence !== undefined
+        ? {
+            recurrence: input.recurrence
+              ? recurrenceMap[input.recurrence] ?? null
+              : null,
+          }
+        : {}),
+      ...(input.reminderAt !== undefined
+        ? { reminderAt: input.reminderAt ? new Date(input.reminderAt) : null }
+        : {}),
+      ...(input.visibility != null
+        ? { visibility: VIS_MAP[input.visibility] ?? existing.visibility }
+        : {}),
+      ...(input.note !== undefined ? { note: input.note?.trim() || null } : {}),
+    },
+  });
+
+  return {
+    id: row.id,
+    title: row.title,
+    eventType: row.eventType.toLowerCase(),
+    eventDate: row.eventDate.toISOString().slice(0, 10),
+    hasTime: row.hasTime,
+    scheduledAt: row.scheduledAt?.toISOString(),
+    visibility: toClientVis(row.visibility),
+    note: row.note ?? undefined,
+    sourceKind: row.sourceKind ?? (row.eventType === "MOVE" ? "move" : undefined),
+    sourceId: row.sourceId ?? undefined,
+  } satisfies PersonalEventDto;
 }
 
 export async function createChallengeFromTaskAction(taskId: string, input: {
@@ -1249,7 +1352,7 @@ export async function getFriendsFeed(
 
   const friendIdSet = new Set(friendIds);
 
-  const [activitiesRaw, posts] = await Promise.all([
+  const [activitiesRaw, posts, friendTasks] = await Promise.all([
     authorIds.length
       ? db.activity.findMany({
           where: {
@@ -1289,6 +1392,20 @@ export async function getFriendsFeed(
           },
         })
       : [],
+    friendIds.length
+      ? db.diaryTask.findMany({
+          where: {
+            userId: { in: friendIds },
+            visibility: { in: ["FRIENDS", "PUBLIC"] },
+            done: false,
+          },
+          include: {
+            user: { select: { id: true, name: true, username: true, avatar: true, verified: true } },
+          },
+          orderBy: [{ priority: "desc" }, { createdAt: "desc" }],
+          take: 50,
+        })
+      : [],
   ]);
 
   const privacyMap = await loadPrivacyByUserIds(activitiesRaw.map((a) => a.userId));
@@ -1306,21 +1423,38 @@ export async function getFriendsFeed(
     .slice(0, 40)
     .map(sanitizeActivityForViewer);
 
-  return { activities, posts };
+  const tasks = friendTasks.map((task) => ({
+    id: task.id,
+    title: task.title,
+    period: task.period,
+    visibility: task.visibility,
+    priority: task.priority,
+    createdAt: task.createdAt.toISOString(),
+    author: task.user,
+    type: "TASK" as const,
+  }));
+
+  return { activities, posts, tasks };
 }
 
-export async function getCuratedFeed(city: string, userId?: string) {
+export async function getCuratedFeed(
+  city: string,
+  userId?: string,
+  scope: "city" | "district" | "global" = "city",
+  district?: string,
+) {
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
   const cities = resolveContentCities(city);
+  const geoPostFilter = scope === "global" ? {} : { city: { in: cities } };
 
   const [featuredPosts, hotChallenges, recentAchievements, localEvents, businessChallenges, followingChallenges] = await Promise.all([
     db.post.findMany({
       where: {
         hiddenFromFeed: false,
+        ...geoPostFilter,
         OR: [
           { featuredInFeed: true },
           { tags: { contains: "sponsored" } },
-          { city: { in: cities }, featuredInFeed: true },
         ],
       },
       include: {
@@ -1337,7 +1471,7 @@ export async function getCuratedFeed(city: string, userId?: string) {
       where: {
         participants: { some: {} },
         OR: [
-          { post: { city: { in: cities }, hiddenFromFeed: false } },
+          { post: { ...geoPostFilter, hiddenFromFeed: false } },
           { isGlobal: true, post: { hiddenFromFeed: false } },
           { post: { tags: { contains: "sponsored" }, hiddenFromFeed: false } },
         ],
@@ -1365,11 +1499,10 @@ export async function getCuratedFeed(city: string, userId?: string) {
         type: "ANNOUNCEMENT",
         hiddenFromFeed: false,
         createdAt: { gte: weekAgo },
-        OR: [
-          { city: { in: cities } },
-          { tags: { contains: "sponsored" } },
-          { featuredInFeed: true },
-        ],
+        OR:
+          scope === "global"
+            ? [{ tags: { contains: "sponsored" } }, { featuredInFeed: true }]
+            : [{ city: { in: cities } }, { tags: { contains: "sponsored" } }, { featuredInFeed: true }],
       },
       include: {
         author: { select: { id: true, name: true, username: true, avatar: true, verified: true, city: true, district: true } },
@@ -1491,15 +1624,19 @@ export async function getCuratedFeed(city: string, userId?: string) {
           },
         })
       : Promise.resolve(0),
-    db.duel.findMany({
-      where: { visibility: { in: ["PUBLIC", "FRIENDS"] } },
-      include: {
-        creator: { select: { name: true, username: true, avatar: true } },
-        participants: { include: { user: { select: { name: true, username: true } } } },
-      },
-      orderBy: { createdAt: "desc" },
-      take: 3,
-    }),
+    userId
+      ? db.duel.findMany({
+          where: {
+            participants: { some: { userId } },
+          },
+          include: {
+            creator: { select: { name: true, username: true, avatar: true } },
+            participants: { include: { user: { select: { name: true, username: true } } } },
+          },
+          orderBy: { createdAt: "desc" },
+          take: 3,
+        })
+      : [],
     db.userProfile.findMany({
       orderBy: { level: "desc" },
       take: 1,
@@ -1575,15 +1712,8 @@ export async function getCuratedFeed(city: string, userId?: string) {
     });
   }
 
-  for (const d of activeDuels.slice(0, 2)) {
-    highlights.push({
-      kind: "duel",
-      id: d.id,
-      title: d.title,
-      emoji: d.emoji,
-      participants: d.participants.map((p) => p.user.name ?? p.user.username),
-    });
-  }
+  // Private launch: duels не попадают в публичные highlights ленты.
+  // for (const d of activeDuels.slice(0, 2)) { ... }
 
   if (hotChallenges[0]?.post) {
     highlights.push({
@@ -1595,16 +1725,35 @@ export async function getCuratedFeed(city: string, userId?: string) {
     });
   }
 
-  const normalizedItems = mergedItems.map((item) => {
-    if (item.kind !== "post") return item;
-    return {
-      ...item,
-      post: {
-        ...item.post,
-        images: normalizePostImages(item.post.images),
-      },
-    };
-  });
+  const normalizedItems = mergedItems
+    .map((item) => {
+      if (item.kind !== "post") return item;
+      return {
+        ...item,
+        post: {
+          ...item.post,
+          images: normalizePostImages(item.post.images),
+        },
+      };
+    })
+    .filter((item) => {
+      if (item.kind !== "post") return true;
+      if (scope === "district" && district) {
+        const postDistrict = (item.post.district ?? "").toLowerCase();
+        if (!postDistrict.includes(district.toLowerCase())) return false;
+      }
+      if (scope === "global") {
+        const postWithChallenge = item.post as typeof item.post & { challenge?: { isGlobal?: boolean } };
+        if (postWithChallenge.challenge?.isGlobal) return true;
+      }
+      return isSignificantPost({
+        type: item.post.type,
+        featuredInFeed: item.post.featuredInFeed,
+        tags: item.post.tags,
+        category: item.post.category,
+        _count: item.post._count,
+      });
+    });
 
   return { items: normalizedItems, digest, highlights };
 }

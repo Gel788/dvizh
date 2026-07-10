@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { getSessionFromRequest } from "@/lib/auth";
 import { jsonError, jsonOk } from "@/lib/api/http";
 import { getFriendshipState } from "@/lib/api/friendship-service";
+import { getBlockedUserIds, getHiddenPostIds, resolveRelation } from "@/lib/privacy-service";
 
 type Ctx = { params: Promise<{ username: string }> };
 
@@ -31,6 +32,14 @@ export async function GET(request: Request, ctx: Ctx) {
   if (!user) return jsonError("Пользователь не найден", 404, "NOT_FOUND");
 
   const isOwn = session?.id === user.id;
+
+  if (session && !isOwn) {
+    const relation = await resolveRelation(session.id, user.id);
+    if (relation === "blocked") {
+      return jsonError("Профиль недоступен", 403, "BLOCKED");
+    }
+  }
+
   const isFollowing = session
     ? !!(await db.follow.findUnique({
         where: { followerId_followingId: { followerId: session.id, followingId: user.id } },
@@ -41,8 +50,21 @@ export async function GET(request: Request, ctx: Ctx) {
     ? await getFriendshipState(session.id, user.id)
     : { state: "none" as const, friendshipId: null };
 
+  let blockedIds: string[] = [];
+  let hiddenPostIds: string[] = [];
+  if (session?.id) {
+    [blockedIds, hiddenPostIds] = await Promise.all([
+      getBlockedUserIds(session.id),
+      getHiddenPostIds(session.id),
+    ]);
+  }
+
   const posts = await db.post.findMany({
-    where: { authorId: user.id },
+    where: {
+      authorId: user.id,
+      hiddenFromFeed: false,
+      ...(hiddenPostIds.length ? { id: { notIn: hiddenPostIds } } : {}),
+    },
     orderBy: { createdAt: "desc" },
     take: 30,
     include: {
@@ -65,6 +87,8 @@ export async function GET(request: Request, ctx: Ctx) {
     friendshipState: friendship.state,
     friendshipId: friendship.friendshipId,
     posts,
-    followers: followers.map((f) => f.follower),
+    followers: followers
+      .map((f) => f.follower)
+      .filter((f) => !blockedIds.includes(f.id)),
   });
 }

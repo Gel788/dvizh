@@ -14,6 +14,9 @@ import {
   type SessionUser,
 } from "@/lib/auth";
 import { haversineKm, parseTags } from "@/lib/geo";
+import { getBlockedUserIds, getHiddenPostIds } from "@/lib/privacy-service";
+import { rankFeedPosts } from "@/lib/feed-scoring-service";
+import { applyFeedScopeMix, pickHeroTop3, type FeedScope } from "@/lib/feed-scope-service";
 import type {
   AnnouncementCategory,
   PostType,
@@ -536,7 +539,7 @@ export type FeedFilters = {
   radiusKm?: number;
   userLat?: number;
   userLng?: number;
-  feed?: "all" | "following" | "nearby";
+  feed?: FeedScope;
 };
 
 export async function getFeedPosts(
@@ -547,10 +550,19 @@ export async function getFeedPosts(
     sessionOverride !== undefined ? sessionOverride : await getSession();
   const where: Record<string, unknown> = {};
 
-  if (filters.city) where.city = filters.city;
+  if (session?.id) {
+    const [blockedIds, hiddenPostIds] = await Promise.all([
+      getBlockedUserIds(session.id),
+      getHiddenPostIds(session.id),
+    ]);
+    if (blockedIds.length) where.authorId = { notIn: blockedIds };
+    if (hiddenPostIds.length) where.id = { notIn: hiddenPostIds };
+  }
+
+  if (filters.feed !== "global" && filters.city) where.city = filters.city;
   where.hiddenFromFeed = false;
+  if (filters.feed === "district" && filters.district) where.district = filters.district;
   if (filters.type && filters.type !== "ALL") where.type = filters.type;
-  if (filters.district) where.district = filters.district;
   if (filters.tag) where.tags = { contains: filters.tag };
 
   if (filters.feed === "following") {
@@ -624,7 +636,24 @@ export async function getFeedPosts(
     });
   }
 
-  return result;
+  let followingAuthorIds: Set<string> | undefined;
+  if (session?.id) {
+    const follows = await db.follow.findMany({
+      where: { followerId: session.id },
+      select: { followingId: true },
+    });
+    followingAuthorIds = new Set(follows.map((f) => f.followingId));
+  }
+
+  const ranked = rankFeedPosts(result, {
+    viewerId: session?.id,
+    followingAuthorIds,
+    userLat: filters.userLat,
+    userLng: filters.userLng,
+    feed: filters.feed,
+  });
+
+  return applyFeedScopeMix(ranked, filters.feed);
 }
 
 export async function getLeaderboard(city: string, district?: string) {
@@ -654,10 +683,65 @@ export async function getLeaderboard(city: string, district?: string) {
 
 export async function getChallengeLeaderboard(
   city?: string,
-  scope: "local" | "global" | "friends" | "district" = "local",
+  scope: "local" | "global" | "friends" | "district" | "mine" = "local",
   userId?: string,
   district?: string,
 ) {
+  const challengeInclude = {
+    post: {
+      select: {
+        id: true,
+        title: true,
+        content: true,
+        city: true,
+        district: true,
+        author: {
+          select: { id: true, name: true, username: true, avatar: true, verified: true },
+        },
+      },
+    },
+    participants: {
+      orderBy: { progress: "desc" as const },
+      take: 1,
+      include: { user: { select: { name: true, username: true } } },
+    },
+    _count: { select: { participants: true, reports: true } },
+  };
+
+  if (scope === "mine" && userId) {
+    const challenges = await db.challenge.findMany({
+      where: {
+        OR: [
+          { post: { authorId: userId } },
+          { participants: { some: { userId } } },
+        ],
+      },
+      include: challengeInclude,
+      orderBy: { participants: { _count: "desc" } },
+      take: 20,
+    });
+    const myParts = await db.challengeParticipant.findMany({
+      where: { userId, challengeId: { in: challenges.map((c) => c.id) } },
+      select: { challengeId: true, progress: true },
+    });
+    const myMap = new Map(myParts.map((p) => [p.challengeId, p.progress]));
+    return Promise.all(
+      challenges.map(async (c) => {
+        const participantsFinished = await db.challengeParticipant.count({
+          where: { challengeId: c.id, progress: { gte: c.goalCount } },
+        });
+        return {
+          ...c,
+          viewerJoined: myMap.has(c.id),
+          myProgress: myMap.get(c.id) ?? 0,
+          participantsFinished,
+          completionRate:
+            c._count.participants > 0 ? participantsFinished / c._count.participants : 0,
+        };
+      }),
+    );
+  }
+
   let authorIds: string[] | undefined;
   if (scope === "friends" && userId) {
     const follows = await db.follow.findMany({
@@ -718,7 +802,23 @@ export async function getChallengeLeaderboard(
     take: 20,
   });
 
-  if (!userId) return challenges.map((c) => ({ ...c, viewerJoined: false, myProgress: 0 }));
+  if (!userId) {
+    return Promise.all(
+      challenges.map(async (c) => {
+        const participantsFinished = await db.challengeParticipant.count({
+          where: { challengeId: c.id, progress: { gte: c.goalCount } },
+        });
+        return {
+          ...c,
+          viewerJoined: false,
+          myProgress: 0,
+          participantsFinished,
+          completionRate:
+            c._count.participants > 0 ? participantsFinished / c._count.participants : 0,
+        };
+      }),
+    );
+  }
 
   const myParts = await db.challengeParticipant.findMany({
     where: { userId, challengeId: { in: challenges.map((c) => c.id) } },
@@ -726,16 +826,35 @@ export async function getChallengeLeaderboard(
   });
   const myMap = new Map(myParts.map((p) => [p.challengeId, p.progress]));
 
-  return challenges.map((c) => ({
-    ...c,
-    viewerJoined: myMap.has(c.id),
-    myProgress: myMap.get(c.id) ?? 0,
-  }));
+  return Promise.all(
+    challenges.map(async (c) => {
+      const participantsFinished = await db.challengeParticipant.count({
+        where: { challengeId: c.id, progress: { gte: c.goalCount } },
+      });
+      return {
+        ...c,
+        viewerJoined: myMap.has(c.id),
+        myProgress: myMap.get(c.id) ?? 0,
+        participantsFinished,
+        completionRate:
+          c._count.participants > 0 ? participantsFinished / c._count.participants : 0,
+      };
+    }),
+  );
 }
 
 export async function searchPlatform(q: string, city?: string, viewerId?: string) {
   const term = q.trim();
   if (term.length < 2) return { users: [], posts: [], challenges: [], events: [], query: term };
+
+  let blockedIds: string[] = [];
+  let hiddenPostIds: string[] = [];
+  if (viewerId) {
+    [blockedIds, hiddenPostIds] = await Promise.all([
+      getBlockedUserIds(viewerId),
+      getHiddenPostIds(viewerId),
+    ]);
+  }
 
   const [usersRaw, posts, challenges, events] = await Promise.all([
     db.user.findMany({
@@ -745,6 +864,7 @@ export async function searchPlatform(q: string, city?: string, viewerId?: string
           { username: { contains: term, mode: "insensitive" } },
         ],
         NOT: { privacySettings: { profileInSearch: false } },
+        ...(blockedIds.length ? { id: { notIn: blockedIds } } : {}),
       },
       orderBy: { reputation: "desc" },
       take: 12,
@@ -764,6 +884,8 @@ export async function searchPlatform(q: string, city?: string, viewerId?: string
       where: {
         hiddenFromFeed: false,
         ...(city ? { city } : {}),
+        ...(blockedIds.length ? { authorId: { notIn: blockedIds } } : {}),
+        ...(hiddenPostIds.length ? { id: { notIn: hiddenPostIds } } : {}),
         OR: [
           { title: { contains: term, mode: "insensitive" } },
           { content: { contains: term, mode: "insensitive" } },
@@ -782,6 +904,8 @@ export async function searchPlatform(q: string, city?: string, viewerId?: string
         post: {
           hiddenFromFeed: false,
           ...(city ? { city } : {}),
+          ...(blockedIds.length ? { authorId: { notIn: blockedIds } } : {}),
+          ...(hiddenPostIds.length ? { id: { notIn: hiddenPostIds } } : {}),
           OR: [
             { title: { contains: term, mode: "insensitive" } },
             { content: { contains: term, mode: "insensitive" } },
@@ -809,6 +933,7 @@ export async function searchPlatform(q: string, city?: string, viewerId?: string
     db.event.findMany({
       where: {
         ...(city ? { city } : {}),
+        ...(blockedIds.length ? { organizerId: { notIn: blockedIds } } : {}),
         OR: [
           { title: { contains: term, mode: "insensitive" } },
           { description: { contains: term, mode: "insensitive" } },

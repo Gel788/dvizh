@@ -9,8 +9,8 @@
  *
  * Использование:
  *   node scripts/firebase-apns-upload.mjs \
- *     --p8 ~/Downloads/AuthKey_U3JGW3N3W9.p8 \
- *     --key-id U3JGW3N3W9 \
+ *     --p8 ~/Downloads/AuthKey_KSMRNSKFD8.p8 \
+ *     --key-id KSMRNSKFD8 \
  *     --team-id 69S9SFG485
  */
 import fs from 'node:fs';
@@ -25,8 +25,8 @@ function arg(name, fallback) {
   return i >= 0 ? process.argv[i + 1] : fallback;
 }
 
-const p8Path = arg('--p8', path.join(os.homedir(), 'Downloads/AuthKey_U3JGW3N3W9.p8'));
-const keyId = arg('--key-id', 'U3JGW3N3W9');
+const p8Path = arg('--p8', path.join(os.homedir(), 'Downloads/AuthKey_KSMRNSKFD8.p8'));
+const keyId = arg('--key-id', 'KSMRNSKFD8');
 const teamId = arg('--team-id', '69S9SFG485');
 
 const cfgPath = path.join(os.homedir(), '.config/configstore/firebase-tools.json');
