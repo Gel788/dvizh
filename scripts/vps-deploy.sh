@@ -87,6 +87,11 @@ else
   echo "WARN: CRON_SECRET missing — skip cron smoke"
 fi
 
+if [ -f scripts/v38-acceptance-smoke.sh ]; then
+  echo "=== v38 acceptance smoke ==="
+  CRON_SECRET="${CRON_SECRET:-}" bash scripts/v38-acceptance-smoke.sh || echo "WARN: acceptance smoke failed"
+fi
+
 curl -s -o /dev/null -w "Site: HTTP %{http_code}\n" https://flroal.ru/api/v1/health || \
   curl -s -o /dev/null -w "Site (http): HTTP %{http_code}\n" http://127.0.0.1/
 

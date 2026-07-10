@@ -37,7 +37,7 @@
 
 **Текущий долг (пример Wishlist):** фронт bridge есть, бэк не дотягивает спеку — нет `cancel-reservation`, `bought`, `surpriseMode` в модели, share links. Следующий срез = закрыть B, затем подтянуть M/I.
 
-**Последнее обновление плана:** 2026-07-10 — Move activities API + calendar route + create approval (build 15).
+**Последнее обновление плана:** 2026-07-10 — Friends API wire + acceptance smoke (build 16).
 
 ## Легенда
 
@@ -86,7 +86,7 @@
 | Feed | `v38/feed_feature` + `V38FeedDelegate` | `/feed`, `/posts/*/like|going` | 🟡 load+actions |
 | Move | `v38/move_screens` + `V38MoveLiveMap` | `/nearby`, `/events/*/join`, `/diary/events` | 🟡 join+calendar+report |
 | Challenges | `v38/challenge_screens` | `/leaderboard/challenges`, `/challenges/*` | 🟡 load+join+progress |
-| Profile | `v38/profile_feature` + `V38ProfileStore` | `/profile`, `/users/{username}`, `/friends` | 🟡 live + edit + public |
+| Profile | `v38/profile_feature` + `V38ProfileStore` + `V38SocialStore` | `/profile`, `/users/{username}`, `/friends` | 🟡 live + friends API |
 | Calendar | v38 quick + `calendarStore` + `V38CalendarDelegate` | `/diary/calendar`, `/diary/events` | 🟡 grid+sync+create |
 | Medialist | v38 + `V38MediaDelegate` | `/media/*` CRUD | 🟡 read+write bridge |
 | Wishlist | v38 + `V38WishlistDelegate` (reserve/cancel/bought) | `/wishlists/*` + cancel/bought | 🟡 B+M+I срез |
@@ -287,7 +287,7 @@
 - [x] **I** Move → «В Ленту» → `POST /move/activities/{id}/feed-publication` через delegate
 - [x] **I** Move join requests — join/approve/decline через `/move/*` delegate
 - [x] **I** Move calendar → `POST /move/activities/{id}/calendar` через delegate
-- [ ] **I** Acceptance § Move
+- [x] **I** Acceptance § Move — `scripts/v38-acceptance-smoke.sh` (2026-07-10)
 
 ---
 
@@ -318,7 +318,7 @@
 
 - [x] **I** v38 `challenge_screens.dart` → `/leaderboard/challenges` + join/leave
 - [x] **I** Join/leave/check-in обновляет список через `_hydrateChallenges` после API
-- [ ] **I** Acceptance § Challenges
+- [x] **I** Acceptance § Challenges — smoke script (2026-07-10)
 
 ---
 
@@ -334,8 +334,8 @@
 
 ### 8.2 Backend (B)
 
-- [ ] **B** `GET /me`, `PATCH /profile`, avatar/cover upload — частично: PATCH+avatar на prod
-- [ ] **B** `GET /friends`, requests accept/decline
+- [ ] **B** `GET /me`, `PATCH /profile`, avatar/cover upload — частично: GET /auth/me + PATCH+avatar на prod
+- [x] **B** `GET /friends`, requests accept/decline — `view=list|pending` + POST action (2026-07-10)
 - [ ] **B** Follow/subscriptions если отделены от friends
 - [x] **B** `GET /users/{username}` с privacy filter — block + hidden posts
 - [ ] **B** Achievements / XP / level в `/profile/diary`
@@ -343,7 +343,8 @@
 ### 8.3 Интеграция (I)
 
 - [x] **I** v38 `profile_feature.dart` → `V38ProfileStore` / `V38ApiBridge.syncProfile`
-- [x] **I** Счётчики друзей/подписок из реального API
+- [x] **I** v38 `FriendsScreen` → `/friends?view=list|pending` + accept/reject через `V38SocialStore` (2026-07-10)
+- [x] **I** Счётчики друзей/подписок из реального API — `friendsCount` из `/friends?view=list`
 - [x] **I** Поиск/социал → `/user/:username` открывает v38 public profile
 - [ ] **I** Acceptance § Auth/Profile/Friends
 
@@ -373,7 +374,7 @@
 - [x] **I** `setReminder` → `PATCH /diary/events/{id}` с `reminderAt`
 - [x] **I** Move → Calendar создаёт event только после tap пользователя
 - [x] **I** Today ← calendar events только для периодов Сегодня/Завтра через `forTodayBridge`
-- [ ] **I** Acceptance § Calendar
+- [x] **I** Acceptance § Calendar — smoke script (2026-07-10)
 
 ## Фаза 10 — Wishlist
 
@@ -488,11 +489,11 @@
 - [ ] **B** Staging = prod schema parity
 - [x] **B** PM2 / `ecosystem.config.cjs` — deploy без downtime (промежуточный deploy 2026-07-10)
 - [ ] **B** Мониторинг `/api/v1/health`
-- [ ] **B** Полный прогон `BACKEND_ACCEPTANCE_CRITERIA.md`
+- [ ] **B** Полный прогон `BACKEND_ACCEPTANCE_CRITERIA.md` — частично: `v38-acceptance-smoke.sh` endpoint-level
 
 ### 15.2 Mobile
 
-- [x] **M** `flutter build ios --release` + установка на iPhone — build 1.2.0 (7–8)
+- [x] **M** `flutter build ios --release` + установка на iPhone — build 1.2.0 (7–16)
 - [ ] **M** `flutter build ios --release` + TestFlight
 - [ ] **M** `flutter build apk/appbundle` (если нужен Android)
 - [ ] **M** Реальное устройство: login → 5 табов → quick screens
@@ -516,10 +517,10 @@
 | 3 Privacy | 0/3 | 3/6 | 1/4 | 🟡 |
 | 4 Today | 7/7 | 7/7 | 3/4 | 🟡 |
 | 5 Feed | 6/6 | 10/10 | 5/5 | 🟡 |
-| 6 Move | 6/6 | 9/9 | 8/9 | 🟡 |
-| 7 Challenges | 6/6 | 8/8 | 3/3 | 🟡 |
-| 8 Profile | 5/5 | 2/5 | 3/3 | 🟡 |
-| 9 Calendar | 3/3 | 4/4 | 6/6 | 🟡 |
+| 6 Move | 6/6 | 9/9 | 9/9 | 🟡 |
+| 7 Challenges | 6/6 | 8/8 | 4/4 | 🟡 |
+| 8 Profile | 5/5 | 3/5 | 4/4 | 🟡 |
+| 9 Calendar | 3/3 | 4/4 | 7/7 | 🟡 |
 | 10 Wishlist | 3/3 | 5/5 | 3/3 | 🟡 |
 | 11 Disputes | 2/2 | 2/4 | 2/3 | 🟡 |
 | 12 Together | 1/1 | 1/4 | 2/3 | 🟡 |
