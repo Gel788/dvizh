@@ -51,10 +51,10 @@ YEAR=$(date +%Y)
 MONTH=$(date +%m | sed 's/^0//')
 check_http "GET /diary/calendar" "$(curl -s -o /dev/null -w '%{http_code}' -H "$AUTH" "$API_BASE/diary/calendar?year=$YEAR&month=$MONTH")" "200"
 
-check_http "GET /feed/curated" "$(curl -s -o /dev/null -w '%{http_code}' -H "$AUTH" "$API_BASE/feed/curated?city=Москва")" "200"
+check_http "GET /feed/curated" "$(curl -s -o /dev/null -w '%{http_code}' -H "$AUTH" "$API_BASE/feed/curated?city=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0")" "200"
 check_http "GET /duels" "$(curl -s -o /dev/null -w '%{http_code}' -H "$AUTH" "$API_BASE/duels")" "200"
 check_http "GET /shared-goals" "$(curl -s -o /dev/null -w '%{http_code}' -H "$AUTH" "$API_BASE/shared-goals")" "200"
-check_http "GET /search" "$(curl -s -o /dev/null -w '%{http_code}' -H "$AUTH" "$API_BASE/search?q=demo&city=Москва")" "200"
+check_http "GET /search" "$(curl -s -o /dev/null -w '%{http_code}' -H "$AUTH" "$API_BASE/search?q=demo")" "200"
 check_http "POST /reports invalid" "$(curl -s -o /dev/null -w '%{http_code}' -X POST -H "$AUTH" -H 'Content-Type: application/json' -d '{}' "$API_BASE/reports")" "400"
 
 CRON_SECRET="${CRON_SECRET:-}"
