@@ -37,7 +37,7 @@
 
 **Текущий долг (пример Wishlist):** фронт bridge есть, бэк не дотягивает спеку — нет `cancel-reservation`, `bought`, `surpriseMode` в модели, share links. Следующий срез = закрыть B, затем подтянуть M/I.
 
-**Последнее обновление плана:** 2026-07-10 — Move reminder API + reports + challenge calendar guard (build 11).
+**Последнее обновление плана:** 2026-07-10 — Move «В Ленту» API + build 12.
 
 ## Легенда
 
@@ -263,7 +263,7 @@
 - [x] **M** Пины, фильтры: События / Челленджи / Места / Сегодня — маркеры по типу активности
 - [x] **M** Hero rail + список активностей — v38 UI
 - [x] **M** Создание активности — UI + `POST /events` через `AppState.createMoveEvent` + reload `/nearby`
-- [x] **M** Действия: календарь, напоминание, репорт, шаринг — calendar+reminder API, report `/reports`, share flroal.ru URL; «В Ленту» — след. срез
+- [x] **M** Действия: календарь, напоминание, репорт, шаринг, «В Ленту» — calendar+reminder API, report `/reports`, share flroal.ru URL, `POST /move/activities/{id}/feed-publication`
 
 ### 6.2 Backend (B)
 
@@ -272,7 +272,8 @@
 - [ ] **B** Geo: lat/lng, radius, scope filter — частично в `/nearby`
 - [x] **B** `POST /events` — создание активности/события из Движа
 - [ ] **B** Join requests + approve (если в spec)
-- [ ] **B** `POST /move/activities/{id}/calendar` — только по user action
+- [x] **B** `POST /move/activities/{id}/feed-publication` — voluntary feed post + EVENT_ATTENDED activity
+- [ ] **B** `POST /move/activities/{id}/calendar` — частично: `POST /diary/events` sourceKind=move
 - [x] **B** `POST /reports` для move items — targetKind `move` + post/event
 - [x] **B** Координаты округлены, точный адрес не отдаётся — `publicCoordinates` на `/nearby`, address скрыт в маппере
 
@@ -283,6 +284,7 @@
 - [x] **I** Join event/challenge с экрана Move — `onJoinActivity`
 - [x] **I** Move → Calendar: tap «Календарь» → `POST /diary/events` через delegate
 - [x] **I** Move create → `POST /events` + reload `/nearby`
+- [x] **I** Move → «В Ленту» → `POST /move/activities/{id}/feed-publication` через delegate
 - [ ] **I** Acceptance § Move
 
 ---
@@ -513,7 +515,7 @@
 | 3 Privacy | 0/3 | 3/6 | 1/4 | 🟡 |
 | 4 Today | 7/7 | 7/7 | 3/4 | 🟡 |
 | 5 Feed | 6/6 | 10/10 | 5/5 | 🟡 |
-| 6 Move | 6/6 | 4/8 | 6/6 | 🟡 |
+| 6 Move | 6/6 | 5/9 | 6/7 | 🟡 |
 | 7 Challenges | 6/6 | 8/8 | 3/3 | 🟡 |
 | 8 Profile | 5/5 | 2/5 | 3/3 | 🟡 |
 | 9 Calendar | 2/3 | 1/4 | 5/5 | 🟡 |
