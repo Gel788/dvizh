@@ -18,6 +18,16 @@ export type NearbyItem = {
   eventId?: string;
   joinable: boolean;
   joined: boolean;
+  requiresApproval?: boolean;
+  joinRequestPending?: boolean;
+  joinRequestId?: string | null;
+  joinRequests?: Array<{
+    id: string;
+    userId: string;
+    status: string;
+    createdAt: string;
+    user?: { id: string; name: string; username: string; avatar?: string | null };
+  }>;
   lat: number | null;
   lng: number | null;
   imageUrl?: string | null;
@@ -64,6 +74,16 @@ export function buildNearbyItems(input: {
     id: string; title: string; startAt: Date; lat: number | null; lng: number | null;
     _count: { attendees: number };
     joined?: boolean;
+    requiresApproval?: boolean;
+    joinRequestPending?: boolean;
+    joinRequestId?: string | null;
+    joinRequests?: Array<{
+      id: string;
+      userId: string;
+      status: string;
+      createdAt: Date;
+      user?: { id: string; name: string; username: string; avatar?: string | null };
+    }>;
   }[];
   localChallenges: {
     id: string; isBusiness: boolean; reward: string | null;
@@ -125,6 +145,22 @@ export function buildNearbyItems(input: {
       eventId: ev.id,
       joinable: true,
       joined: ev.joined ?? false,
+      requiresApproval: ev.requiresApproval ?? false,
+      joinRequestPending: ev.joinRequestPending ?? false,
+      joinRequestId: ev.joinRequestId ?? null,
+      joinRequests: (ev.joinRequests ?? []).map((r: {
+        id: string;
+        userId: string;
+        status: string;
+        createdAt: Date;
+        user?: { id: string; name: string; username: string; avatar?: string | null };
+      }) => ({
+        id: r.id,
+        userId: r.userId,
+        status: r.status,
+        createdAt: r.createdAt.toISOString(),
+        user: r.user,
+      })),
       lat: ev.lat,
       lng: ev.lng,
     });

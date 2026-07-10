@@ -37,7 +37,7 @@
 
 **Текущий долг (пример Wishlist):** фронт bridge есть, бэк не дотягивает спеку — нет `cancel-reservation`, `bought`, `surpriseMode` в модели, share links. Следующий срез = закрыть B, затем подтянуть M/I.
 
-**Последнее обновление плана:** 2026-07-10 — Move «В Ленту» API + build 12.
+**Последнее обновление плана:** 2026-07-10 — Calendar cron smoke + Move join requests API (build 13).
 
 ## Легенда
 
@@ -271,7 +271,7 @@
 - [ ] **B** `GET /move/activities` (или расширить `/nearby` под v38 contract)
 - [ ] **B** Geo: lat/lng, radius, scope filter — частично в `/nearby`
 - [x] **B** `POST /events` — создание активности/события из Движа
-- [ ] **B** Join requests + approve (если в spec)
+- [x] **B** Join requests + approve — `POST /move/activities/{id}/join`, approve/decline/cancel
 - [x] **B** `POST /move/activities/{id}/feed-publication` — voluntary feed post + EVENT_ATTENDED activity
 - [ ] **B** `POST /move/activities/{id}/calendar` — частично: `POST /diary/events` sourceKind=move
 - [x] **B** `POST /reports` для move items — targetKind `move` + post/event
@@ -285,6 +285,7 @@
 - [x] **I** Move → Calendar: tap «Календарь» → `POST /diary/events` через delegate
 - [x] **I** Move create → `POST /events` + reload `/nearby`
 - [x] **I** Move → «В Ленту» → `POST /move/activities/{id}/feed-publication` через delegate
+- [x] **I** Move join requests — join/approve/decline через `/move/*` delegate
 - [ ] **I** Acceptance § Move
 
 ---
@@ -359,9 +360,9 @@
 ### 9.2 Backend (B)
 
 - [ ] **B** `GET/POST/PATCH/DELETE /diary/events` — частично: все методы на prod
-- [ ] **B** Reminders + cron (`/cron/reminders`) — endpoint + scheduler есть; smoke на prod
-- [ ] **B** `sourceKind=move` при создании из Движа — задеплоено на prod (миграция + API)
-- [ ] **B** Challenges не попадают в calendar
+- [x] **B** Reminders + cron (`/cron/reminders`) — endpoint + scheduler + smoke в vps-deploy
+- [x] **B** `sourceKind=move` при создании из Движа — задеплоено на prod (миграция + API)
+- [x] **B** Challenges не попадают в calendar — guard в createPersonalEventForUser
 
 ### 9.3 Интеграция (I)
 
@@ -515,10 +516,10 @@
 | 3 Privacy | 0/3 | 3/6 | 1/4 | 🟡 |
 | 4 Today | 7/7 | 7/7 | 3/4 | 🟡 |
 | 5 Feed | 6/6 | 10/10 | 5/5 | 🟡 |
-| 6 Move | 6/6 | 5/9 | 6/7 | 🟡 |
+| 6 Move | 6/6 | 6/9 | 7/8 | 🟡 |
 | 7 Challenges | 6/6 | 8/8 | 3/3 | 🟡 |
 | 8 Profile | 5/5 | 2/5 | 3/3 | 🟡 |
-| 9 Calendar | 2/3 | 1/4 | 5/5 | 🟡 |
+| 9 Calendar | 2/3 | 3/4 | 5/5 | 🟡 |
 | 10 Wishlist | 3/3 | 5/5 | 3/3 | 🟡 |
 | 11 Disputes | 2/2 | 2/4 | 2/3 | 🟡 |
 | 12 Together | 1/1 | 1/4 | 2/3 | 🟡 |

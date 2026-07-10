@@ -9,6 +9,7 @@ import { buildNearbyItems } from "@/lib/nearby-data";
 import type { SessionUser } from "@/lib/auth";
 import { normalizePostImages } from "@/lib/media-url";
 import { resolveContentCities } from "@/lib/feed-scope";
+import { getMoveJoinStateForViewer } from "@/lib/api/move-join-service";
 import { getBlockedUserIds, getHiddenPostIds } from "@/lib/privacy-service";
 
 const postSelect = {
@@ -160,13 +161,36 @@ export async function getNearbyPayload(
     images: normalizePostImages(p.images),
   }));
 
+  const eventIds = events.map((ev) => ev.id);
+  const joinState = userId
+    ? await getMoveJoinStateForViewer(userId, eventIds)
+    : {
+        pendingByEventId: new Map<string, string>(),
+        requestsByEventId: new Map<string, Array<{
+          id: string;
+          userId: string;
+          status: string;
+          createdAt: Date;
+          user: { id: string; name: string; username: string; avatar: string | null };
+        }>>(),
+      };
+
   const { local, global } = buildNearbyItems({
     origin,
     city: resolvedCity,
     posts,
     events: events.map((ev) => ({
-      ...ev,
+      id: ev.id,
+      title: ev.title,
+      startAt: ev.startAt,
+      lat: ev.lat,
+      lng: ev.lng,
+      _count: ev._count,
+      requiresApproval: ev.requiresApproval,
       joined: Array.isArray(ev.attendees) ? ev.attendees.length > 0 : false,
+      joinRequestPending: joinState.pendingByEventId.has(ev.id),
+      joinRequestId: joinState.pendingByEventId.get(ev.id) ?? null,
+      joinRequests: joinState.requestsByEventId.get(ev.id) ?? [],
     })),
     localChallenges: localChallenges.map((ch) => ({
       ...ch,

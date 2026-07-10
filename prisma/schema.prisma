@@ -78,6 +78,13 @@ enum ActivityType {
   SHARED_GOAL_UPDATED
 }
 
+enum MoveJoinRequestStatus {
+  PENDING
+  APPROVED
+  DECLINED
+  CANCELLED
+}
+
 enum PersonalEventType {
   BIRTHDAY
   ANNIVERSARY
@@ -184,6 +191,7 @@ model User {
   contentReports     ContentReport[]
   aiUsage            AiUsage[]
   pushDevices        PushDevice[]
+  moveJoinRequests   MoveJoinRequest[]
 }
 
 model PushDevice {
@@ -398,14 +406,17 @@ model Event {
   lat         Float?
   lng         Float?
   startAt     DateTime
-  endAt       DateTime?
-  isSeasonal  Boolean  @default(false)
-  coverImage  String?
-  createdAt   DateTime @default(now())
+  endAt             DateTime?
+  isSeasonal        Boolean  @default(false)
+  requiresApproval  Boolean  @default(false)
+  capacity          Int      @default(0)
+  coverImage        String?
+  createdAt         DateTime @default(now())
 
-  organizer User            @relation(fields: [organizerId], references: [id])
-  club      Club?           @relation(fields: [clubId], references: [id])
-  attendees EventAttendee[]
+  organizer    User              @relation(fields: [organizerId], references: [id])
+  club         Club?             @relation(fields: [clubId], references: [id])
+  attendees    EventAttendee[]
+  joinRequests MoveJoinRequest[] @relation("eventJoinRequests")
 }
 
 model EventAttendee {
@@ -804,4 +815,22 @@ model ContentReport {
 
   @@index([targetKind, targetId])
   @@index([reporterId])
+}
+
+model MoveJoinRequest {
+  id           String                @id @default(cuid())
+  activityKind String
+  activityId   String
+  eventId      String?
+  userId       String
+  status       MoveJoinRequestStatus @default(PENDING)
+  createdAt    DateTime              @default(now())
+  resolvedAt   DateTime?
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event Event? @relation("eventJoinRequests", fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([activityKind, activityId, status])
+  @@index([userId, status])
+  @@index([eventId, status])
 }

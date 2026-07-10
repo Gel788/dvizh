@@ -77,6 +77,14 @@ else
   echo "WARN: login failed — check seed and JWT_SECRET"
 fi
 
+CRON_SECRET=$(grep "^CRON_SECRET=" .env 2>/dev/null | cut -d= -f2- || true)
+if [ -n "$CRON_SECRET" ]; then
+  curl -s -o /dev/null -w "cron_no_auth: HTTP %{http_code}\n" http://127.0.0.1:3000/api/v1/cron/reminders
+  curl -sf "http://127.0.0.1:3000/api/v1/cron/reminders?secret=$CRON_SECRET" | head -c 120 && echo ""
+else
+  echo "WARN: CRON_SECRET missing — skip cron smoke"
+fi
+
 curl -s -o /dev/null -w "Site: HTTP %{http_code}\n" https://flroal.ru/api/v1/health || \
   curl -s -o /dev/null -w "Site (http): HTTP %{http_code}\n" http://127.0.0.1/
 

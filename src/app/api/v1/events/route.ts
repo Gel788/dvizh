@@ -11,6 +11,7 @@ type CreateEventBody = {
   lat?: number;
   lng?: number;
   capacity?: number;
+  requiresApproval?: boolean;
 };
 
 export async function POST(request: Request) {
@@ -33,6 +34,8 @@ export async function POST(request: Request) {
         startAt,
         lat: body.lat ?? session.lat,
         lng: body.lng ?? session.lng,
+        requiresApproval: body.requiresApproval === true,
+        capacity: Math.max(0, Number(body.capacity ?? 0)),
         attendees: { create: { userId: session.id } },
       },
       include: {
