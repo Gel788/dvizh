@@ -37,7 +37,7 @@
 
 **Текущий долг (пример Wishlist):** фронт bridge есть, бэк не дотягивает спеку — нет `cancel-reservation`, `bought`, `surpriseMode` в модели, share links. Следующий срез = закрыть B, затем подтянуть M/I.
 
-**Последнее обновление плана:** 2026-07-10 — Calendar поиск + Today bridge (build 14).
+**Последнее обновление плана:** 2026-07-10 — Move activities API + calendar route + create approval (build 15).
 
 ## Легенда
 
@@ -268,12 +268,12 @@
 ### 6.2 Backend (B)
 
 - [x] **B** Geo nearby — `/nearby` (DAR prod, не полный v38 `/move/activities` contract)
-- [ ] **B** `GET /move/activities` (или расширить `/nearby` под v38 contract)
-- [ ] **B** Geo: lat/lng, radius, scope filter — частично в `/nearby`
+- [x] **B** `GET /move/activities` — адаптер над `/nearby` с v38 `items[]`
+- [x] **B** Geo: lat/lng, radius, scope filter — `/nearby` + query в `/move/activities`
 - [x] **B** `POST /events` — создание активности/события из Движа
 - [x] **B** Join requests + approve — `POST /move/activities/{id}/join`, approve/decline/cancel
 - [x] **B** `POST /move/activities/{id}/feed-publication` — voluntary feed post + EVENT_ATTENDED activity
-- [ ] **B** `POST /move/activities/{id}/calendar` — частично: `POST /diary/events` sourceKind=move
+- [x] **B** `POST /move/activities/{id}/calendar` — POST/DELETE + sourceKind=move
 - [x] **B** `POST /reports` для move items — targetKind `move` + post/event
 - [x] **B** Координаты округлены, точный адрес не отдаётся — `publicCoordinates` на `/nearby`, address скрыт в маппере
 
@@ -286,6 +286,7 @@
 - [x] **I** Move create → `POST /events` + reload `/nearby`
 - [x] **I** Move → «В Ленту» → `POST /move/activities/{id}/feed-publication` через delegate
 - [x] **I** Move join requests — join/approve/decline через `/move/*` delegate
+- [x] **I** Move calendar → `POST /move/activities/{id}/calendar` через delegate
 - [ ] **I** Acceptance § Move
 
 ---
@@ -515,10 +516,10 @@
 | 3 Privacy | 0/3 | 3/6 | 1/4 | 🟡 |
 | 4 Today | 7/7 | 7/7 | 3/4 | 🟡 |
 | 5 Feed | 6/6 | 10/10 | 5/5 | 🟡 |
-| 6 Move | 6/6 | 6/9 | 7/8 | 🟡 |
+| 6 Move | 6/6 | 9/9 | 8/9 | 🟡 |
 | 7 Challenges | 6/6 | 8/8 | 3/3 | 🟡 |
 | 8 Profile | 5/5 | 2/5 | 3/3 | 🟡 |
-| 9 Calendar | 2/3 | 3/4 | 5/5 | 🟡 |
+| 9 Calendar | 3/3 | 4/4 | 6/6 | 🟡 |
 | 10 Wishlist | 3/3 | 5/5 | 3/3 | 🟡 |
 | 11 Disputes | 2/2 | 2/4 | 2/3 | 🟡 |
 | 12 Together | 1/1 | 1/4 | 2/3 | 🟡 |

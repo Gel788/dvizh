@@ -19,6 +19,7 @@ export type NearbyItem = {
   joinable: boolean;
   joined: boolean;
   requiresApproval?: boolean;
+  capacity?: number;
   joinRequestPending?: boolean;
   joinRequestId?: string | null;
   joinRequests?: Array<{
@@ -75,6 +76,7 @@ export function buildNearbyItems(input: {
     _count: { attendees: number };
     joined?: boolean;
     requiresApproval?: boolean;
+    capacity?: number;
     joinRequestPending?: boolean;
     joinRequestId?: string | null;
     joinRequests?: Array<{
@@ -146,6 +148,7 @@ export function buildNearbyItems(input: {
       joinable: true,
       joined: ev.joined ?? false,
       requiresApproval: ev.requiresApproval ?? false,
+      capacity: ev.capacity ?? 0,
       joinRequestPending: ev.joinRequestPending ?? false,
       joinRequestId: ev.joinRequestId ?? null,
       joinRequests: (ev.joinRequests ?? []).map((r: {

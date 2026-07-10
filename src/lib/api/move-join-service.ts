@@ -5,6 +5,7 @@ import { joinEvent, toggleGoing } from "@/lib/api/social-service";
 export function normalizeMoveActivityId(rawId: string) {
   const id = rawId.trim();
   if (id.startsWith("ev-")) return { surfaceId: id, coreId: id.slice(3), kind: "event" as const };
+  if (id.startsWith("p-")) return { surfaceId: id, coreId: id.slice(2), kind: "post" as const };
   return { surfaceId: id, coreId: id, kind: "unknown" as const };
 }
 

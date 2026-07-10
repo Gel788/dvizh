@@ -187,6 +187,7 @@ export async function getNearbyPayload(
       lng: ev.lng,
       _count: ev._count,
       requiresApproval: ev.requiresApproval,
+      capacity: ev.capacity,
       joined: Array.isArray(ev.attendees) ? ev.attendees.length > 0 : false,
       joinRequestPending: joinState.pendingByEventId.has(ev.id),
       joinRequestId: joinState.pendingByEventId.get(ev.id) ?? null,

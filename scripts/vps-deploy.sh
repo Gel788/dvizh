@@ -72,6 +72,8 @@ TOKEN=$(curl -sf -X POST http://127.0.0.1:3000/api/v1/auth/login \
 if [ -n "$TOKEN" ]; then
   curl -sf -H "Authorization: Bearer $TOKEN" "http://127.0.0.1:3000/api/v1/profile" | head -c 120 && echo ""
   curl -sf -H "Authorization: Bearer $TOKEN" "http://127.0.0.1:3000/api/v1/feed/curated?city=Москва" | head -c 120 && echo ""
+  curl -s -o /dev/null -w "move_activities: HTTP %{http_code}\n" -H "Authorization: Bearer $TOKEN" "http://127.0.0.1:3000/api/v1/move/activities?city=Москва"
+  curl -s -o /dev/null -w "move_join_404: HTTP %{http_code}\n" -X POST -H "Authorization: Bearer $TOKEN" "http://127.0.0.1:3000/api/v1/move/activities/fake/join"
   echo "API OK — token works"
 else
   echo "WARN: login failed — check seed and JWT_SECRET"
