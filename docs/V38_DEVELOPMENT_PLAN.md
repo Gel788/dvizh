@@ -37,7 +37,7 @@
 
 **Текущий долг (пример Wishlist):** фронт bridge есть, бэк не дотягивает спеку — нет `cancel-reservation`, `bought`, `surpriseMode` в модели, share links. Следующий срез = закрыть B, затем подтянуть M/I.
 
-**Последнее обновление плана:** 2026-07-10 — Challenges create API + scope mine + theme persist (build 10).
+**Последнее обновление плана:** 2026-07-10 — Move reminder API + reports + challenge calendar guard (build 11).
 
 ## Легенда
 
@@ -263,7 +263,7 @@
 - [x] **M** Пины, фильтры: События / Челленджи / Места / Сегодня — маркеры по типу активности
 - [x] **M** Hero rail + список активностей — v38 UI
 - [x] **M** Создание активности — UI + `POST /events` через `AppState.createMoveEvent` + reload `/nearby`
-- [ ] **M** Действия: календарь, напоминание, репорт, шаринг, публикация в ленту — частично: calendar+report API
+- [x] **M** Действия: календарь, напоминание, репорт, шаринг — calendar+reminder API, report `/reports`, share flroal.ru URL; «В Ленту» — след. срез
 
 ### 6.2 Backend (B)
 
@@ -273,8 +273,8 @@
 - [x] **B** `POST /events` — создание активности/события из Движа
 - [ ] **B** Join requests + approve (если в spec)
 - [ ] **B** `POST /move/activities/{id}/calendar` — только по user action
-- [ ] **B** `POST /reports` для move items
-- [ ] **B** Координаты округлены, точный адрес не отдаётся
+- [x] **B** `POST /reports` для move items — targetKind `move` + post/event
+- [x] **B** Координаты округлены, точный адрес не отдаётся — `publicCoordinates` на `/nearby`, address скрыт в маппере
 
 ### 6.3 Интеграция (I)
 
@@ -308,7 +308,7 @@
 - [x] **B** Summary stats — `participantsFinished` + `completionRate` в `getChallengeLeaderboard`
 - [x] **B** `POST /posts` CHALLENGE — goalCount, rules, deadline, isGlobal, auto-join creator
 - [x] **B** `GET /leaderboard/challenges?scope=mine` — вкладка «Я»
-- [ ] **B** Challenges **не** создают calendar events (guard на сервере — след. срез)
+- [x] **B** Challenges **не** создают calendar events — guard в `createPersonalEventForUser`
 
 ### 7.3 Интеграция (I)
 
@@ -358,7 +358,7 @@
 
 - [ ] **B** `GET/POST/PATCH/DELETE /diary/events` — частично: все методы на prod
 - [ ] **B** Reminders + cron (`/cron/reminders`) — endpoint + scheduler есть; smoke на prod
-- [ ] **B** `sourceKind=move` при создании из Движа — `sourceKind`/`sourceId` + `MOVE` eventType (миграция готова, deploy на prod)
+- [ ] **B** `sourceKind=move` при создании из Движа — задеплоено на prod (миграция + API)
 - [ ] **B** Challenges не попадают в calendar
 
 ### 9.3 Интеграция (I)
@@ -483,7 +483,7 @@
 ### 15.1 Backend
 
 - [ ] **B** Staging = prod schema parity
-- [ ] **B** PM2 / `ecosystem.config.cjs` — deploy без downtime
+- [x] **B** PM2 / `ecosystem.config.cjs` — deploy без downtime (промежуточный deploy 2026-07-10)
 - [ ] **B** Мониторинг `/api/v1/health`
 - [ ] **B** Полный прогон `BACKEND_ACCEPTANCE_CRITERIA.md`
 
@@ -513,8 +513,8 @@
 | 3 Privacy | 0/3 | 3/6 | 1/4 | 🟡 |
 | 4 Today | 7/7 | 7/7 | 3/4 | 🟡 |
 | 5 Feed | 6/6 | 10/10 | 5/5 | 🟡 |
-| 6 Move | 5/6 | 2/8 | 6/6 | 🟡 |
-| 7 Challenges | 6/6 | 7/8 | 3/3 | 🟡 |
+| 6 Move | 6/6 | 4/8 | 6/6 | 🟡 |
+| 7 Challenges | 6/6 | 8/8 | 3/3 | 🟡 |
 | 8 Profile | 5/5 | 2/5 | 3/3 | 🟡 |
 | 9 Calendar | 2/3 | 1/4 | 5/5 | 🟡 |
 | 10 Wishlist | 3/3 | 5/5 | 3/3 | 🟡 |

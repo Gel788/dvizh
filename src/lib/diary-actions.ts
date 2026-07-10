@@ -904,6 +904,8 @@ export async function createPersonalEventForUser(
 ) {
   const title = input.title.trim();
   if (!title) return null;
+  if (input.sourceKind?.trim().toLowerCase() === "challenge") return null;
+  if (input.eventType?.trim().toLowerCase() === "challenge") return null;
   const recurrenceMap: Record<string, "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY"> = {
     daily: "DAILY", weekly: "WEEKLY", monthly: "MONTHLY", yearly: "YEARLY",
   };

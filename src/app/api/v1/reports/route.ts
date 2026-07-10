@@ -20,7 +20,7 @@ export async function POST(request: Request) {
       return jsonError("targetKind, targetId и reason обязательны", 400, "INVALID");
     }
 
-    const allowed = new Set(["post", "user", "event", "challenge", "comment"]);
+    const allowed = new Set(["post", "user", "event", "challenge", "comment", "move"]);
     if (!allowed.has(targetKind)) {
       return jsonError("Неподдерживаемый targetKind", 400, "INVALID_KIND");
     }
