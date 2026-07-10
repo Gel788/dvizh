@@ -346,7 +346,7 @@
 - [x] **I** v38 `FriendsScreen` → `/friends?view=list|pending` + accept/reject через `V38SocialStore` (2026-07-10)
 - [x] **I** Счётчики друзей/подписок из реального API — `friendsCount` из `/friends?view=list`
 - [x] **I** Поиск/социал → `/user/:username` открывает v38 public profile
-- [ ] **I** Acceptance § Auth/Profile/Friends
+- [x] **I** Acceptance § Auth/Profile/Friends — smoke: /auth/me, /friends list+pending (2026-07-10)
 
 ---
 
@@ -519,7 +519,7 @@
 | 5 Feed | 6/6 | 10/10 | 5/5 | 🟡 |
 | 6 Move | 6/6 | 9/9 | 9/9 | 🟡 |
 | 7 Challenges | 6/6 | 8/8 | 4/4 | 🟡 |
-| 8 Profile | 5/5 | 3/5 | 4/4 | 🟡 |
+| 8 Profile | 5/5 | 3/5 | 5/5 | 🟡 |
 | 9 Calendar | 3/3 | 4/4 | 7/7 | 🟡 |
 | 10 Wishlist | 3/3 | 5/5 | 3/3 | 🟡 |
 | 11 Disputes | 2/2 | 2/4 | 2/3 | 🟡 |
