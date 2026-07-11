@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 
 const WORD = "ДВЖ";
@@ -34,6 +35,7 @@ function SplashCursor({ pressing }: { pressing: boolean }) {
 }
 
 export function SplashGate({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
   const [phase, setPhase] = useState<Phase>("boot");
   const [visible, setVisible] = useState(false);
   const [typed, setTyped] = useState("");
@@ -45,12 +47,27 @@ export function SplashGate({ children }: { children: React.ReactNode }) {
   const enterRef = useRef<HTMLButtonElement>(null);
 
   const finish = useCallback(() => {
-    sessionStorage.setItem(STORAGE_KEY, "1");
+    try {
+      sessionStorage.setItem(STORAGE_KEY, "1");
+      localStorage.setItem(STORAGE_KEY, "1");
+    } catch {
+      /* private mode */
+    }
     setVisible(false);
   }, []);
 
   useEffect(() => {
-    const skip = sessionStorage.getItem(STORAGE_KEY) === "1";
+    if (pathname.startsWith("/admin")) {
+      setPhase("done");
+      return;
+    }
+
+    let skip = false;
+    try {
+      skip = sessionStorage.getItem(STORAGE_KEY) === "1" || localStorage.getItem(STORAGE_KEY) === "1";
+    } catch {
+      skip = false;
+    }
     const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     setReducedMotion(prefersReduced);
 
@@ -67,7 +84,13 @@ export function SplashGate({ children }: { children: React.ReactNode }) {
     }
 
     setPhase("typing");
-  }, []);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!visible) return;
+    const t = window.setTimeout(() => finish(), 3500);
+    return () => window.clearTimeout(t);
+  }, [visible, finish]);
 
   useEffect(() => {
     if (phase !== "typing") return;
@@ -156,7 +179,9 @@ export function SplashGate({ children }: { children: React.ReactNode }) {
             initial={{ opacity: 1 }}
             exit={{ opacity: 0, scale: 1.02 }}
             transition={{ duration: reducedMotion ? 0.08 : 0.38, ease: [0.22, 1, 0.36, 1] }}
-            className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#08080D] cursor-none select-none overflow-hidden"
+            onClick={finish}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") finish(); }}
+            className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#08080D] cursor-pointer select-none overflow-hidden"
           >
             <div
               className="pointer-events-none absolute inset-0 opacity-[0.035]"
@@ -166,7 +191,11 @@ export function SplashGate({ children }: { children: React.ReactNode }) {
               }}
             />
 
-            <div className="relative flex flex-col items-center gap-10">
+            <p className="absolute bottom-8 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/80">
+              Нажми anywhere · Enter
+            </p>
+
+            <div className="relative flex flex-col items-center gap-10 pointer-events-none">
               <div className="flex items-baseline font-mono text-[clamp(2rem,8vw,3.25rem)] leading-none tracking-tight">
                 <span className="text-muted-foreground/50 font-sans text-[0.55em] mr-1">&gt;</span>
                 <span className="font-heading text-neon-lime -skew-x-3">{typed}</span>

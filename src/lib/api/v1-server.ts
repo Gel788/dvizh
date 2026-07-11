@@ -1,13 +1,19 @@
 import { cookies, headers } from "next/headers";
 
 async function resolveSiteOrigin(): Promise<string> {
-  const fromEnv = process.env.NEXT_PUBLIC_SITE_URL ?? process.env.SITE_URL;
-  if (fromEnv) return fromEnv.replace(/\/$/, "");
+  // SSR → свой API: localhost, не публичный URL (избегаем петли через nginx и таймаутов)
+  if (process.env.INTERNAL_API_ORIGIN) {
+    return process.env.INTERNAL_API_ORIGIN.replace(/\/$/, "");
+  }
+  if (process.env.NODE_ENV === "production") {
+    const port = process.env.PORT ?? "3000";
+    return `http://127.0.0.1:${port}`;
+  }
   const h = await headers();
   const host = h.get("x-forwarded-host") ?? h.get("host");
   const proto = h.get("x-forwarded-proto") ?? "http";
   if (host) return `${proto}://${host}`;
-  return "http://127.0.0.1:3000";
+  return `http://127.0.0.1:${process.env.PORT ?? "3000"}`;
 }
 
 export type V1Query = Record<string, string | number | boolean | null | undefined>;

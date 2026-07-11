@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { SplashGate } from "@/components/brand/splash-gate";
@@ -28,9 +29,9 @@ export default function RootLayout({
     >
       <body className="min-h-full bg-background text-foreground antialiased">
         <TooltipProvider>
-          <SplashGate>
-            {children}
-          </SplashGate>
+          <Suspense fallback={children}>
+            <SplashGate>{children}</SplashGate>
+          </Suspense>
           <Toaster position="top-center" richColors closeButton />
         </TooltipProvider>
       </body>

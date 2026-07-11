@@ -84,17 +84,13 @@ export function AdminAreaChart({
             animate={{ opacity: 1 }}
             transition={spring.gentle}
           />
-          <motion.polyline
-            key={`line-${current.key}`}
+          <polyline
             fill="none"
             stroke={current.accent}
             strokeWidth="2.5"
             strokeLinejoin="round"
             strokeLinecap="round"
             points={line}
-            initial={{ pathLength: 0, opacity: 0 }}
-            animate={{ pathLength: 1, opacity: 1 }}
-            transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
           />
           {points.map((p, i) => (
             <circle
