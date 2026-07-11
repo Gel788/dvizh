@@ -1,7 +1,6 @@
 import { getFeedPosts, getChallengeLeaderboard, type FeedFilters } from "@/lib/actions";
 import { getCuratedFeed, getDiaryBundle, type DiaryBundle } from "@/lib/diary-actions";
 import { getNearbyPayload, type NearbyOptions } from "@/lib/api/nearby-service";
-import { getPulseDay } from "@/lib/pulse-service";
 import { v1Fetch } from "@/lib/api/v1-server";
 import type { SessionUser } from "@/lib/auth";
 import type { FeedScope } from "@/lib/feed-scope-service";
@@ -58,14 +57,6 @@ export async function webGetFeedPosts(
   );
   if (fromApi?.posts) return fromApi.posts;
   return getFeedPosts(filters, session);
-}
-
-export async function webGetPulse(city: string, session: SessionUser | null) {
-  const fromApi = await v1Fetch<Awaited<ReturnType<typeof getPulseDay>>>("/pulse", {
-    query: { city },
-  });
-  if (fromApi) return fromApi;
-  return getPulseDay(city, session?.id);
 }
 
 export async function webGetNearbyPayload(

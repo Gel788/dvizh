@@ -6,10 +6,9 @@ import { CuratedAchievementCard } from "@/components/feed/curated-achievement-ca
 import { FeedDigest } from "@/components/feed/feed-digest";
 import { FeedHighlightCard } from "@/components/feed/feed-highlight-card";
 import { FeedHero } from "@/components/feed/feed-hero";
-import { PulseDayCard } from "@/components/feed/pulse-day-card";
 import { AppContent } from "@/components/layout/app-content";
 import { DesktopRail } from "@/components/layout/desktop-rail";
-import { webGetCuratedFeed, webGetFeedPosts, webGetPulse } from "@/lib/api/v1-web-services";
+import { webGetCuratedFeed, webGetFeedPosts } from "@/lib/api/v1-web-services";
 import { getSession } from "@/lib/auth";
 import { CITY_COORDS } from "@/lib/geo";
 import type { FeedScope } from "@/lib/feed-scope-service";
@@ -54,7 +53,7 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
   const feedMode = resolveFeedScope(scopeRaw);
   const district = params.district ?? session?.district ?? undefined;
 
-  const [curated, posts, pulse] = await Promise.all([
+  const [curated, posts] = await Promise.all([
     webGetCuratedFeed(city, session, feedMode, district).catch(() => null),
     webGetFeedPosts({
       feed: feedMode,
@@ -70,7 +69,6 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
           }
         : {}),
     }, session),
-    webGetPulse(city, session).catch(() => null),
   ]);
 
   const curatedPostsRaw = curated?.items
@@ -117,12 +115,6 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
         }
       >
         <FeedHero city={city} />
-
-        {pulse?.metrics && (
-          <div className="mt-4">
-            <PulseDayCard metrics={pulse.metrics} city={pulse.city} />
-          </div>
-        )}
 
         <Suspense fallback={<div className="h-12 animate-pulse bg-muted/50 rounded-full" />}>
           <FeedFilters />

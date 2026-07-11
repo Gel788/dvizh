@@ -51,7 +51,7 @@ export function DesktopRail({ city, username, stats }: DesktopRailProps) {
       <div className="web-panel overflow-hidden p-4">
         <div className="flex items-center justify-between gap-2 mb-3">
           <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
-            Пульс города
+            Сводка · {city}
           </p>
           <span className="chip chip-lime text-[10px] py-0.5">{city}</span>
         </div>
