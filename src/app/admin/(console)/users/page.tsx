@@ -1,8 +1,9 @@
-import Link from "next/link";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { AdminPage, AdminPageHeader } from "@/components/admin/admin-page-header";
-import { AdminTable, AdminTd, AdminTh, AdminTr } from "@/components/admin/admin-table";
+import { AdminTable, AdminTd, AdminTh } from "@/components/admin/admin-table";
+import { AdminInspectableRow } from "@/components/admin/preview/admin-inspectable-row";
+import { AdminPreviewRoot } from "@/components/admin/preview/admin-preview-root";
 import { DeleteButton } from "@/components/admin/delete-button";
 import {
   deleteUserAction,
@@ -10,11 +11,14 @@ import {
   toggleUserVerifiedAction,
   updateUserReputationAction,
 } from "@/lib/admin/actions";
+import { serializeUserPreview } from "@/lib/admin/preview-serialize";
+import type { AdminPreviewMap } from "@/lib/admin/preview-types";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
 
 type SearchParams = Promise<{ q?: string }>;
 
@@ -41,7 +45,11 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: S
       email: true,
       name: true,
       username: true,
+      avatar: true,
+      coverImage: true,
+      bio: true,
       city: true,
+      district: true,
       verified: true,
       reputation: true,
       role: true,
@@ -52,6 +60,10 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: S
       profile: { select: { xp: true, level: true } },
     },
   });
+
+  const previews: AdminPreviewMap = Object.fromEntries(
+    users.map((u) => [u.id, serializeUserPreview(u)]),
+  );
 
   return (
     <AdminPage>
@@ -76,82 +88,82 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: S
         )}
       </form>
 
-      <AdminTable>
-        <thead>
-          <tr>
-            <AdminTh>Пользователь</AdminTh>
-            <AdminTh>Город</AdminTh>
-            <AdminTh>XP / Ур.</AdminTh>
-            <AdminTh>Активность</AdminTh>
-            <AdminTh>Статус</AdminTh>
-            <AdminTh>Репутация</AdminTh>
-            <AdminTh className="text-right">Действия</AdminTh>
-          </tr>
-        </thead>
-        <tbody>
-          {users.map((u) => (
-            <AdminTr key={u.id}>
-              <AdminTd>
-                <Link href={`/profile/${u.username}`} className="font-semibold hover:text-lime">
-                  {u.name}
-                </Link>
-                <p className="text-xs text-white/35">@{u.username}</p>
-                <p className="text-xs text-white/25">{u.email}</p>
-              </AdminTd>
-              <AdminTd>{u.city}</AdminTd>
-              <AdminTd>
-                {u.profile ? `${u.profile.xp} XP · L${u.profile.level}` : "—"}
-              </AdminTd>
-              <AdminTd className="text-xs text-white/40">
-                {u._count.posts} постов<br />
-                {u._count.followers} подп. / {u._count.following} подписок
-              </AdminTd>
-              <AdminTd>
-                <div className="flex flex-wrap gap-1">
-                  {u.verified && <Badge className="bg-lime/15 text-lime border-lime/20">verified</Badge>}
-                  {u.role === "ADMIN" && <Badge className="bg-heat/15 text-heat border-heat/20">admin</Badge>}
-                </div>
-                <p className="text-[10px] text-white/30 mt-1">
-                  {format(u.createdAt, "d MMM yyyy", { locale: ru })}
-                </p>
-              </AdminTd>
-              <AdminTd>
-                <form action={updateUserReputationAction} className="flex items-center gap-1">
-                  <input type="hidden" name="userId" value={u.id} />
-                  <Input
-                    name="reputation"
-                    type="number"
-                    defaultValue={u.reputation}
-                    className="h-8 w-20 text-xs"
-                  />
-                  <Button type="submit" size="sm" variant="ghost" className="cursor-pointer text-xs">
-                    OK
-                  </Button>
-                </form>
-              </AdminTd>
-              <AdminTd className="text-right">
-                <div className="flex items-center justify-end gap-1 flex-wrap">
-                  <form action={toggleUserVerifiedAction.bind(null, u.id)}>
+      <AdminPreviewRoot previews={previews}>
+        <AdminTable>
+          <thead>
+            <tr>
+              <AdminTh>Пользователь</AdminTh>
+              <AdminTh>Город</AdminTh>
+              <AdminTh>XP / Ур.</AdminTh>
+              <AdminTh>Активность</AdminTh>
+              <AdminTh>Статус</AdminTh>
+              <AdminTh>Репутация</AdminTh>
+              <AdminTh className="text-right">Действия</AdminTh>
+            </tr>
+          </thead>
+          <tbody>
+            {users.map((u) => (
+              <AdminInspectableRow key={u.id} inspectId={u.id}>
+                <AdminTd>
+                  <p className="font-semibold">{u.name}</p>
+                  <p className="text-xs text-white/35">@{u.username}</p>
+                  <p className="text-xs text-white/25">{u.email}</p>
+                </AdminTd>
+                <AdminTd>{u.city}</AdminTd>
+                <AdminTd>
+                  {u.profile ? `${u.profile.xp} XP · L${u.profile.level}` : "—"}
+                </AdminTd>
+                <AdminTd className="text-xs text-white/40">
+                  {u._count.posts} постов<br />
+                  {u._count.followers} подп. / {u._count.following} подписок
+                </AdminTd>
+                <AdminTd>
+                  <div className="flex flex-wrap gap-1">
+                    {u.verified && <Badge className="bg-lime/15 text-lime border-lime/20">verified</Badge>}
+                    {u.role === "ADMIN" && <Badge className="bg-heat/15 text-heat border-heat/20">admin</Badge>}
+                  </div>
+                  <p className="text-[10px] text-white/30 mt-1">
+                    {format(u.createdAt, "d MMM yyyy", { locale: ru })}
+                  </p>
+                </AdminTd>
+                <AdminTd>
+                  <form action={updateUserReputationAction} className="flex items-center gap-1" data-no-inspect>
+                    <input type="hidden" name="userId" value={u.id} />
+                    <Input
+                      name="reputation"
+                      type="number"
+                      defaultValue={u.reputation}
+                      className="h-8 w-20 text-xs"
+                    />
                     <Button type="submit" size="sm" variant="ghost" className="cursor-pointer text-xs">
-                      {u.verified ? "− verify" : "+ verify"}
+                      OK
                     </Button>
                   </form>
-                  {u.id !== session?.id && (
-                    <form action={setUserRoleAction.bind(null, u.id, u.role === "ADMIN" ? "USER" : "ADMIN")}>
+                </AdminTd>
+                <AdminTd className="text-right">
+                  <div className="flex items-center justify-end gap-1 flex-wrap" data-no-inspect>
+                    <form action={toggleUserVerifiedAction.bind(null, u.id)}>
                       <Button type="submit" size="sm" variant="ghost" className="cursor-pointer text-xs">
-                        {u.role === "ADMIN" ? "→ user" : "→ admin"}
+                        {u.verified ? "− verify" : "+ verify"}
                       </Button>
                     </form>
-                  )}
-                  {u.id !== session?.id && (
-                    <DeleteButton label={u.name} action={deleteUserAction.bind(null, u.id)} />
-                  )}
-                </div>
-              </AdminTd>
-            </AdminTr>
-          ))}
-        </tbody>
-      </AdminTable>
+                    {u.id !== session?.id && (
+                      <form action={setUserRoleAction.bind(null, u.id, u.role === "ADMIN" ? "USER" : "ADMIN")}>
+                        <Button type="submit" size="sm" variant="ghost" className="cursor-pointer text-xs">
+                          {u.role === "ADMIN" ? "→ user" : "→ admin"}
+                        </Button>
+                      </form>
+                    )}
+                    {u.id !== session?.id && (
+                      <DeleteButton label={u.name} action={deleteUserAction.bind(null, u.id)} />
+                    )}
+                  </div>
+                </AdminTd>
+              </AdminInspectableRow>
+            ))}
+          </tbody>
+        </AdminTable>
+      </AdminPreviewRoot>
     </AdminPage>
   );
 }

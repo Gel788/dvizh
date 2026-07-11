@@ -1,18 +1,21 @@
-import Link from "next/link";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Sparkles } from "lucide-react";
 import { AdminPage, AdminPageHeader } from "@/components/admin/admin-page-header";
-import { AdminSection, AdminTable, AdminTd, AdminTh, AdminTr } from "@/components/admin/admin-table";
+import { AdminSection, AdminTable, AdminTd, AdminTh } from "@/components/admin/admin-table";
+import { AdminInspectableRow } from "@/components/admin/preview/admin-inspectable-row";
+import { AdminPreviewRoot } from "@/components/admin/preview/admin-preview-root";
 import { SponsoredPostForm } from "@/components/admin/sponsored-post-form";
 import { togglePostFeaturedAction, updatePostFeaturedBoostAction } from "@/lib/admin/actions";
+import { serializePostPreview } from "@/lib/admin/preview-serialize";
+import type { AdminPreviewMap } from "@/lib/admin/preview-types";
 import { db } from "@/lib/db";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { StatCard } from "@/components/admin/stat-card";
 
 const postInclude = {
-  author: { select: { username: true, name: true } },
+  author: { select: { username: true, name: true, avatar: true } },
   _count: { select: { likes: true, comments: true, going: true } },
 } as const;
 
@@ -33,6 +36,11 @@ export default async function AdminFeedPage() {
       include: postInclude,
     }),
   ]);
+
+  const allPosts = [...featured, ...candidates];
+  const previews: AdminPreviewMap = Object.fromEntries(
+    allPosts.map((p) => [p.id, serializePostPreview(p)]),
+  );
 
   return (
     <AdminPage>
@@ -56,21 +64,23 @@ export default async function AdminFeedPage() {
         <SponsoredPostForm />
       </AdminSection>
 
-      <AdminSection title="Закреплённые" icon={<Sparkles className="h-4 w-4 text-lime" />}>
-        {featured.length === 0 ? (
-          <p className="rounded-2xl border border-dashed border-white/10 py-10 text-center text-sm text-muted-foreground">
-            Пока ничего не закреплено — выбери из кандидатов ниже
-          </p>
-        ) : (
-          <FeedTable posts={featured} featured />
-        )}
-      </AdminSection>
-
-      <div className="mt-10">
-        <AdminSection title="Недавние кандидаты">
-          <FeedTable posts={candidates} />
+      <AdminPreviewRoot previews={previews}>
+        <AdminSection title="Закреплённые" icon={<Sparkles className="h-4 w-4 text-lime" />}>
+          {featured.length === 0 ? (
+            <p className="rounded-2xl border border-dashed border-white/10 py-10 text-center text-sm text-muted-foreground">
+              Пока ничего не закреплено — выбери из кандидатов ниже
+            </p>
+          ) : (
+            <FeedTable posts={featured} featured />
+          )}
         </AdminSection>
-      </div>
+
+        <div className="mt-10">
+          <AdminSection title="Недавние кандидаты">
+            <FeedTable posts={candidates} />
+          </AdminSection>
+        </div>
+      </AdminPreviewRoot>
     </AdminPage>
   );
 }
@@ -89,11 +99,9 @@ function FeedTable({ posts, featured = false }: { posts: FeedPost[]; featured?: 
       </thead>
       <tbody>
         {posts.map((p) => (
-          <AdminTr key={p.id}>
+          <AdminInspectableRow key={p.id} inspectId={p.id}>
             <AdminTd className="max-w-[280px]">
-              <Link href={`/post/${p.id}`} className="line-clamp-2 hover:text-lime">
-                {p.title ?? p.content}
-              </Link>
+              <p className="line-clamp-2">{p.title ?? p.content}</p>
               <p className="text-[10px] text-white/30 mt-1">{format(p.createdAt, "d MMM HH:mm", { locale: ru })}</p>
             </AdminTd>
             <AdminTd className="text-xs">@{p.author.username}</AdminTd>
@@ -102,7 +110,7 @@ function FeedTable({ posts, featured = false }: { posts: FeedPost[]; featured?: 
             </AdminTd>
             <AdminTd>
               {featured ? (
-                <form action={updatePostFeaturedBoostAction} className="flex items-center gap-1">
+                <form action={updatePostFeaturedBoostAction} className="flex items-center gap-1" data-no-inspect>
                   <input type="hidden" name="postId" value={p.id} />
                   <Input name="boost" type="number" defaultValue={p.featuredBoost} className="h-8 w-16 text-xs" min={0} max={100} />
                   <Button type="submit" size="sm" variant="ghost" className="text-xs cursor-pointer">OK</Button>
@@ -112,13 +120,13 @@ function FeedTable({ posts, featured = false }: { posts: FeedPost[]; featured?: 
               )}
             </AdminTd>
             <AdminTd className="text-right">
-              <form action={togglePostFeaturedAction.bind(null, p.id)}>
+              <form action={togglePostFeaturedAction.bind(null, p.id)} data-no-inspect>
                 <Button type="submit" size="sm" variant={featured ? "outline" : "default"} className="cursor-pointer text-xs">
                   {featured ? "Убрать" : "★ В ленту"}
                 </Button>
               </form>
             </AdminTd>
-          </AdminTr>
+          </AdminInspectableRow>
         ))}
       </tbody>
     </AdminTable>
