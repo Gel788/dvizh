@@ -5,21 +5,7 @@ import { motion, useReducedMotion } from "motion/react";
 import { ArrowUpRight, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { spring } from "@/lib/motion-spring";
-
-function AnimatedNumber({ value }: { value: number }) {
-  const reduced = useReducedMotion();
-  return (
-    <motion.span
-      key={value}
-      className="admin-kpi-value font-heading text-3xl sm:text-4xl leading-none"
-      initial={reduced ? false : { opacity: 0.6, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={spring.snappy}
-    >
-      {value.toLocaleString("ru-RU")}
-    </motion.span>
-  );
-}
+import { AdminCountUp } from "@/components/admin/admin-count-up";
 
 export function AdminKpi({
   label,
@@ -61,19 +47,23 @@ export function AdminKpi({
       initial={reduced ? false : { opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ ...spring.gentle, delay }}
+      whileHover={reduced || !href ? undefined : { y: -4, scale: 1.01, transition: spring.snappy }}
       className={cn(
-        "admin-glass group relative overflow-hidden rounded-2xl p-4 sm:p-5 transition-all duration-300",
-        href && "cursor-pointer hover:border-lime/20 hover:-translate-y-0.5",
+        "admin-glass admin-kpi-shimmer group relative overflow-hidden rounded-2xl p-4 sm:p-5 transition-all duration-300",
+        href && "cursor-pointer hover:border-lime/25 hover:shadow-[0_0_32px_rgba(200,255,87,0.08)]",
         size === "lg" && "sm:p-6",
       )}
     >
-      <div className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-lime/5 blur-2xl transition-opacity group-hover:opacity-100 opacity-0" />
+      <div className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-lime/8 blur-2xl transition-opacity group-hover:opacity-100 opacity-40" />
 
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">{label}</p>
           <div className="mt-2">
-            <AnimatedNumber value={value} />
+            <AdminCountUp
+              value={value}
+              className="admin-kpi-value font-heading text-3xl sm:text-4xl leading-none block"
+            />
           </div>
           {(deltaLabel || delta != null) && (
             <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -98,10 +88,10 @@ export function AdminKpi({
       </div>
 
       {spark && spark.length > 1 && (
-        <svg className="mt-4 h-8 w-full opacity-70" viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden>
+        <svg className="mt-4 h-8 w-full opacity-80" viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden>
           <defs>
             <linearGradient id={`spark-${label}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="rgba(200,255,87,0.35)" />
+              <stop offset="0%" stopColor="rgba(200,255,87,0.4)" />
               <stop offset="100%" stopColor="rgba(200,255,87,0)" />
             </linearGradient>
           </defs>
@@ -112,11 +102,28 @@ export function AdminKpi({
               const y = 32 - (v / max) * 28 - 2;
               return `${x},${y}`;
             });
-            const area = `0,32 ${pts.join(" ")} 120,32`;
+            const line = pts.join(" ");
+            const area = `0,32 ${line} 120,32`;
             return (
               <>
-                <polygon fill={`url(#spark-${label})`} points={area} />
-                <polyline fill="none" stroke="rgba(200,255,87,0.85)" strokeWidth="1.5" points={pts.join(" ")} />
+                <motion.polygon
+                  fill={`url(#spark-${label})`}
+                  points={area}
+                  initial={reduced ? false : { opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.6, delay: delay + 0.2 }}
+                />
+                <motion.polyline
+                  fill="none"
+                  stroke="rgba(200,255,87,0.9)"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  points={line}
+                  initial={reduced ? false : { pathLength: 0, opacity: 0.4 }}
+                  animate={{ pathLength: 1, opacity: 1 }}
+                  transition={{ duration: 0.9, delay: delay + 0.15, ease: [0.22, 1, 0.36, 1] }}
+                />
               </>
             );
           })()}

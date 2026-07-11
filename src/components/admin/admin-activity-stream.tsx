@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import { ru } from "date-fns/locale";
-import { motion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import type { AdminDashboardData } from "@/lib/admin/stats";
 import { cn } from "@/lib/utils";
 import { stagger } from "@/lib/motion-spring";
@@ -23,16 +23,21 @@ export function AdminActivityStream({
   activities: AdminDashboardData["recentActivities"];
   limit?: number;
 }) {
+  const reduced = useReducedMotion();
   const list = activities.slice(0, limit);
 
   return (
-    <div className="admin-glass rounded-2xl overflow-hidden">
+    <div className="admin-glass rounded-2xl overflow-hidden relative">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-lime/40 to-transparent" />
       <div className="border-b border-white/[0.06] px-5 py-4 flex items-center justify-between">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Live feed</p>
           <h3 className="font-heading text-lg mt-0.5">Активность платформы</h3>
         </div>
-        <span className="admin-pulse-dot h-2 w-2 rounded-full bg-good" />
+        <span className="flex items-center gap-2 text-[10px] font-bold uppercase text-good">
+          <span className="admin-pulse-dot h-2 w-2 rounded-full bg-good" />
+          Realtime
+        </span>
       </div>
 
       <ul className="divide-y divide-white/[0.04] max-h-[420px] overflow-y-auto">
@@ -44,10 +49,10 @@ export function AdminActivityStream({
             return (
               <motion.li
                 key={a.id}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * stagger.fast }}
-                className="group px-5 py-3.5 hover:bg-white/[0.02] transition-colors"
+                initial={reduced ? false : { opacity: 0, x: -12 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * stagger.fast, type: "spring", stiffness: 380, damping: 28 }}
+                className="group px-5 py-3.5 hover:bg-lime/[0.03] transition-colors"
               >
                 <div className="flex gap-3">
                   <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-base", meta.color)}>

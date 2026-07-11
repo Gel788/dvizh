@@ -19,8 +19,7 @@ export default async function AdminLoginPage({
   if (session && isAdmin(session)) redirect("/admin");
 
   return (
-    <div className="dark admin-login relative flex min-h-screen items-center justify-center bg-background p-4">
-      <div className="pointer-events-none absolute inset-0 dvizh-grid opacity-60" />
+    <div className="dark admin-mesh admin-login relative flex min-h-screen items-center justify-center p-4">
 
       <div className="relative w-full max-w-[420px]">
         <Card className="border-white/[0.08] bg-card/80 shadow-[0_24px_80px_rgba(0,0,0,0.45)] ring-1 ring-white/[0.06] backdrop-blur-md">
@@ -28,7 +27,7 @@ export default async function AdminLoginPage({
             <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-lime/10 ring-1 ring-lime/25">
               <Shield className="h-6 w-6 text-lime" />
             </div>
-            <CardTitle className="font-heading text-3xl text-lime">АДМИН</CardTitle>
+            <CardTitle className="font-heading text-3xl bg-gradient-to-r from-white to-lime bg-clip-text text-transparent">COMMAND</CardTitle>
             <CardDescription className="text-[11px] uppercase tracking-[0.2em]">
               центр управления · ДВЖ
             </CardDescription>

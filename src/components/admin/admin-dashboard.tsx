@@ -33,6 +33,9 @@ import { AdminAreaChart } from "@/components/admin/admin-area-chart";
 import { AdminActivityStream } from "@/components/admin/admin-activity-stream";
 import { AdminAlertQueue } from "@/components/admin/admin-alert-queue";
 import { AdminHealthWidget } from "@/components/admin/admin-health-widget";
+import { AdminOrbBackground } from "@/components/admin/admin-orb-background";
+import { AdminLiveTicker } from "@/components/admin/admin-live-ticker";
+import { AdminCountUp } from "@/components/admin/admin-count-up";
 import { EngagementFunnel } from "@/components/charts/engagement-funnel";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -53,10 +56,12 @@ function CommandHero({ data }: { data: AdminDashboardData }) {
 
   return (
     <motion.div
-      initial={reduced ? false : { opacity: 0, y: 12 }}
+      initial={reduced ? false : { opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
       className="admin-glass-accent relative mb-8 overflow-hidden rounded-3xl p-6 sm:p-8 admin-hero-grid"
     >
+      <div className="admin-hero-glow" aria-hidden />
       <div className="relative z-10 grid gap-6 lg:grid-cols-[1.4fr_1fr] lg:items-end">
         <div>
           <div className="flex flex-wrap items-center gap-2 mb-3">
@@ -64,31 +69,53 @@ function CommandHero({ data }: { data: AdminDashboardData }) {
               <span className="admin-pulse-dot h-1.5 w-1.5 rounded-full bg-good" />
               Command Center
             </span>
-            <span className="text-[10px] font-mono text-muted-foreground uppercase">v38 · prod</span>
+            <span className="text-[10px] font-mono text-muted-foreground uppercase">v38 · prod · live</span>
           </div>
           <h2 className="font-heading text-3xl sm:text-4xl lg:text-5xl leading-[0.95]">
             Платформа
-            <span className="text-lime"> в движе</span>
+            <motion.span
+              className="text-lime inline-block"
+              animate={reduced ? {} : { opacity: [1, 0.75, 1] }}
+              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+            >
+              {" "}в движе
+            </motion.span>
           </h2>
           <p className="mt-3 max-w-xl text-sm text-muted-foreground leading-relaxed">
-            {data.usersTotal.toLocaleString("ru-RU")} пользователей · {data.postsTotal.toLocaleString("ru-RU")} постов ·{" "}
-            {data.diaryTasksTotal.toLocaleString("ru-RU")} дел в дневниках. Модерация, v38-сущности и health API в одном месте.
+            <AdminCountUp value={data.usersTotal} className="text-foreground font-semibold inline" duration={1} /> пользователей ·{" "}
+            <AdminCountUp value={data.postsTotal} className="text-foreground font-semibold inline" duration={1.1} /> постов ·{" "}
+            <AdminCountUp value={data.diaryTasksTotal} className="text-foreground font-semibold inline" duration={1.2} /> дел в дневниках.
           </p>
         </div>
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <div className="rounded-2xl bg-black/30 ring-1 ring-white/[0.08] p-4 text-center">
+          <motion.div
+            whileHover={reduced ? undefined : { scale: 1.03 }}
+            className="rounded-2xl bg-black/30 ring-1 ring-white/[0.08] p-4 text-center"
+          >
             <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">24ч рег.</p>
-            <p className="mt-1 font-heading text-3xl text-lime tabular-nums">+{data.usersToday}</p>
-          </div>
-          <div className="rounded-2xl bg-black/30 ring-1 ring-white/[0.08] p-4 text-center">
+            <p className="mt-1 font-heading text-3xl text-lime tabular-nums">
+              +<AdminCountUp value={data.usersToday} duration={0.9} />
+            </p>
+          </motion.div>
+          <motion.div
+            whileHover={reduced ? undefined : { scale: 1.03 }}
+            className="rounded-2xl bg-black/30 ring-1 ring-white/[0.08] p-4 text-center"
+          >
             <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Дела сегодня</p>
-            <p className="mt-1 font-heading text-3xl text-ice tabular-nums">{data.tasksCompletedToday}</p>
-          </div>
-          <div className="col-span-2 sm:col-span-1 rounded-2xl bg-heat/10 ring-1 ring-heat/25 p-4 text-center">
+            <p className="mt-1 font-heading text-3xl text-ice tabular-nums">
+              <AdminCountUp value={data.tasksCompletedToday} duration={0.95} />
+            </p>
+          </motion.div>
+          <motion.div
+            whileHover={reduced ? undefined : { scale: 1.03 }}
+            className="col-span-2 sm:col-span-1 rounded-2xl bg-heat/10 ring-1 ring-heat/25 p-4 text-center"
+          >
             <p className="text-[10px] font-bold uppercase tracking-wider text-heat">Alerts</p>
-            <p className="mt-1 font-heading text-3xl text-heat tabular-nums">{alerts}</p>
-          </div>
+            <p className="mt-1 font-heading text-3xl text-heat tabular-nums">
+              <AdminCountUp value={alerts} duration={0.85} />
+            </p>
+          </motion.div>
         </div>
       </div>
     </motion.div>
@@ -149,21 +176,31 @@ export function AdminDashboard({ data }: { data: AdminDashboardData }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [refresh]);
 
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      router.refresh();
+    }, 45_000);
+    return () => window.clearInterval(id);
+  }, [router]);
+
   const filteredCities = cityFilter
     ? data.usersByCity.filter((c) => c.city === cityFilter)
     : data.usersByCity;
 
   return (
-    <AdminPage>
+    <AdminPage className="relative">
+      <AdminOrbBackground />
+
+      <div className="relative z-10">
       <AdminPageHeader
         eyebrow="Ops · ДВЖ Admin"
         title="Command Center"
         description="Динамический дашборд: метрики, модерация, v38 health и активность в реальном времени."
         actions={
           <div className="flex items-center gap-2">
-            <span className="hidden items-center gap-1.5 rounded-full border border-good/30 bg-good/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-good sm:inline-flex">
+            <span className="hidden items-center gap-1.5 rounded-full border border-good/30 bg-good/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-good sm:inline-flex admin-sync-ring">
               <span className="admin-pulse-dot h-1.5 w-1.5 rounded-full bg-good" />
-              Live
+              Live · 45s
             </span>
             <Button
               type="button"
@@ -180,9 +217,11 @@ export function AdminDashboard({ data }: { data: AdminDashboardData }) {
         }
       />
 
-      <p className="-mt-6 mb-6 text-[11px] text-muted-foreground font-mono">
-        synced {formatDistanceToNow(new Date(data.generatedAt), { addSuffix: true, locale: ru })} · ⌘R
+      <p className="-mt-6 mb-4 text-[11px] text-muted-foreground font-mono">
+        synced {formatDistanceToNow(new Date(data.generatedAt), { addSuffix: true, locale: ru })} · ⌘R · auto 45s
       </p>
+
+      <AdminLiveTicker data={data} />
 
       <CommandHero data={data} />
 
@@ -376,6 +415,7 @@ export function AdminDashboard({ data }: { data: AdminDashboardData }) {
             ))}
           </div>
         </div>
+      </div>
       </div>
     </AdminPage>
   );
