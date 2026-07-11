@@ -9,5 +9,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   if (!session) redirect("/admin/login");
   if (!isAdmin(session)) redirect("/");
 
-  return <AdminShell user={session}>{children}</AdminShell>;
+  return (
+    <div className="dark min-h-screen">
+      <AdminShell user={session}>{children}</AdminShell>
+    </div>
+  );
 }

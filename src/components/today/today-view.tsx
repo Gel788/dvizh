@@ -2,8 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Plus } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { DiaryProvider, useDiary } from "@/components/profile/diary-context";
 import { DiarySection } from "@/components/profile/diary-section";
 import { DiaryPlannerHeader } from "@/components/profile/diary-planner-header";
@@ -42,18 +40,6 @@ function TodayContent() {
       <DiarySection mode="today" />
       <CreateMenuModal open={createOpen} onClose={() => setCreateOpen(false)} />
       <PersonalEventSheet open={eventOpen} onClose={() => setEventOpen(false)} onCreated={() => setEventOpen(false)} />
-      <button
-        type="button"
-        onClick={() => setCreateOpen(true)}
-        className={cn(
-          "lg:hidden fixed right-5 bottom-[72px] z-40 flex h-14 w-14 items-center justify-center",
-          "rounded-[20px] bg-lime text-lime-foreground shadow-[0_12px_26px_rgba(200,255,87,0.35)]",
-          "hover:-translate-y-0.5 active:scale-95 transition-transform cursor-pointer",
-        )}
-        aria-label="Создать"
-      >
-        <Plus className="h-7 w-7" />
-      </button>
     </div>
   );
 }

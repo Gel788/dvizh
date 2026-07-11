@@ -12,7 +12,17 @@ import { joinChallengeAction, joinEventAction, syncUserLocationAction } from "@/
 import type { NearbyItem } from "@/lib/nearby-data";
 import { filterNearbyItem, applyNearbyRadius } from "@/lib/nearby-data";
 import type { PostType } from "@prisma/client";
+import { SegmentedTabs } from "@/components/layout/v38/segmented-tabs";
+import { V38_MOVE_SCOPES, type V38MoveScope } from "@/lib/v38-nav";
 import { MotionEnter } from "@/components/ui/motion-surface";
+
+function parseMoveScope(raw: string | null): V38MoveScope {
+  if (raw === "friends" || raw === "nearby" || raw === "district" || raw === "city" || raw === "global") {
+    return raw;
+  }
+  if (raw === "local") return "nearby";
+  return "nearby";
+}
 
 const MAP_FILTERS = ["Все", "Спонсоры", "События", "Люди"] as const;
 
@@ -38,8 +48,17 @@ export function NearbyView({
   const router = useRouter();
   const params = useSearchParams();
   const [pending, startTransition] = useTransition();
-  const scope = params.get("scope") === "global" ? "global" : "local";
+  const moveScope = parseMoveScope(params.get("scope"));
+  const scope = moveScope === "global" ? "global" : "local";
   const mapFilter = params.get("map") ?? "Все";
+
+  const scopeTabs = V38_MOVE_SCOPES.map((tab) => {
+    const next = new URLSearchParams(params.toString());
+    if (tab.value === "nearby") next.delete("scope");
+    else next.set("scope", tab.value);
+    const qs = next.toString();
+    return { ...tab, href: qs ? `/nearby?${qs}` : "/nearby" };
+  });
 
   const list = scope === "global" ? globalItems : applyNearbyRadius(localItems, radiusKm);
   const filteredList = list.filter((item) => filterNearbyItem(item, mapFilter));
@@ -97,6 +116,8 @@ export function NearbyView({
 
   return (
     <div className="space-y-4">
+      <SegmentedTabs tabs={scopeTabs} active={moveScope} />
+
       {!hasGps && (
         <div className="flex items-start gap-3 rounded-2xl border border-heat/25 bg-heat/5 px-4 py-3">
           <Navigation className="mt-0.5 h-4 w-4 shrink-0 text-heat" />
@@ -160,7 +181,7 @@ export function NearbyView({
         />
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex gap-2 hidden">
         <button
           type="button"
           onClick={() => setParam("scope", "local")}

@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   title: "ДВЖ — твой ритм",
   description:
     "Молодёжная соцсеть локальных активностей, челленджей и объявлений. Врывайся в движ своего района.",
-  themeColor: "#08080D",
+  themeColor: "#FAF4EA",
   icons: {
     icon: "/brand/app-icon-1024.png",
     apple: "/brand/app-icon-1024.png",
@@ -24,10 +24,9 @@ export default function RootLayout({
   return (
     <html
       lang="ru"
-      className={`dark ${anton.variable} ${epilogue.variable} h-full bg-background`}
-      style={{ backgroundColor: "#08080D", color: "#F0EEE8" }}
+      className={`${anton.variable} ${epilogue.variable} h-full bg-background`}
     >
-      <body className="min-h-full bg-background text-foreground antialiased" style={{ backgroundColor: "#08080D", color: "#F0EEE8" }}>
+      <body className="min-h-full bg-background text-foreground antialiased">
         <TooltipProvider>
           <SplashGate>
             {children}

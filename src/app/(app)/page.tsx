@@ -9,34 +9,58 @@ import { FeedHero } from "@/components/feed/feed-hero";
 import { PulseDayCard } from "@/components/feed/pulse-day-card";
 import { AppContent } from "@/components/layout/app-content";
 import { DesktopRail } from "@/components/layout/desktop-rail";
-import { getFeedPosts } from "@/lib/actions";
-import { getCuratedFeed } from "@/lib/diary-actions";
-import { getPulseDay } from "@/lib/pulse-service";
+import { webGetCuratedFeed, webGetFeedPosts, webGetPulse } from "@/lib/api/v1-web-services";
 import { getSession } from "@/lib/auth";
 import { CITY_COORDS } from "@/lib/geo";
+import type { FeedScope } from "@/lib/feed-scope-service";
 import type { PostType } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
 type SearchParams = Promise<{
-  feed?: string; city?: string; type?: string;
-  district?: string; tag?: string; radius?: string;
+  feed?: string;
+  scope?: string;
+  city?: string;
+  type?: string;
+  district?: string;
+  tag?: string;
+  radius?: string;
 }>;
+
+function resolveFeedScope(raw: string | undefined): FeedScope {
+  switch (raw) {
+    case "friends":
+    case "following":
+      return "following";
+    case "nearby":
+      return "nearby";
+    case "district":
+      return "district";
+    case "global":
+      return "global";
+    case "city":
+    case "all":
+    default:
+      return "all";
+  }
+}
 
 export default async function HomePage({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
   const session = await getSession();
   const city = params.city ?? session?.city ?? "Москва";
   const coords = CITY_COORDS[city] ?? CITY_COORDS["Москва"];
-  const feedMode = (params.feed as "all" | "following" | "nearby") ?? "all";
+  const scopeRaw = params.scope ?? params.feed;
+  const feedMode = resolveFeedScope(scopeRaw);
+  const district = params.district ?? session?.district ?? undefined;
 
   const [curated, posts, pulse] = await Promise.all([
-    getCuratedFeed(city, session?.id).catch(() => null),
-    getFeedPosts({
+    webGetCuratedFeed(city, session, feedMode, district).catch(() => null),
+    webGetFeedPosts({
       feed: feedMode,
       city,
       type: (params.type as PostType | "ALL") ?? "ALL",
-      district: params.district,
+      district,
       tag: params.tag,
       ...(feedMode === "nearby"
         ? {
@@ -45,8 +69,8 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
             userLng: session?.lng ?? coords.lng,
           }
         : {}),
-    }),
-    getPulseDay(city, session?.id).catch(() => null),
+    }, session),
+    webGetPulse(city, session).catch(() => null),
   ]);
 
   const curatedPostsRaw = curated?.items

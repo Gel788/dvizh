@@ -502,8 +502,8 @@
 
 ### 15.3 Web (опционально)
 
-- [ ] **W** DAR web parity с v38 (если нужен)
-- [ ] **I** Единый API contract web + mobile
+- [x] **W** DAR web parity с v38 — shell, light theme, quick-row, scope tabs (2026-07-11)
+- [x] **I** Единый API contract web + mobile — server pages через `/api/v1` (`v1-server`, `v1-web-services`)
 
 ---
 

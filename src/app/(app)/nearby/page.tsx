@@ -1,30 +1,30 @@
 import { Suspense } from "react";
-import { MapPin } from "lucide-react";
+import { Compass } from "lucide-react";
 import { PageShell } from "@/components/layout/page-shell";
 import { NearbyView } from "@/components/nearby/nearby-view";
-import { getNearbyPayload } from "@/lib/api/nearby-service";
+import { webGetNearbyPayload } from "@/lib/api/v1-web-services";
 import { getSession } from "@/lib/auth";
 import { DEFAULT_NEARBY_RADIUS_KM, parseCoord } from "@/lib/geo";
 
 export const dynamic = "force-dynamic";
 
-type SearchParams = Promise<{ radius?: string; radiusKm?: string; district?: string }>;
+type SearchParams = Promise<{ radius?: string; radiusKm?: string; district?: string; scope?: string }>;
 
 export default async function NearbyPage({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
   const session = await getSession();
   const radiusKm = parseCoord(params.radiusKm ?? params.radius) ?? DEFAULT_NEARBY_RADIUS_KM;
 
-  const payload = await getNearbyPayload(session, {
+  const payload = await webGetNearbyPayload(session, {
     radiusKm,
     district: params.district,
   });
 
   return (
     <PageShell
-      title="Рядом"
-      description="Движ в радиусе пешей доступности"
-      icon={<MapPin className="h-6 w-6" />}
+      title="События"
+      description="Карта активностей — как в приложении"
+      icon={<Compass className="h-6 w-6" />}
       accent="ice"
     >
       <Suspense fallback={<div className="h-[280px] animate-pulse bg-muted/40 rounded-[22px]" />}>

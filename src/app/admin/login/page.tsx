@@ -18,7 +18,7 @@ export default async function AdminLoginPage({
   if (session && isAdmin(session)) redirect("/admin");
 
   return (
-    <div className="admin-login relative flex min-h-screen items-center justify-center bg-background p-4">
+    <div className="dark admin-login relative flex min-h-screen items-center justify-center bg-background p-4">
       <div className="pointer-events-none absolute inset-0 dvizh-grid opacity-60" />
 
       <div className="relative w-full max-w-[420px]">
