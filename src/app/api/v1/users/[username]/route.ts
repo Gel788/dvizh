@@ -3,23 +3,10 @@ import { getSessionFromRequest } from "@/lib/auth";
 import { jsonError, jsonOk } from "@/lib/api/http";
 import { getFriendshipState } from "@/lib/api/friendship-service";
 import { getBlockedUserIds, getHiddenPostIds, resolveRelation } from "@/lib/privacy-service";
+import { presentProfileUser, PROFILE_USER_SELECT } from "@/lib/profile-fields";
+import { presentUserMedia } from "@/lib/media-url";
 
 type Ctx = { params: Promise<{ username: string }> };
-
-const userSelect = {
-  id: true,
-  name: true,
-  username: true,
-  avatar: true,
-  coverImage: true,
-  bio: true,
-  city: true,
-  district: true,
-  verified: true,
-  reputation: true,
-  createdAt: true,
-  _count: { select: { posts: true, followers: true, following: true } },
-} as const;
 
 export async function GET(request: Request, ctx: Ctx) {
   const { username } = await ctx.params;
@@ -27,10 +14,11 @@ export async function GET(request: Request, ctx: Ctx) {
 
   const user = await db.user.findUnique({
     where: { username: username.toLowerCase() },
-    select: userSelect,
+    select: PROFILE_USER_SELECT,
   });
   if (!user) return jsonError("Пользователь не найден", 404, "NOT_FOUND");
 
+  const presented = presentProfileUser(user);
   const isOwn = session?.id === user.id;
 
   if (session && !isOwn) {
@@ -80,15 +68,20 @@ export async function GET(request: Request, ctx: Ctx) {
     include: { follower: { select: { id: true, name: true, username: true, avatar: true } } },
   });
 
+  const normalizedPosts = posts.map((post) => ({
+    ...post,
+    author: post.author ? presentUserMedia(post.author) : post.author,
+  }));
+
   return jsonOk({
-    user,
+    user: presented,
     isOwn,
     isFollowing,
     friendshipState: friendship.state,
     friendshipId: friendship.friendshipId,
-    posts,
+    posts: normalizedPosts,
     followers: followers
-      .map((f) => f.follower)
-      .filter((f) => !blockedIds.includes(f.id)),
+      .map((f) => (f.follower ? presentUserMedia(f.follower) : f.follower))
+      .filter((f) => f && !blockedIds.includes(f.id)),
   });
 }

@@ -1,6 +1,7 @@
 import fs from "fs/promises";
 import path from "path";
 import { absoluteMediaUrl } from "@/lib/media-url";
+import { uploadFilePath } from "@/lib/upload/paths";
 
 const MAX_BYTES = 4 * 1024 * 1024;
 
@@ -12,7 +13,7 @@ export async function saveCoverFromDataUrl(userId: string, dataUrl: string): Pro
   const buffer = Buffer.from(match[2], "base64");
   if (buffer.length > MAX_BYTES) throw new Error("FILE_TOO_LARGE");
 
-  const dir = path.join(process.cwd(), "public", "uploads", "covers");
+  const dir = uploadFilePath("covers");
   await fs.mkdir(dir, { recursive: true });
 
   const filename = `${userId}.${ext === "jpeg" ? "jpg" : ext}`;

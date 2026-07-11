@@ -1,6 +1,7 @@
 import fs from "fs/promises";
 import path from "path";
 import { absoluteMediaUrl } from "@/lib/media-url";
+import { uploadFilePath } from "@/lib/upload/paths";
 
 const MAX_BYTES = 2 * 1024 * 1024;
 
@@ -12,7 +13,7 @@ export async function saveAvatarFromDataUrl(userId: string, dataUrl: string): Pr
   const buffer = Buffer.from(match[2], "base64");
   if (buffer.length > MAX_BYTES) throw new Error("FILE_TOO_LARGE");
 
-  const dir = path.join(process.cwd(), "public", "uploads", "avatars");
+  const dir = uploadFilePath("avatars");
   await fs.mkdir(dir, { recursive: true });
 
   const filename = `${userId}.${ext === "jpeg" ? "jpg" : ext}`;

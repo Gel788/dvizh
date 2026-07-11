@@ -9,6 +9,7 @@ type Body = {
   defaultEvents?: string;
   locationPrecision?: string;
   profileInSearch?: boolean;
+  showLevel?: boolean;
   diaryScope?: string;
   friendRequests?: string;
   subscriptions?: string;

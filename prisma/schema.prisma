@@ -145,6 +145,11 @@ model User {
   bio         String?
   city        String   @default("Москва")
   district    String?
+  telegram    String?
+  vk          String?
+  youtube     String?
+  website     String?
+  interests   String?
   lat         Float?
   lng         Float?
   verified    Boolean  @default(false)
@@ -760,6 +765,7 @@ model PrivacySettings {
   subscriptions       String     @default("everyone")
   profileInSearch     Boolean    @default(true)
   locationPrecision   String     @default("district")
+  showLevel           Boolean    @default(true)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

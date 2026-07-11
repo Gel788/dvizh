@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { requireSessionFromRequest } from "@/lib/auth";
 import { jsonError, jsonOk, readJson } from "@/lib/api/http";
 import { saveAvatarFromDataUrl } from "@/lib/upload/avatar";
+import { presentProfileUser, PROFILE_USER_SELECT } from "@/lib/profile-fields";
 
 type Body = { avatar?: string };
 
@@ -19,16 +20,10 @@ export async function POST(request: Request) {
     const user = await db.user.update({
       where: { id: session.id },
       data: { avatar },
-      select: {
-        id: true,
-        name: true,
-        username: true,
-        avatar: true,
-        verified: true,
-      },
+      select: PROFILE_USER_SELECT,
     });
 
-    return jsonOk({ user, avatar });
+    return jsonOk({ user: presentProfileUser(user), avatar });
   } catch (e) {
     if (e instanceof Error) {
       if (e.message === "INVALID_IMAGE") return jsonError("Некорректный формат", 400, "INVALID_IMAGE");

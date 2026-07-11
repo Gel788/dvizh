@@ -1,6 +1,7 @@
 import { readFile } from "fs/promises";
 import path from "path";
 import { NextResponse } from "next/server";
+import { uploadFilePath } from "@/lib/upload/paths";
 
 type Ctx = { params: Promise<{ path: string[] }> };
 
@@ -18,7 +19,7 @@ export async function GET(_request: Request, ctx: Ctx) {
   const safe = segments.every((s) => s && !s.includes("..") && !s.includes("/"));
   if (!safe) return new NextResponse("Forbidden", { status: 403 });
 
-  const filePath = path.join(process.cwd(), "public", "uploads", ...segments);
+  const filePath = uploadFilePath(...segments);
   try {
     const buf = await readFile(filePath);
     const ext = segments[segments.length - 1].split(".").pop()?.toLowerCase() ?? "";

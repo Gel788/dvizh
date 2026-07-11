@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { cache } from "react";
 import bcrypt from "bcryptjs";
 import { db } from "./db";
+import { presentProfileUser } from "@/lib/profile-fields";
 
 const SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET ?? "dar-local-dev-secret-change-in-prod"
@@ -24,8 +25,15 @@ export type SessionUser = {
   name: string;
   username: string;
   avatar: string | null;
+  coverImage: string | null;
+  bio: string | null;
   city: string;
   district: string | null;
+  telegram: string | null;
+  vk: string | null;
+  youtube: string | null;
+  website: string | null;
+  interests: string[];
   lat: number | null;
   lng: number | null;
   verified: boolean;
@@ -58,8 +66,15 @@ const SESSION_USER_SELECT = {
   name: true,
   username: true,
   avatar: true,
+  coverImage: true,
+  bio: true,
   city: true,
   district: true,
+  telegram: true,
+  vk: true,
+  youtube: true,
+  website: true,
+  interests: true,
   lat: true,
   lng: true,
   verified: true,
@@ -79,7 +94,7 @@ async function findSessionUser(userId: string): Promise<SessionUser | null> {
     where: { id: userId },
     select: SESSION_USER_SELECT,
   });
-  return user;
+  return user ? (presentProfileUser(user) as SessionUser) : null;
 }
 
 export async function createSession(userId: string) {

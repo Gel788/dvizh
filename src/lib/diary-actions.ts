@@ -219,6 +219,7 @@ function privacyToClient(p: Awaited<ReturnType<typeof getPrivacyForUser>>) {
     defaultEvents: toClientVis(p.defaultEvents),
     locationPrecision: p.locationPrecision,
     profileInSearch: p.profileInSearch,
+    showLevel: p.showLevel,
     diaryScope: p.diaryScope,
     friendRequests: p.friendRequests,
     subscriptions: p.subscriptions,
@@ -1266,6 +1267,7 @@ export async function updatePrivacyForUser(
     defaultEvents?: string;
     locationPrecision?: string;
     profileInSearch?: boolean;
+    showLevel?: boolean;
     diaryScope?: string;
     friendRequests?: string;
     subscriptions?: string;
@@ -1281,6 +1283,7 @@ export async function updatePrivacyForUser(
       ...(data.defaultEvents ? { defaultEvents: (VIS_MAP[data.defaultEvents] ?? "FRIENDS") as Visibility } : {}),
       ...(data.locationPrecision ? { locationPrecision: data.locationPrecision } : {}),
       ...(data.profileInSearch != null ? { profileInSearch: data.profileInSearch } : {}),
+      ...(data.showLevel != null ? { showLevel: data.showLevel } : {}),
       ...(data.diaryScope ? { diaryScope: data.diaryScope } : {}),
       ...(data.friendRequests ? { friendRequests: data.friendRequests } : {}),
       ...(data.subscriptions ? { subscriptions: data.subscriptions } : {}),
@@ -1292,6 +1295,7 @@ export async function updatePrivacyForUser(
       ...(data.defaultEvents ? { defaultEvents: (VIS_MAP[data.defaultEvents] ?? "FRIENDS") as Visibility } : {}),
       ...(data.locationPrecision ? { locationPrecision: data.locationPrecision } : {}),
       ...(data.profileInSearch != null ? { profileInSearch: data.profileInSearch } : {}),
+      ...(data.showLevel != null ? { showLevel: data.showLevel } : {}),
       ...(data.diaryScope ? { diaryScope: data.diaryScope } : {}),
       ...(data.friendRequests ? { friendRequests: data.friendRequests } : {}),
       ...(data.subscriptions ? { subscriptions: data.subscriptions } : {}),

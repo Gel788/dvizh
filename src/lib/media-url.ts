@@ -35,3 +35,11 @@ export function absoluteMediaUrl(relativePath: string, version?: number): string
   if (!base) return withVersion;
   return `${base}${withVersion}`;
 }
+
+export function presentUserMedia<T extends { avatar?: string | null; coverImage?: string | null }>(user: T): T {
+  return {
+    ...user,
+    ...(user.avatar != null ? { avatar: ensureAbsoluteMediaUrl(user.avatar) || null } : {}),
+    ...(user.coverImage != null ? { coverImage: ensureAbsoluteMediaUrl(user.coverImage) || null } : {}),
+  };
+}

@@ -1,6 +1,7 @@
 import fs from "fs/promises";
 import path from "path";
 import { randomBytes } from "crypto";
+import { uploadFilePath } from "@/lib/upload/paths";
 
 const MAX_BYTES = 4 * 1024 * 1024;
 
@@ -13,7 +14,7 @@ export async function saveImageBuffer(
   if (buffer.length > MAX_BYTES) throw new Error("FILE_TOO_LARGE");
 
   const safeExt = ext === "jpeg" ? "jpg" : ext;
-  const dir = path.join(process.cwd(), "public", "uploads", subdir);
+  const dir = uploadFilePath(subdir);
   await fs.mkdir(dir, { recursive: true });
 
   const filename = `${prefix}-${randomBytes(6).toString("hex")}.${safeExt}`;

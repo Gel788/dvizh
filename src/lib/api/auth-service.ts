@@ -7,6 +7,7 @@ import {
   normalizeEmail,
   type SessionUser,
 } from "@/lib/auth";
+import { presentProfileUser } from "@/lib/profile-fields";
 
 const USER_PUBLIC_SELECT = {
   id: true,
@@ -14,8 +15,15 @@ const USER_PUBLIC_SELECT = {
   name: true,
   username: true,
   avatar: true,
+  coverImage: true,
+  bio: true,
   city: true,
   district: true,
+  telegram: true,
+  vk: true,
+  youtube: true,
+  website: true,
+  interests: true,
   lat: true,
   lng: true,
   verified: true,
@@ -44,7 +52,7 @@ export async function loginWithCredentials(
 
   const token = await signAccessToken(user.id);
   const { password: _, ...publicUser } = user;
-  return { token, user: publicUser };
+  return { token, user: presentProfileUser(publicUser) as SessionUser };
 }
 
 export async function registerUser(input: {
@@ -87,5 +95,5 @@ export async function registerUser(input: {
   });
 
   const token = await signAccessToken(user.id);
-  return { token, user };
+  return { token, user: presentProfileUser(user) as SessionUser };
 }

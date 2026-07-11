@@ -17,8 +17,12 @@ NODE_ENV=production
 COOKIE_SECURE=true
 SITE_URL=https://www.flroal.ru
 NEXT_PUBLIC_SITE_URL=https://www.flroal.ru
+UPLOADS_DIR=/opt/dvizh/data/uploads
 ENV
 fi
+
+mkdir -p /opt/dvizh/data/uploads/avatars /opt/dvizh/data/uploads/covers /opt/dvizh/data/uploads/media
+grep -q '^UPLOADS_DIR=' .env 2>/dev/null || echo 'UPLOADS_DIR=/opt/dvizh/data/uploads' >> .env
 
 echo "=== PostgreSQL ==="
 sudo -u postgres psql -tc "SELECT 1 FROM pg_roles WHERE rolname='dvizh'" | grep -q 1 || \
