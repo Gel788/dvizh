@@ -883,6 +883,15 @@ export async function searchPlatform(q: string, city?: string, viewerId?: string
     db.post.findMany({
       where: {
         hiddenFromFeed: false,
+        NOT: {
+          OR: [
+            { tags: { contains: "duel", mode: "insensitive" } },
+            { tags: { contains: "dispute", mode: "insensitive" } },
+            { tags: { contains: "spor", mode: "insensitive" } },
+            { tags: { contains: "together", mode: "insensitive" } },
+            { tags: { contains: "vmeste", mode: "insensitive" } },
+          ],
+        },
         ...(city ? { city } : {}),
         ...(blockedIds.length ? { authorId: { notIn: blockedIds } } : {}),
         ...(hiddenPostIds.length ? { id: { notIn: hiddenPostIds } } : {}),
