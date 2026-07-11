@@ -7,6 +7,10 @@ import {
   Award,
   Building2,
   Calendar,
+  CalendarDays,
+  Flag,
+  Film,
+  Gift,
   LayoutDashboard,
   Search,
   Settings2,
@@ -14,6 +18,7 @@ import {
   Trophy,
   Users,
   Zap,
+  AlertTriangle,
 } from "lucide-react";
 import { adminNav } from "@/components/admin/admin-nav";
 import {
@@ -38,6 +43,11 @@ const icons: Record<string, React.ComponentType<{ className?: string }>> = {
   "/admin/feed": Sparkles,
   "/admin/challenges": Trophy,
   "/admin/events": Calendar,
+  "/admin/social": Flag,
+  "/admin/wishlists": Gift,
+  "/admin/media": Film,
+  "/admin/calendar": CalendarDays,
+  "/admin/reports": AlertTriangle,
   "/admin/clubs": Building2,
   "/admin/achievements": Award,
   "/admin/system": Settings2,

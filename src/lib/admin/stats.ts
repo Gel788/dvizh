@@ -45,6 +45,14 @@ export async function getAdminStats() {
     hiddenPosts,
     featuredPosts,
     pushDevicesTotal,
+    wishlistsTotal,
+    mediaTotal,
+    duelsTotal,
+    sharedGoalsTotal,
+    pendingJoinRequests,
+    contentReportsTotal,
+    calendarEventsTotal,
+    pendingFriendships,
     recentUsers,
     recentPosts,
     recentActivities,
@@ -70,6 +78,14 @@ export async function getAdminStats() {
     db.post.count({ where: { hiddenFromFeed: true } }),
     db.post.count({ where: { featuredInFeed: true, hiddenFromFeed: false } }),
     db.pushDevice.count(),
+    db.wishlist.count(),
+    db.mediaItem.count(),
+    db.duel.count(),
+    db.sharedGoal.count(),
+    db.moveJoinRequest.count({ where: { status: "PENDING" } }),
+    db.contentReport.count(),
+    db.personalCalendarEvent.count(),
+    db.friendship.count({ where: { status: "PENDING" } }),
     db.user.findMany({
       orderBy: { createdAt: "desc" },
       take: 8,
@@ -147,6 +163,14 @@ export async function getAdminStats() {
     hiddenPosts,
     featuredPosts,
     pushDevicesTotal,
+    wishlistsTotal,
+    mediaTotal,
+    duelsTotal,
+    sharedGoalsTotal,
+    pendingJoinRequests,
+    contentReportsTotal,
+    calendarEventsTotal,
+    pendingFriendships,
     recentUsers,
     recentPosts,
     recentActivities,
@@ -176,6 +200,15 @@ export type AdminDashboardData = {
   commentsTotal: number;
   hiddenPosts: number;
   featuredPosts: number;
+  pushDevicesTotal: number;
+  wishlistsTotal: number;
+  mediaTotal: number;
+  duelsTotal: number;
+  sharedGoalsTotal: number;
+  pendingJoinRequests: number;
+  contentReportsTotal: number;
+  calendarEventsTotal: number;
+  pendingFriendships: number;
   generatedAt: string;
   signupsByDay: { date: string; label: string; count: number }[];
   postsByDay: { date: string; label: string; count: number }[];
@@ -230,6 +263,15 @@ export function toDashboardData(stats: AdminStats): AdminDashboardData {
     commentsTotal: stats.commentsTotal,
     hiddenPosts: stats.hiddenPosts,
     featuredPosts: stats.featuredPosts,
+    pushDevicesTotal: stats.pushDevicesTotal,
+    wishlistsTotal: stats.wishlistsTotal,
+    mediaTotal: stats.mediaTotal,
+    duelsTotal: stats.duelsTotal,
+    sharedGoalsTotal: stats.sharedGoalsTotal,
+    pendingJoinRequests: stats.pendingJoinRequests,
+    contentReportsTotal: stats.contentReportsTotal,
+    calendarEventsTotal: stats.calendarEventsTotal,
+    pendingFriendships: stats.pendingFriendships,
     generatedAt: stats.generatedAt,
     signupsByDay: stats.signupsByDay,
     postsByDay: stats.postsByDay,

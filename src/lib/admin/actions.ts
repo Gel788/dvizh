@@ -24,6 +24,11 @@ function revalidateAdmin() {
   revalidatePath("/admin/achievements");
   revalidatePath("/admin/system");
   revalidatePath("/admin/feed");
+  revalidatePath("/admin/social");
+  revalidatePath("/admin/wishlists");
+  revalidatePath("/admin/media");
+  revalidatePath("/admin/reports");
+  revalidatePath("/admin/calendar");
   revalidatePath("/");
 }
 
@@ -329,4 +334,66 @@ export async function createSponsoredPostAction(formData: FormData) {
   revalidatePath("/");
   revalidatePath("/nearby");
   revalidatePath("/map");
+}
+
+export async function deleteWishlistAction(wishlistId: string) {
+  await guard();
+  await db.wishlist.delete({ where: { id: wishlistId } });
+  revalidateAdmin();
+}
+
+export async function toggleWishlistSurpriseAction(wishlistId: string) {
+  await guard();
+  const list = await db.wishlist.findUnique({ where: { id: wishlistId } });
+  if (!list) return;
+  await db.wishlist.update({
+    where: { id: wishlistId },
+    data: { surpriseMode: !list.surpriseMode },
+  });
+  revalidateAdmin();
+}
+
+export async function deleteDuelAction(duelId: string) {
+  await guard();
+  await db.duel.delete({ where: { id: duelId } });
+  revalidateAdmin();
+}
+
+export async function deleteSharedGoalAction(goalId: string) {
+  await guard();
+  await db.sharedGoal.delete({ where: { id: goalId } });
+  revalidateAdmin();
+}
+
+export async function deleteFriendshipAction(friendshipId: string) {
+  await guard();
+  await db.friendship.delete({ where: { id: friendshipId } });
+  revalidateAdmin();
+}
+
+export async function deleteMediaItemAction(mediaId: string) {
+  await guard();
+  await db.mediaItem.delete({ where: { id: mediaId } });
+  revalidateAdmin();
+}
+
+export async function deleteCalendarEventAction(eventId: string) {
+  await guard();
+  await db.personalCalendarEvent.delete({ where: { id: eventId } });
+  revalidateAdmin();
+}
+
+export async function deleteContentReportAction(reportId: string) {
+  await guard();
+  await db.contentReport.delete({ where: { id: reportId } });
+  revalidateAdmin();
+}
+
+export async function resolveJoinRequestAction(requestId: string, status: "APPROVED" | "DECLINED" | "CANCELLED") {
+  await guard();
+  await db.moveJoinRequest.update({
+    where: { id: requestId },
+    data: { status, resolvedAt: new Date() },
+  });
+  revalidateAdmin();
 }

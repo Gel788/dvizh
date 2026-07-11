@@ -10,7 +10,10 @@ import {
   Activity,
   ArrowUpRight,
   EyeOff,
+  Flag,
+  Gift,
   Heart,
+  MapPin,
   MessageCircle,
   RefreshCw,
   Sparkles,
@@ -18,6 +21,8 @@ import {
   UserPlus,
   Users,
   Zap,
+  AlertTriangle,
+  Film,
 } from "lucide-react";
 import type { AdminDashboardData } from "@/lib/admin/stats";
 import { AdminPage, AdminPageHeader } from "@/components/admin/admin-page-header";
@@ -135,8 +140,10 @@ function MetricTile({
 const quickActions = [
   { href: "/admin/users", label: "Пользователи", desc: "Роли, verify, репутация", icon: Users },
   { href: "/admin/posts", label: "Модерация постов", desc: "Скрыть, удалить, проверить", icon: Activity },
-  { href: "/admin/feed", label: "Курация ленты", desc: "Boost и закрепления", icon: Sparkles },
-  { href: "/admin/system", label: "Рассылка", desc: "Push всем пользователям", icon: Zap },
+  { href: "/admin/social", label: "Спор и соц", desc: "Duels, Вместе, Move заявки", icon: Flag },
+  { href: "/admin/wishlists", label: "Вишлисты", desc: "Surprise mode, списки", icon: Gift },
+  { href: "/admin/reports", label: "Жалобы", desc: "Content reports", icon: AlertTriangle },
+  { href: "/admin/system", label: "Рассылка", desc: "Push и API v38", icon: Zap },
 ] as const;
 
 export function AdminDashboard({ data }: { data: AdminDashboardData }) {
@@ -207,6 +214,15 @@ export function AdminDashboard({ data }: { data: AdminDashboardData }) {
         <MetricTile label="Посты" value={data.postsTotal} hint={`+${data.postsToday} за 24ч`} href="/admin/posts" icon={Activity} accent="ice" delay={0.05} />
         <MetricTile label="В ленте" value={data.featuredPosts} hint={`${data.hiddenPosts} скрыто`} href="/admin/feed" icon={Sparkles} accent="lime" delay={0.1} />
         <MetricTile label="Челленджи" value={data.challengesTotal} href="/admin/challenges" icon={Trophy} accent="heat" delay={0.15} />
+      </div>
+
+      <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6 lg:gap-3">
+        <MetricTile label="Вишлисты" value={data.wishlistsTotal} href="/admin/wishlists" icon={Gift} accent="muted" delay={0.18} />
+        <MetricTile label="Медиа" value={data.mediaTotal} href="/admin/media" icon={Film} accent="muted" delay={0.2} />
+        <MetricTile label="Споры" value={data.duelsTotal} href="/admin/social" icon={Flag} accent="muted" delay={0.22} />
+        <MetricTile label="Вместе" value={data.sharedGoalsTotal} href="/admin/social" icon={UserPlus} accent="muted" delay={0.24} />
+        <MetricTile label="Move заявки" value={data.pendingJoinRequests} hint="ожидают" href="/admin/social" icon={MapPin} accent="heat" delay={0.26} />
+        <MetricTile label="Жалобы" value={data.contentReportsTotal} href="/admin/reports" icon={AlertTriangle} accent="heat" delay={0.28} />
       </div>
 
       <div className="mb-8 grid gap-4 lg:grid-cols-12">
