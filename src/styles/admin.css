@@ -1,0 +1,85 @@
+/* ── ДВЖ Admin Console — ops-grade dark UI ───────────────── */
+
+.admin-shell {
+  --admin-glow: rgba(200, 255, 87, 0.12);
+  --admin-surface: rgba(14, 14, 20, 0.72);
+  --admin-line: rgba(255, 255, 255, 0.07);
+}
+
+.admin-mesh {
+  background:
+    radial-gradient(ellipse 120% 80% at 100% -20%, rgba(200, 255, 87, 0.14) 0%, transparent 55%),
+    radial-gradient(ellipse 70% 50% at 0% 100%, rgba(255, 45, 85, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse 50% 40% at 50% 50%, rgba(0, 217, 255, 0.04) 0%, transparent 60%),
+    linear-gradient(180deg, #060608 0%, #0a0a10 100%);
+}
+
+.admin-sidebar {
+  background: linear-gradient(180deg, rgba(10, 10, 16, 0.98) 0%, rgba(8, 8, 12, 0.99) 100%);
+  box-shadow: inset -1px 0 0 var(--admin-line);
+}
+
+.admin-glass {
+  background: var(--admin-surface);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--admin-line);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.04) inset,
+    0 24px 48px rgba(0, 0, 0, 0.35);
+}
+
+.admin-glass-accent {
+  background: linear-gradient(135deg, rgba(200, 255, 87, 0.06) 0%, rgba(14, 14, 20, 0.85) 40%);
+  border: 1px solid rgba(200, 255, 87, 0.14);
+  box-shadow: 0 0 0 1px rgba(200, 255, 87, 0.04), 0 20px 60px rgba(0, 0, 0, 0.4);
+}
+
+.admin-hero-grid {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: radial-gradient(ellipse 80% 70% at 50% 0%, black 20%, transparent 100%);
+}
+
+.admin-kpi-value {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.admin-ticker {
+  animation: admin-ticker 28s linear infinite;
+}
+
+@keyframes admin-ticker {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.admin-pulse-dot {
+  animation: admin-pulse-dot 2s ease-in-out infinite;
+}
+
+@keyframes admin-pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.85); }
+}
+
+.admin-scanline::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    transparent 0%,
+    rgba(200, 255, 87, 0.03) 50%,
+    transparent 100%
+  );
+  background-size: 100% 8px;
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-ticker { animation: none; }
+  .admin-pulse-dot { animation: none; }
+}

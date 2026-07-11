@@ -60,6 +60,11 @@ export async function getAdminStats() {
     postsByType,
     signupsByDay,
     postsByDay,
+    tasksCompletedByDay,
+    tasksCompletedToday,
+    tasksDoneTotal,
+    challengeParticipantsTotal,
+    wishlistSurpriseOn,
   ] = await Promise.all([
     db.user.count(),
     db.user.count({ where: { createdAt: { gte: dayAgo } } }),
@@ -143,6 +148,13 @@ export async function getAdminStats() {
     dailySeries(7, (from, to) =>
       db.post.count({ where: { createdAt: { gte: from, lte: to } } }),
     ),
+    dailySeries(7, (from, to) =>
+      db.diaryTask.count({ where: { doneAt: { gte: from, lte: to } } }),
+    ),
+    db.diaryTask.count({ where: { doneAt: { gte: dayAgo } } }),
+    db.diaryTask.count({ where: { done: true } }),
+    db.challengeParticipant.count(),
+    db.wishlist.count({ where: { surpriseMode: true } }),
   ]);
 
   return {
@@ -178,6 +190,11 @@ export async function getAdminStats() {
     postsByType,
     signupsByDay,
     postsByDay,
+    tasksCompletedByDay,
+    tasksCompletedToday,
+    tasksDoneTotal,
+    challengeParticipantsTotal,
+    wishlistSurpriseOn,
     generatedAt: now.toISOString(),
   };
 }
@@ -212,6 +229,11 @@ export type AdminDashboardData = {
   generatedAt: string;
   signupsByDay: { date: string; label: string; count: number }[];
   postsByDay: { date: string; label: string; count: number }[];
+  tasksCompletedByDay: { date: string; label: string; count: number }[];
+  tasksCompletedToday: number;
+  tasksDoneTotal: number;
+  challengeParticipantsTotal: number;
+  wishlistSurpriseOn: number;
   usersByCity: { city: string; count: number }[];
   postsByType: { type: string; count: number }[];
   recentUsers: {
@@ -275,6 +297,11 @@ export function toDashboardData(stats: AdminStats): AdminDashboardData {
     generatedAt: stats.generatedAt,
     signupsByDay: stats.signupsByDay,
     postsByDay: stats.postsByDay,
+    tasksCompletedByDay: stats.tasksCompletedByDay,
+    tasksCompletedToday: stats.tasksCompletedToday,
+    tasksDoneTotal: stats.tasksDoneTotal,
+    challengeParticipantsTotal: stats.challengeParticipantsTotal,
+    wishlistSurpriseOn: stats.wishlistSurpriseOn,
     usersByCity: stats.usersByCity.map((r) => ({ city: r.city, count: r._count._all })),
     postsByType: stats.postsByType.map((r) => ({ type: r.type, count: r._count._all })),
     recentUsers: stats.recentUsers.map((u) => ({
@@ -302,5 +329,29 @@ export function toDashboardData(stats: AdminStats): AdminDashboardData {
       createdAt: a.createdAt.toISOString(),
       user: a.user,
     })),
+  };
+}
+
+export type AdminNavBadges = {
+  reports: number;
+  pendingJoins: number;
+  pendingFriends: number;
+  hiddenPosts: number;
+  total: number;
+};
+
+export async function getAdminNavBadges(): Promise<AdminNavBadges> {
+  const [reports, pendingJoins, pendingFriends, hiddenPosts] = await Promise.all([
+    db.contentReport.count(),
+    db.moveJoinRequest.count({ where: { status: "PENDING" } }),
+    db.friendship.count({ where: { status: "PENDING" } }),
+    db.post.count({ where: { hiddenFromFeed: true } }),
+  ]);
+  return {
+    reports,
+    pendingJoins,
+    pendingFriends,
+    hiddenPosts,
+    total: reports + pendingJoins + pendingFriends,
   };
 }
